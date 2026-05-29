@@ -22,6 +22,11 @@ import {
   type FreightIndexHistoryRow,
   type FreightRateRow,
 } from "@/lib/api/rates";
+import {
+  indexDisplayLabel,
+  isNyfiCode,
+  NYFI_LANE_LABELS,
+} from "@/lib/api/freight-indices";
 
 type Search = {
   pol?: string;
@@ -73,10 +78,25 @@ export const Route = createFileRoute("/rates")({
 
 const CHART_COLORS: Record<string, string> = {
   SCFI: "#0F2D5A",
-  WCI: "#1B4D8C",
   FBX: "#38BDF8",
   KCCI: "#0EA5A4",
   CCFI: "#F59E0B",
+};
+
+const NYFI_CODES = [
+  "NYFI:ASIA-USWC",
+  "NYFI:ASIA-USEC",
+  "NYFI:ASIA-NEUR",
+  "NYFI:TRANS-ATLANTIC_WESTBOUND",
+  "NYFI:TRANS-ATLANTIC_EASTBOUND",
+] as const;
+
+const NYFI_COLORS: Record<string, string> = {
+  "NYFI:ASIA-USWC": "#0F2D5A",
+  "NYFI:ASIA-USEC": "#1B4D8C",
+  "NYFI:ASIA-NEUR": "#38BDF8",
+  "NYFI:TRANS-ATLANTIC_WESTBOUND": "#0EA5A4",
+  "NYFI:TRANS-ATLANTIC_EASTBOUND": "#F59E0B",
 };
 
 const RANGES = [
@@ -107,6 +127,7 @@ function RatesPage() {
       </header>
 
       <IndicesSection />
+      <NyfiSection />
       <RatesSection />
       <BunkerSection />
 
