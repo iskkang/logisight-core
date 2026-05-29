@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin/
+
+Sitemap: https://logisight-core.lovable.app/sitemap.xml

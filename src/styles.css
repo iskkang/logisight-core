@@ -110,7 +110,7 @@
 
   --surface: oklch(0.968 0.012 247);    /* #F1F5F9 page bg */
   --ink: oklch(0.236 0.04 257);         /* #1E293B text */
-  --ink-muted: oklch(0.55 0.03 257);    /* #64748B muted */
+  --ink-muted: oklch(0.45 0.03 257);    /* darker muted for WCAG AA contrast */
   --line: oklch(0.91 0.014 255);        /* #E2E8F0 border */
 
   /* Category palette */

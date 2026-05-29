@@ -77,11 +77,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "운임 지수와 시장 뉴스, 정책 변화. 매주 한 편의 분석으로 정리합니다.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Logisight" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Logisight — 물류를 읽는 새로운 시선" },
-      { name: "description", content: "Logisight - Digital Information Platform" },
-      { property: "og:description", content: "Logisight - Digital Information Platform" },
-      { name: "twitter:description", content: "Logisight - Digital Information Platform" },
+      { name: "twitter:description", content: "운임 지수와 시장 뉴스, 정책 변화. 매주 한 편의 분석으로 정리합니다." },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0eb7d306-970c-4458-ac80-4b0e08c4bec3" },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0eb7d306-970c-4458-ac80-4b0e08c4bec3" },
     ],
@@ -89,6 +88,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "stylesheet",
         href: appCss,
+      },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "Logisight",
+          url: "https://logisight-core.lovable.app",
+          description:
+            "MTL Shipping Agency가 운영하는 한국 화주·포워더를 위한 물류 인텔리전스 플랫폼.",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Logisight",
+          url: "https://logisight-core.lovable.app",
+        }),
       },
     ],
   }),
