@@ -9,6 +9,10 @@ import {
   formatPublishedAt,
 } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
+import {
+  latestBriefingQueryOptions,
+  formatBriefingDate,
+} from "@/lib/api/briefing";
 
 export const Route = createFileRoute("/")({
   loader: ({ context }) => {
@@ -16,6 +20,7 @@ export const Route = createFileRoute("/")({
     context.queryClient.ensureQueryData(
       latestNewsQueryOptions({ lang: "ko", limit: 6 }),
     );
+    context.queryClient.ensureQueryData(latestBriefingQueryOptions());
   },
   head: () => ({
     meta: [
@@ -125,6 +130,7 @@ function Index() {
       </div>
     </section>
     <HomeNewsSection />
+    <WeeklyBriefingSection />
     </>
   );
 }
@@ -205,3 +211,99 @@ function NewsCard({ item }: { item: NewsItem }) {
     </li>
   );
 }
+
+function WeeklyBriefingSection() {
+  const { data } = useSuspenseQuery(latestBriefingQueryOptions());
+  const briefing = data?.briefing ?? null;
+  const points = data?.points ?? [];
+
+  const categoryMap: Record<string, { label: string; tone: string }> = {
+    shipping: { label: "시황", tone: "var(--color-cyan)" },
+    corp: { label: "기업", tone: "var(--color-cyan)" },
+    brief: { label: "글로벌", tone: "var(--color-cyan)" },
+  };
+
+  return (
+    <section
+      className="border-t border-[var(--color-line)]"
+      style={{ background: "var(--color-surface-alt, #f7f9fc)" }}
+    >
+      <div className="mx-auto max-w-7xl px-4 py-12 lg:px-6 lg:py-16">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <span
+              className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]"
+              style={{
+                background: "var(--color-navy-900)",
+                color: "var(--color-cyan)",
+              }}
+            >
+              AI 저널리스트 · 주간 인사이트
+            </span>
+            <h2 className="mt-3 text-2xl font-bold text-[var(--color-ink)] lg:text-3xl">
+              {briefing?.title ?? "주간 시장 브리핑"}
+            </h2>
+            {briefing?.subtitle && (
+              <p className="mt-2 max-w-2xl text-sm text-[var(--color-ink-muted)]">
+                {briefing.subtitle}
+              </p>
+            )}
+          </div>
+          {briefing?.week_of && (
+            <div className="text-right text-xs text-[var(--color-ink-muted)]">
+              <div>주차 기준</div>
+              <div className="text-sm font-semibold text-[var(--color-ink)]">
+                {formatBriefingDate(briefing.week_of)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {!briefing ? (
+          <div className="mt-8 rounded-lg border border-dashed border-[var(--color-line)] bg-white p-10 text-center">
+            <p className="text-sm text-[var(--color-ink-muted)]">
+              이번 주 브리핑을 준비 중입니다.
+            </p>
+            <p className="mt-1 text-xs text-[var(--color-ink-muted)]/80">
+              매주 월요일 발행 · 수집 예정
+            </p>
+          </div>
+        ) : (
+          <>
+            <ul className="mt-8 grid gap-4 md:grid-cols-3">
+              {["shipping", "corp", "brief"].map((cat) => {
+                const item = points.find((p) => p.agent_type === cat) ??
+                  points.find((p) => p.category === cat);
+                const meta = categoryMap[cat];
+                return (
+                  <li key={cat}>
+                    <article className="h-full rounded-lg border border-[var(--color-line)] bg-white p-5 transition-shadow hover:shadow-md">
+                      <div
+                        className="text-[11px] font-semibold uppercase tracking-wide"
+                        style={{ color: meta.tone }}
+                      >
+                        {meta.label}
+                      </div>
+                      <p className="mt-3 text-base font-semibold leading-snug text-[var(--color-ink)]">
+                        {item?.headline ?? "수집 예정"}
+                      </p>
+                    </article>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="mt-6 flex items-center justify-between text-xs text-[var(--color-ink-muted)]">
+              <span>
+                {formatBriefingDate(briefing.published_at)} 발행 · 매주 월요일
+              </span>
+              <span className="font-semibold text-[var(--color-navy-600)]">
+                전체 분석 읽기 →
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+

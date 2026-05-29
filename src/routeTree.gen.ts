@@ -16,6 +16,8 @@ import { Route as IndustriesRouteImport } from './routes/industries'
 import { Route as EurasiaRouteImport } from './routes/eurasia'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ArticleIdRouteImport } from './routes/article.$id'
+import { Route as AdminRoutesRouteImport } from './routes/admin.routes'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
 
 const RatesRoute = RatesRouteImport.update({
   id: '/rates',
@@ -52,6 +54,16 @@ const ArticleIdRoute = ArticleIdRouteImport.update({
   path: '/article/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoutesRoute = AdminRoutesRouteImport.update({
+  id: '/admin/routes',
+  path: '/admin/routes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin/login',
+  path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -60,6 +72,8 @@ export interface FileRoutesByFullPath {
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/routes': typeof AdminRoutesRoute
   '/article/$id': typeof ArticleIdRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +83,8 @@ export interface FileRoutesByTo {
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/routes': typeof AdminRoutesRoute
   '/article/$id': typeof ArticleIdRoute
 }
 export interface FileRoutesById {
@@ -79,6 +95,8 @@ export interface FileRoutesById {
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/routes': typeof AdminRoutesRoute
   '/article/$id': typeof ArticleIdRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +108,8 @@ export interface FileRouteTypes {
     | '/news'
     | '/policy'
     | '/rates'
+    | '/admin/login'
+    | '/admin/routes'
     | '/article/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +119,8 @@ export interface FileRouteTypes {
     | '/news'
     | '/policy'
     | '/rates'
+    | '/admin/login'
+    | '/admin/routes'
     | '/article/$id'
   id:
     | '__root__'
@@ -108,6 +130,8 @@ export interface FileRouteTypes {
     | '/news'
     | '/policy'
     | '/rates'
+    | '/admin/login'
+    | '/admin/routes'
     | '/article/$id'
   fileRoutesById: FileRoutesById
 }
@@ -118,6 +142,8 @@ export interface RootRouteChildren {
   NewsRoute: typeof NewsRoute
   PolicyRoute: typeof PolicyRoute
   RatesRoute: typeof RatesRoute
+  AdminLoginRoute: typeof AdminLoginRoute
+  AdminRoutesRoute: typeof AdminRoutesRoute
   ArticleIdRoute: typeof ArticleIdRoute
 }
 
@@ -172,6 +198,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArticleIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/routes': {
+      id: '/admin/routes'
+      path: '/admin/routes'
+      fullPath: '/admin/routes'
+      preLoaderRoute: typeof AdminRoutesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/admin/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -182,6 +222,8 @@ const rootRouteChildren: RootRouteChildren = {
   NewsRoute: NewsRoute,
   PolicyRoute: PolicyRoute,
   RatesRoute: RatesRoute,
+  AdminLoginRoute: AdminLoginRoute,
+  AdminRoutesRoute: AdminRoutesRoute,
   ArticleIdRoute: ArticleIdRoute,
 }
 export const routeTree = rootRouteImport
