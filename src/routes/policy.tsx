@@ -11,6 +11,7 @@ import {
   type PolicyAlertRow,
   type PolicyNewsItem,
 } from "@/lib/api/policy";
+import { articleParam } from "@/lib/api/article";
 
 export const Route = createFileRoute("/policy")({
   loader: ({ context }) => {
