@@ -82,8 +82,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Logisight - Digital Information Platform" },
       { property: "og:description", content: "Logisight - Digital Information Platform" },
       { name: "twitter:description", content: "Logisight - Digital Information Platform" },
-      { property: "og:image", content: "" },
-      { name: "twitter:image", content: "" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/22c65b31-be1d-4370-ab6b-3367d9b32ced/id-preview-c2885892--a32ef8f8-b792-4729-b4a5-c1c6d0e79074.lovable.app-1780021563077.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/22c65b31-be1d-4370-ab6b-3367d9b32ced/id-preview-c2885892--a32ef8f8-b792-4729-b4a5-c1c6d0e79074.lovable.app-1780021563077.png" },
     ],
     links: [
       {
