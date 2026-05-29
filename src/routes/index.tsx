@@ -177,10 +177,11 @@ function DashboardSection() {
           <WeeklyBriefingBlock />
           <NewsBlock />
         </div>
-        <aside className="mt-8 space-y-6 lg:mt-0">
+        <aside className="mt-8 flex flex-col gap-6 lg:mt-0 lg:h-full">
           <LanesSidebar />
           <EurasiaSidebar />
           <PolicySidebar />
+          <div className="flex-1" />
           <NewsletterSidebar />
         </aside>
       </div>
