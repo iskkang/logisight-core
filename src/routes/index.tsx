@@ -330,8 +330,8 @@ function NewsBlock() {
 function FeaturedNewsCard({ item }: { item: NewsItem }) {
   return (
     <Link
-      to="/article/$id"
-      params={{ id: String(item.id) }}
+      to="/article/$slug"
+      params={{ slug: articleParam(item) }}
       className="mt-5 grid gap-4 rounded-lg border border-[var(--color-line)] bg-white p-4 transition-shadow hover:shadow-md sm:grid-cols-[200px_1fr]"
     >
       <div
@@ -379,8 +379,8 @@ function SmallNewsCard({ item }: { item: NewsItem }) {
   return (
     <li>
       <Link
-        to="/article/$id"
-        params={{ id: String(item.id) }}
+        to="/article/$slug"
+        params={{ slug: articleParam(item) }}
         className="group block h-full rounded-md border border-[var(--color-line)] bg-white p-4 transition-shadow hover:shadow-md"
       >
         <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-[var(--color-ink-muted)]">
