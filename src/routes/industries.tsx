@@ -56,7 +56,9 @@ export const Route = createFileRoute("/industries")({
         content:
           "HS 챕터 랭킹, 국가별 비중, 월별 추이를 제공하는 한국 교역 대시보드.",
       },
+      { property: "og:url", content: "https://logisight-core.lovable.app/industries" },
     ],
+    links: [{ rel: "canonical", href: "https://logisight-core.lovable.app/industries" }],
   }),
   component: IndustriesPage,
   errorComponent: () => (

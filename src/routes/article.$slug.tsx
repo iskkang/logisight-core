@@ -21,16 +21,54 @@ export const Route = createFileRoute("/article/$slug")({
     context.queryClient.prefetchQuery(
       relatedArticlesQueryOptions({ id: article.id, category: article.category }),
     );
+    return { article };
   },
-  head: () => ({
-    meta: [
-      { title: "기사 — Logisight" },
-      {
-        name: "description",
-        content: "Logisight 큐레이션 시장 뉴스 상세 기사.",
-      },
-    ],
-  }),
+  head: ({ loaderData, params }) => {
+    const a = loaderData?.article;
+    const title = a ? `${a.title} — Logisight` : "기사 — Logisight";
+    const desc =
+      (a?.summary && a.summary.trim().length > 0
+        ? a.summary
+        : a?.title) ?? "Logisight 큐레이션 시장 뉴스 상세 기사.";
+    const slugParam =
+      a?.slug && a.slug.length > 0 ? a.slug : a ? String(a.id) : params.slug;
+    const url = `https://logisight-core.lovable.app/article/${slugParam}`;
+    const meta: Array<Record<string, string>> = [
+      { title },
+      { name: "description", content: desc },
+      { property: "og:title", content: a?.title ?? "기사 — Logisight" },
+      { property: "og:description", content: desc },
+      { property: "og:type", content: "article" },
+      { property: "og:url", content: url },
+      { name: "twitter:title", content: a?.title ?? "기사 — Logisight" },
+      { name: "twitter:description", content: desc },
+    ];
+    if (a?.image_url) {
+      meta.push({ property: "og:image", content: a.image_url });
+      meta.push({ name: "twitter:image", content: a.image_url });
+    }
+    const scripts: Array<{ type: string; children: string }> = [];
+    if (a) {
+      scripts.push({
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: a.title,
+          description: desc,
+          image: a.image_url ?? undefined,
+          datePublished: a.published_at ?? undefined,
+          author: a.source ? { "@type": "Organization", name: a.source } : undefined,
+          mainEntityOfPage: url,
+        }),
+      });
+    }
+    return {
+      meta,
+      links: [{ rel: "canonical", href: url }],
+      scripts,
+    };
+  },
   notFoundComponent: () => (
     <div className="mx-auto max-w-3xl px-4 py-20 text-center">
       <p className="text-sm uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">

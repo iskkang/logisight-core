@@ -34,7 +34,9 @@ export const Route = createFileRoute("/news")({
         content:
           "해상·항공·철도·물류·무역 분야의 글로벌 시장 뉴스를 한국어로 큐레이션.",
       },
+      { property: "og:url", content: "https://logisight-core.lovable.app/news" },
     ],
+    links: [{ rel: "canonical", href: "https://logisight-core.lovable.app/news" }],
   }),
   component: NewsPage,
 });

@@ -45,6 +45,7 @@ export function Navigation() {
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/50" />
             <input
               type="search"
+              aria-label="기사·노선·운임 검색"
               placeholder="기사·노선·운임 검색"
               className="h-8 w-64 rounded-md border border-white/15 bg-white/5 pl-8 pr-3 text-xs text-white placeholder:text-white/50 outline-none focus:border-[var(--color-cyan)]"
             />
@@ -89,6 +90,7 @@ export function Navigation() {
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/50" />
                 <input
                   type="search"
+                  aria-label="기사·노선·운임 검색"
                   placeholder="기사·노선·운임 검색"
                   className="h-9 w-full rounded-md border border-white/15 bg-white/5 pl-8 pr-3 text-xs text-white placeholder:text-white/50 outline-none focus:border-[var(--color-cyan)]"
                 />

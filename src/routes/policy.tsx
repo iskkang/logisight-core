@@ -32,7 +32,9 @@ export const Route = createFileRoute("/policy")({
         content:
           "활성 정책 알림과 관련 기사를 코드별로 모아 보는 무역·물류 규제 모니터.",
       },
+      { property: "og:url", content: "https://logisight-core.lovable.app/policy" },
     ],
+    links: [{ rel: "canonical", href: "https://logisight-core.lovable.app/policy" }],
   }),
   component: PolicyPage,
   errorComponent: () => (
