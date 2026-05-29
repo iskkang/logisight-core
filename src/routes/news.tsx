@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 import {
@@ -66,9 +66,9 @@ function NewsPage() {
             <article className="lg:col-span-2">
               <Meta item={hero} />
               <h2 className="mt-3 text-2xl font-bold leading-tight text-[var(--color-ink)] lg:text-3xl">
-                <a href={hero.url} target="_blank" rel="noopener noreferrer">
+                <Link to="/article/$id" params={{ id: String(hero.id) }}>
                   {hero.title}
-                </a>
+                </Link>
               </h2>
               {hero.summary && (
                 <p className="mt-4 text-base leading-relaxed text-[var(--color-ink-muted)]">
@@ -86,9 +86,9 @@ function NewsPage() {
               >
                 <Meta item={n} />
                 <h3 className="mt-2 text-base font-semibold leading-snug text-[var(--color-ink)]">
-                  <a href={n.url} target="_blank" rel="noopener noreferrer">
+                  <Link to="/article/$id" params={{ id: String(n.id) }}>
                     {n.title}
-                  </a>
+                  </Link>
                 </h3>
                 {n.summary && (
                   <p className="mt-1 line-clamp-2 text-sm text-[var(--color-ink-muted)]">
@@ -105,9 +105,9 @@ function NewsPage() {
                 <article className="h-full rounded-lg border border-[var(--color-line)] bg-white p-5">
                   <Meta item={n} />
                   <h3 className="mt-3 text-base font-bold leading-snug text-[var(--color-ink)]">
-                    <a href={n.url} target="_blank" rel="noopener noreferrer">
+                    <Link to="/article/$id" params={{ id: String(n.id) }}>
                       {n.title}
-                    </a>
+                    </Link>
                   </h3>
                   {n.summary && (
                     <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-[var(--color-ink-muted)]">
