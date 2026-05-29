@@ -14,6 +14,7 @@ import {
   formatPublishedAt,
 } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
+import { articleParam } from "@/lib/api/article";
 import {
   latestBriefingQueryOptions,
   formatBriefingDate,

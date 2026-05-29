@@ -7,6 +7,7 @@ import {
   formatPublishedAt,
 } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
+import { articleParam } from "@/lib/api/article";
 
 const newsSearchSchema = z.object({
   cat: z.string().min(1).max(40).optional(),
