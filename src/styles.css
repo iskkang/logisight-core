@@ -247,4 +247,11 @@
   .animate-ticker:hover {
     animation-play-state: paused;
   }
+
+  /* Editorial serif headlines (WSJ-style) */
+  .font-serif-display {
+    font-family: "Playfair Display", "Noto Serif KR", "Pretendard Variable",
+      Georgia, "Times New Roman", serif;
+    letter-spacing: -0.015em;
+  }
 }
