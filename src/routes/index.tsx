@@ -97,5 +97,3 @@ function Index() {
     </section>
   );
 }
-  );
-}
