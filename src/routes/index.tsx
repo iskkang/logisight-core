@@ -186,7 +186,7 @@ function WeeklyBriefingBlock() {
             className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
             style={{ background: "var(--color-navy-900)", color: "var(--color-cyan)" }}
           >
-            AI 저널리스트 · 주간 인사이트
+            주간 인사이트
           </span>
           <h2 className="mt-3 text-xl font-bold text-[var(--color-ink)] lg:text-2xl">
             {briefing?.title ?? "주간 시장 브리핑"}
