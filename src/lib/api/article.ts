@@ -1,16 +1,21 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { getArticleById, getRelatedArticles } from "./article.functions";
+import { getArticleBySlug, getRelatedArticles } from "./article.functions";
 import type { NewsItem } from "./news";
 
 export type Article = NewsItem & { content: string | null };
 
-export const articleQueryOptions = (id: number) =>
+export const articleQueryOptions = (slug: string) =>
   queryOptions({
-    queryKey: ["maritime_news", "article", id],
-    queryFn: () => getArticleById({ data: { id } }),
+    queryKey: ["maritime_news", "article", slug],
+    queryFn: () => getArticleBySlug({ data: { slug } }),
     staleTime: 5 * 60 * 1000,
   });
+
+/** Pick best URL param for an article: prefer slug, fall back to numeric id. */
+export function articleParam(item: { slug: string | null; id: number }): string {
+  return item.slug && item.slug.length > 0 ? item.slug : String(item.id);
+}
 
 export const relatedArticlesQueryOptions = (input: {
   id: number;
