@@ -63,7 +63,7 @@ export const Route = createFileRoute("/rates")({
       {
         name: "description",
         content:
-          "SCFI·WCI·FBX·KCCI·CCFI 주요 컨테이너 운임 지수와 부산발 해상 운임, 벙커유 가격을 한 화면에서 확인하세요.",
+          "SCFI·FBX·KCCI·CCFI·NYFI 주요 컨테이너 운임 지수와 부산발 해상 운임, 벙커유 가격을 한 화면에서 확인하세요.",
       },
       { property: "og:title", content: "운임·지수 — Logisight" },
       {
