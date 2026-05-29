@@ -1,4 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+  useLatestFreightIndices,
+  formatIndexValue,
+} from "@/hooks/use-freight-indices";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -18,6 +22,33 @@ export const Route = createFileRoute("/")({
   }),
   component: Index,
 });
+
+function HeroCard({ code, sub }: { code: string; sub: string }) {
+  const { data, isLoading } = useLatestFreightIndices();
+  const row = data?.find((r) => r.index_code === code);
+  const value = isLoading ? "…" : formatIndexValue(row?.value ?? null);
+  const change = row?.change_pct;
+  const changeLabel =
+    change == null
+      ? "수집 예정"
+      : `${change >= 0 ? "+" : ""}${change.toFixed(2)}% WoW`;
+  const changeColor =
+    change == null
+      ? "text-white/50"
+      : change >= 0
+        ? "text-emerald-300"
+        : "text-rose-300";
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/5 p-4 backdrop-blur">
+      <div className="text-[11px] uppercase tracking-wide text-white/60">{code}</div>
+      <div className="mt-1 text-2xl font-bold tabular-nums text-white">{value}</div>
+      <div className={`text-[11px] tabular-nums ${changeColor}`}>
+        {sub} · {changeLabel}
+      </div>
+    </div>
+  );
+}
 
 function Index() {
   return (
@@ -66,25 +97,10 @@ function Index() {
 
         <div className="lg:col-span-2">
           <div className="grid grid-cols-2 gap-3">
-            {[
-              { k: "SCFI", v: "—", sub: "주간 변동" },
-              { k: "WCI", v: "—", sub: "주간 변동" },
-              { k: "Blank Sailing", v: "—", sub: "최근 주" },
-              { k: "KCCI", v: "—", sub: "주간 변동" },
-            ].map((s) => (
-              <div
-                key={s.k}
-                className="rounded-lg border border-white/10 bg-white/5 p-4 backdrop-blur"
-              >
-                <div className="text-[11px] uppercase tracking-wide text-white/60">
-                  {s.k}
-                </div>
-                <div className="mt-1 text-2xl font-bold tabular-nums text-white">
-                  {s.v}
-                </div>
-                <div className="text-[11px] text-white/50">{s.sub} · 수집 예정</div>
-              </div>
-            ))}
+            <HeroCard code="SCFI" sub="상하이→유럽 종합" />
+            <HeroCard code="WCI" sub="드류리 종합" />
+            <HeroCard code="KCCI" sub="한국형 종합" />
+            <HeroCard code="CCFI" sub="중국 수출 종합" />
           </div>
         </div>
       </div>
