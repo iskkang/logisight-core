@@ -9,7 +9,17 @@ import type {
   RateFilterOptions,
 } from "./rates";
 
-const CODES = ["SCFI", "WCI", "FBX", "KCCI", "CCFI"] as const;
+const CODES = [
+  "SCFI",
+  "FBX",
+  "KCCI",
+  "CCFI",
+  "NYFI:ASIA-USWC",
+  "NYFI:ASIA-USEC",
+  "NYFI:ASIA-NEUR",
+  "NYFI:TRANS-ATLANTIC_WESTBOUND",
+  "NYFI:TRANS-ATLANTIC_EASTBOUND",
+] as const;
 
 export const getFreightIndicesHistory = createServerFn({ method: "GET" }).handler(
   async (): Promise<FreightIndexHistoryRow[]> => {
@@ -18,7 +28,7 @@ export const getFreightIndicesHistory = createServerFn({ method: "GET" }).handle
       .select("index_code,value,change_pct,week_date,source,source_url")
       .in("index_code", CODES as unknown as string[])
       .order("week_date", { ascending: true })
-      .limit(2000);
+      .limit(5000);
     if (error) throw new Error(error.message);
     return (data ?? []) as FreightIndexHistoryRow[];
   },
