@@ -74,7 +74,9 @@ export const Route = createFileRoute("/rates")({
         content:
           "공개 데이터 기반 컨테이너 운임 지수, 해상 운임, 벙커유 가격 대시보드.",
       },
+      { property: "og:url", content: "https://logisight-core.lovable.app/rates" },
     ],
+    links: [{ rel: "canonical", href: "https://logisight-core.lovable.app/rates" }],
   }),
   component: RatesPage,
 });

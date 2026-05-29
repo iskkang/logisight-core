@@ -43,7 +43,9 @@ export const Route = createFileRoute("/eurasia")({
         content:
           "MTL Link 운영 기준 노선과 실측 정시율, 활성 차질(disruption) 모니터링.",
       },
+      { property: "og:url", content: "https://logisight-core.lovable.app/eurasia" },
     ],
+    links: [{ rel: "canonical", href: "https://logisight-core.lovable.app/eurasia" }],
   }),
   component: EurasiaPage,
   errorComponent: () => (
