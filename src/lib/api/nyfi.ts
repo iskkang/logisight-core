@@ -33,7 +33,9 @@ export const nyfiQueryOptions = () =>
   });
 
 export function sortNyfiLanes(lanes: NyfiLane[]): NyfiLane[] {
-  const order = new Map(NYFI_ORDER.map((c, i) => [c, i] as const));
+  const order = new Map<string, number>(
+    NYFI_ORDER.map((c, i) => [c as string, i]),
+  );
   return [...lanes].sort(
     (a, b) => (order.get(a.code) ?? 99) - (order.get(b.code) ?? 99),
   );
