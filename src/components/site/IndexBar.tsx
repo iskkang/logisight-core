@@ -6,6 +6,7 @@ import {
   indexDisplayLabel,
   formatIndexDisplayValue,
 } from "@/lib/api/freight-indices";
+import { nyfiQueryOptions, sortNyfiLanes, formatNyfiValue } from "@/lib/api/nyfi";
 
 type Item = { code: string; label: string; value: string; change?: number | null };
 
@@ -33,18 +34,28 @@ export function IndexBar({
   updatedLabel?: string;
 }) {
   const { data, isLoading } = useQuery(freightIndicesQueryOptions());
+  const { data: nyfi } = useQuery(nyfiQueryOptions());
 
-  const resolved: Item[] =
-    items ??
-    (data ?? []).map((r) => ({
-      code: r.index_code,
-      label: indexDisplayLabel(r.index_code),
-      value: isLoading ? "…" : formatIndexDisplayValue(r.index_code, r.value),
-      change: r.change_pct,
-    }));
+  const supabaseItems: Item[] = (data ?? []).map((r) => ({
+    code: r.index_code,
+    label: indexDisplayLabel(r.index_code),
+    value: isLoading ? "…" : formatIndexDisplayValue(r.index_code, r.value),
+    change: r.change_pct,
+  }));
 
-  const latestWeek = (data ?? [])
-    .map((r) => r.week_date)
+  const nyfiItems: Item[] = sortNyfiLanes(nyfi ?? []).map((l) => ({
+    code: l.code,
+    label: `NYFI ${l.nameKo}`,
+    value: formatNyfiValue(l.value),
+    change: l.wow,
+  }));
+
+  const resolved: Item[] = items ?? [...supabaseItems, ...nyfiItems];
+
+  const latestWeek = [
+    ...(data ?? []).map((r) => r.week_date),
+    ...((nyfi ?? []).map((l) => l.weekDate)),
+  ]
     .filter(Boolean)
     .sort()
     .reverse()[0];
