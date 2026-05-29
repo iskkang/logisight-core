@@ -292,7 +292,7 @@ function RatesSection() {
 
   const update = (patch: Partial<Search>) =>
     navigate({
-      search: (prev) => ({ ...prev, ...patch }),
+      search: (prev: Search) => ({ ...prev, ...patch }),
       replace: true,
     });
 
