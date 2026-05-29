@@ -4,6 +4,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Pretendard (Korean) + Inter (Latin) */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
 /*
  * Design system definition.
  *
@@ -59,29 +63,88 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Logisight brand tokens */
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-600: var(--navy-600);
+  --color-cyan: var(--cyan);
+  --color-cyan-soft: var(--cyan-soft);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-surface: var(--surface);
+
+  /* Category tokens (bg / fg) */
+  --color-cat-sea-bg: var(--cat-sea-bg);
+  --color-cat-sea-fg: var(--cat-sea-fg);
+  --color-cat-air-bg: var(--cat-air-bg);
+  --color-cat-air-fg: var(--cat-air-fg);
+  --color-cat-rail-bg: var(--cat-rail-bg);
+  --color-cat-rail-fg: var(--cat-rail-fg);
+  --color-cat-logi-bg: var(--cat-logi-bg);
+  --color-cat-logi-fg: var(--cat-logi-fg);
+  --color-cat-trade-bg: var(--cat-trade-bg);
+  --color-cat-trade-fg: var(--cat-trade-fg);
+
+  --font-sans:
+    "Pretendard Variable", Pretendard, Inter, -apple-system,
+    BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
 }
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  /* Brand */
+  --navy-900: oklch(0.272 0.073 258);   /* #0F2D5A */
+  --navy-800: oklch(0.32 0.075 258);
+  --navy-600: oklch(0.402 0.105 256);   /* #1B4D8C */
+  --cyan: oklch(0.778 0.142 230);       /* #38BDF8 */
+  --cyan-soft: oklch(0.93 0.06 230);
+  --success: oklch(0.62 0.16 152);      /* #00A85A */
+  --danger: oklch(0.703 0.18 22);       /* #F87171 */
+  --warning: oklch(0.78 0.16 75);       /* amber-500 */
+
+  --surface: oklch(0.968 0.012 247);    /* #F1F5F9 page bg */
+  --ink: oklch(0.236 0.04 257);         /* #1E293B text */
+  --ink-muted: oklch(0.55 0.03 257);    /* #64748B muted */
+  --line: oklch(0.91 0.014 255);        /* #E2E8F0 border */
+
+  /* Category palette */
+  --cat-sea-bg: oklch(0.965 0.018 255);   /* #EFF6FF */
+  --cat-sea-fg: oklch(0.402 0.105 256);   /* #1B4D8C */
+  --cat-air-bg: oklch(0.975 0.035 158);   /* #ECFDF5 */
+  --cat-air-fg: oklch(0.42 0.10 158);     /* #065F46 */
+  --cat-rail-bg: oklch(0.985 0.04 95);    /* #FFFBEB */
+  --cat-rail-fg: oklch(0.46 0.13 65);     /* #92400E */
+  --cat-logi-bg: oklch(0.97 0.018 12);    /* #FFF1F2 */
+  --cat-logi-fg: oklch(0.46 0.16 12);     /* #9F1239 */
+  --cat-trade-bg: oklch(0.97 0.02 295);   /* #F5F3FF */
+  --cat-trade-fg: oklch(0.42 0.18 295);   /* #5B21B6 */
+
+  /* Shadcn aliases */
+  --background: var(--surface);
+  --foreground: var(--ink);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
+  --card-foreground: var(--ink);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --popover-foreground: var(--ink);
+  --primary: var(--navy-600);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.98 0.007 247);
+  --secondary-foreground: var(--navy-900);
+  --muted: oklch(0.96 0.007 247);
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--cyan);
+  --accent-foreground: var(--navy-900);
+  --destructive: var(--danger);
+  --destructive-foreground: oklch(1 0 0);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--cyan);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -140,5 +203,29 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Korean typography baseline */
+  :lang(ko),
+  body {
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  h1, h2, h3, h4 {
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--color-line);
+    border-radius: 3px;
   }
 }
