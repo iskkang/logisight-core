@@ -23,10 +23,12 @@ import {
   type FreightRateRow,
 } from "@/lib/api/rates";
 import {
-  indexDisplayLabel,
-  isNyfiCode,
-  NYFI_LANE_LABELS,
-} from "@/lib/api/freight-indices";
+  nyfiQueryOptions,
+  sortNyfiLanes,
+  NYFI_ORDER,
+  formatNyfiValue,
+  type NyfiLane,
+} from "@/lib/api/nyfi";
 
 type Search = {
   pol?: string;
@@ -47,6 +49,7 @@ export const Route = createFileRoute("/rates")({
   }),
   loader: ({ context, deps }) => {
     context.queryClient.ensureQueryData(freightIndicesHistoryQueryOptions());
+    context.queryClient.ensureQueryData(nyfiQueryOptions());
     context.queryClient.ensureQueryData(rateFilterOptionsQueryOptions());
     context.queryClient.ensureQueryData(bunkerPricesQueryOptions());
     context.queryClient.ensureQueryData(
@@ -82,14 +85,6 @@ const CHART_COLORS: Record<string, string> = {
   KCCI: "#0EA5A4",
   CCFI: "#F59E0B",
 };
-
-const NYFI_CODES = [
-  "NYFI:ASIA-USWC",
-  "NYFI:ASIA-USEC",
-  "NYFI:ASIA-NEUR",
-  "NYFI:TRANS-ATLANTIC_WESTBOUND",
-  "NYFI:TRANS-ATLANTIC_EASTBOUND",
-] as const;
 
 const NYFI_COLORS: Record<string, string> = {
   "NYFI:ASIA-USWC": "#0F2D5A",
