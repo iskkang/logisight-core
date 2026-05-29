@@ -75,7 +75,7 @@ function NewsPage() {
             Logisight · Market Desk
           </p>
           <p className="mx-auto mt-2 max-w-2xl text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
-            해상·항공·철도·물류·무역. 글로벌 공급망을 움직이는 보도와 한국어 큐레이션.
+            해상·항공·철도·물류·무역. 글로벌 공급망관련 뉴스
           </p>
           <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
             {new Date().toLocaleDateString("ko-KR", {
