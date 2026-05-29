@@ -1,12 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  Outlet,
-  Link,
-  createRootRouteWithContext,
-  useRouter,
-  HeadContent,
-  Scripts,
-} from "@tanstack/react-router";
+import { Outlet, Link, createRootRouteWithContext, useRouter, HeadContent, Scripts } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
 import { Navigation } from "@/components/site/Navigation";
@@ -20,9 +13,7 @@ function NotFoundComponent() {
         <div className="max-w-md text-center">
           <h1 className="text-6xl font-bold text-foreground">404</h1>
           <h2 className="mt-4 text-lg font-semibold">페이지를 찾을 수 없습니다</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            요청하신 페이지가 존재하지 않거나 이동되었습니다.
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">요청하신 페이지가 존재하지 않거나 이동되었습니다.</p>
           <Link
             to="/"
             className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
@@ -91,8 +82,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Logisight - Digital Information Platform" },
       { property: "og:description", content: "Logisight - Digital Information Platform" },
       { name: "twitter:description", content: "Logisight - Digital Information Platform" },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/22c65b31-be1d-4370-ab6b-3367d9b32ced/id-preview-c2885892--a32ef8f8-b792-4729-b4a5-c1c6d0e79074.lovable.app-1780021563077.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/22c65b31-be1d-4370-ab6b-3367d9b32ced/id-preview-c2885892--a32ef8f8-b792-4729-b4a5-c1c6d0e79074.lovable.app-1780021563077.png" },
+      { property: "og:image", content: "" },
+      { name: "twitter:image", content: "" },
     ],
     links: [
       {
