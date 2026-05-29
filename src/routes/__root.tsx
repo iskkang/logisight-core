@@ -11,6 +11,7 @@ import {
 import appCss from "../styles.css?url";
 import { Navigation } from "@/components/site/Navigation";
 import { IndexBar } from "@/components/site/IndexBar";
+import { Footer } from "@/components/site/Footer";
 
 function NotFoundComponent() {
   return (
@@ -133,6 +134,7 @@ function SiteShell({ children }: { children: React.ReactNode }) {
       <Navigation />
       <IndexBar />
       <main>{children}</main>
+      <Footer />
     </div>
   );
 }
