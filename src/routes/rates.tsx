@@ -22,6 +22,11 @@ import {
   type FreightIndexHistoryRow,
   type FreightRateRow,
 } from "@/lib/api/rates";
+import {
+  indexDisplayLabel,
+  isNyfiCode,
+  NYFI_LANE_LABELS,
+} from "@/lib/api/freight-indices";
 
 type Search = {
   pol?: string;
@@ -58,7 +63,7 @@ export const Route = createFileRoute("/rates")({
       {
         name: "description",
         content:
-          "SCFI·WCI·FBX·KCCI·CCFI 주요 컨테이너 운임 지수와 부산발 해상 운임, 벙커유 가격을 한 화면에서 확인하세요.",
+          "SCFI·FBX·KCCI·CCFI·NYFI 주요 컨테이너 운임 지수와 부산발 해상 운임, 벙커유 가격을 한 화면에서 확인하세요.",
       },
       { property: "og:title", content: "운임·지수 — Logisight" },
       {
@@ -73,10 +78,25 @@ export const Route = createFileRoute("/rates")({
 
 const CHART_COLORS: Record<string, string> = {
   SCFI: "#0F2D5A",
-  WCI: "#1B4D8C",
   FBX: "#38BDF8",
   KCCI: "#0EA5A4",
   CCFI: "#F59E0B",
+};
+
+const NYFI_CODES = [
+  "NYFI:ASIA-USWC",
+  "NYFI:ASIA-USEC",
+  "NYFI:ASIA-NEUR",
+  "NYFI:TRANS-ATLANTIC_WESTBOUND",
+  "NYFI:TRANS-ATLANTIC_EASTBOUND",
+] as const;
+
+const NYFI_COLORS: Record<string, string> = {
+  "NYFI:ASIA-USWC": "#0F2D5A",
+  "NYFI:ASIA-USEC": "#1B4D8C",
+  "NYFI:ASIA-NEUR": "#38BDF8",
+  "NYFI:TRANS-ATLANTIC_WESTBOUND": "#0EA5A4",
+  "NYFI:TRANS-ATLANTIC_EASTBOUND": "#F59E0B",
 };
 
 const RANGES = [
@@ -107,6 +127,7 @@ function RatesPage() {
       </header>
 
       <IndicesSection />
+      <NyfiSection />
       <RatesSection />
       <BunkerSection />
 
@@ -121,7 +142,9 @@ function RatesPage() {
 
 function IndicesSection() {
   const { data } = useSuspenseQuery(freightIndicesHistoryQueryOptions());
-  const rows = (data ?? []) as FreightIndexHistoryRow[];
+  const rows = ((data ?? []) as FreightIndexHistoryRow[]).filter(
+    (r) => !isNyfiCode(r.index_code),
+  );
   const [range, setRange] = useState<RangeId>("all");
 
   const filtered = useMemo(() => {
@@ -271,6 +294,167 @@ function IndicesSection() {
           </tbody>
         </table>
       </div>
+    </section>
+  );
+}
+
+/* ============================== NYFI Section ============================== */
+
+function NyfiSection() {
+  const { data } = useSuspenseQuery(freightIndicesHistoryQueryOptions());
+  const rows = ((data ?? []) as FreightIndexHistoryRow[]).filter((r) =>
+    isNyfiCode(r.index_code),
+  );
+  const [range, setRange] = useState<RangeId>("all");
+
+  const filtered = useMemo(() => {
+    if (range === "all") return rows;
+    const days = RANGES.find((r) => r.id === range)?.days ?? 0;
+    if (!days) return rows;
+    const cutoff = Date.now() - days * 86400000;
+    return rows.filter((r) => new Date(r.week_date).getTime() >= cutoff);
+  }, [rows, range]);
+
+  const chartData = useMemo(() => {
+    const byDate = new Map<string, Record<string, number | string>>();
+    for (const r of filtered) {
+      if (r.value == null) continue;
+      const existing = byDate.get(r.week_date) ?? { week_date: r.week_date };
+      existing[r.index_code] = r.value;
+      byDate.set(r.week_date, existing);
+    }
+    return [...byDate.values()].sort((a, b) =>
+      String(a.week_date).localeCompare(String(b.week_date)),
+    );
+  }, [filtered]);
+
+  const latest = useMemo(() => {
+    const m = new Map<string, FreightIndexHistoryRow>();
+    for (const r of rows) {
+      const prev = m.get(r.index_code);
+      if (!prev || r.week_date > prev.week_date) m.set(r.index_code, r);
+    }
+    return NYFI_CODES.map(
+      (code) =>
+        m.get(code) ?? {
+          index_code: code,
+          value: null,
+          change_pct: null,
+          week_date: "",
+          source: null,
+          source_url: null,
+        },
+    );
+  }, [rows]);
+
+  const activeCodes = NYFI_CODES.filter((c) =>
+    chartData.some((d) => d[c] != null),
+  );
+  const hasTrend = chartData.length > 1;
+
+  return (
+    <section className="mb-16">
+      <SectionHeader
+        eyebrow="NYFI"
+        title="NYSHEX NYFI 노선별 지수"
+        subtitle="아시아·미주·유럽·대서양 주요 노선의 컨테이너 운임 지수"
+      />
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {RANGES.map((r) => (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => setRange(r.id)}
+            className="rounded-md border px-3 py-1 text-xs font-medium transition"
+            style={
+              range === r.id
+                ? {
+                    borderColor: "var(--color-navy-900)",
+                    background: "var(--color-navy-900)",
+                    color: "#fff",
+                  }
+                : {
+                    borderColor: "var(--color-line)",
+                    background: "#fff",
+                    color: "var(--color-ink)",
+                  }
+            }
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 lg:p-6">
+        {hasTrend ? (
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+                <CartesianGrid stroke="var(--color-line)" strokeDasharray="3 3" />
+                <XAxis dataKey="week_date" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Legend
+                  wrapperStyle={{ fontSize: 12 }}
+                  formatter={(v) => indexDisplayLabel(String(v))}
+                />
+                {activeCodes.map((c) => (
+                  <Line
+                    key={c}
+                    type="monotone"
+                    dataKey={c}
+                    name={c}
+                    stroke={NYFI_COLORS[c]}
+                    strokeWidth={2}
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-[var(--color-ink-muted)]">
+            추세선은 데이터 누적 후 제공됩니다.
+          </p>
+        )}
+      </div>
+
+      <div className="mt-6 overflow-x-auto rounded-lg border border-[var(--color-line)] bg-white">
+        <table className="min-w-full text-sm">
+          <thead className="bg-[var(--color-surface-alt)] text-left text-xs uppercase tracking-wide text-[var(--color-ink-muted)]">
+            <tr>
+              <th className="px-4 py-3">노선</th>
+              <th className="px-4 py-3 text-right">현재값 (USD)</th>
+              <th className="px-4 py-3 text-right">전주 대비</th>
+              <th className="px-4 py-3">기준일</th>
+            </tr>
+          </thead>
+          <tbody>
+            {latest.map((r) => (
+              <tr key={r.index_code} className="border-t border-[var(--color-line)]">
+                <td className="px-4 py-3 font-semibold text-[var(--color-ink)]">
+                  {NYFI_LANE_LABELS[r.index_code] ?? r.index_code}
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums">
+                  {r.value != null ? `$${formatNumber(r.value, 0)}` : "—"}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <ChangeChip change={r.change_pct} />
+                </td>
+                <td className="px-4 py-3 text-[var(--color-ink-muted)]">
+                  {r.week_date ? formatDate(r.week_date) : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="mt-3 text-xs text-[var(--color-ink-muted)]">
+        출처: NYSHEX NYFI · 주 1회 갱신
+      </p>
     </section>
   );
 }

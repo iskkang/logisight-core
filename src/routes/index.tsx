@@ -3,6 +3,8 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import {
   freightIndicesQueryOptions,
   formatIndexValue,
+  formatIndexDisplayValue,
+  indexDisplayLabel,
 } from "@/lib/api/freight-indices";
 import {
   latestNewsQueryOptions,
@@ -49,10 +51,12 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-function HeroCard({ code, sub }: { code: string; sub: string }) {
+function HeroCard({ code, sub, label }: { code: string; sub: string; label?: string }) {
   const { data } = useSuspenseQuery(freightIndicesQueryOptions());
   const row = data?.find((r) => r.index_code === code);
-  const value = formatIndexValue(row?.value ?? null);
+  const value = code.startsWith("NYFI:")
+    ? formatIndexDisplayValue(code, row?.value ?? null)
+    : formatIndexValue(row?.value ?? null);
   const change = row?.change_pct;
   const changeLabel =
     change == null
@@ -67,7 +71,7 @@ function HeroCard({ code, sub }: { code: string; sub: string }) {
 
   return (
     <div className="rounded-lg border border-white/10 bg-white/5 p-4 backdrop-blur">
-      <div className="text-[11px] uppercase tracking-wide text-white/60">{code}</div>
+      <div className="text-[11px] uppercase tracking-wide text-white/60">{label ?? indexDisplayLabel(code)}</div>
       <div className="mt-1 text-2xl font-bold tabular-nums text-white">{value}</div>
       <div className={`text-[11px] tabular-nums ${changeColor}`}>
         {sub} · {changeLabel}
@@ -125,7 +129,7 @@ function Index() {
         <div className="lg:col-span-2">
           <div className="grid grid-cols-2 gap-3">
             <HeroCard code="SCFI" sub="상하이→유럽 종합" />
-            <HeroCard code="WCI" sub="드류리 종합" />
+            <HeroCard code="NYFI:ASIA-USWC" sub="NYSHEX NYFI" />
             <HeroCard code="KCCI" sub="한국형 종합" />
             <HeroCard code="CCFI" sub="중국 수출 종합" />
           </div>

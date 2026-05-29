@@ -2,8 +2,9 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   freightIndicesQueryOptions,
-  formatIndexValue,
   formatWeekLabel,
+  indexDisplayLabel,
+  formatIndexDisplayValue,
 } from "@/lib/api/freight-indices";
 
 type Item = { code: string; label: string; value: string; change?: number | null };
@@ -37,8 +38,8 @@ export function IndexBar({
     items ??
     (data ?? []).map((r) => ({
       code: r.index_code,
-      label: r.index_code,
-      value: isLoading ? "…" : formatIndexValue(r.value),
+      label: indexDisplayLabel(r.index_code),
+      value: isLoading ? "…" : formatIndexDisplayValue(r.index_code, r.value),
       change: r.change_pct,
     }));
 
