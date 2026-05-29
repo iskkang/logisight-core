@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PolicyRouteImport } from './routes/policy'
 import { Route as NewsRouteImport } from './routes/news'
+import { Route as IndustriesRouteImport } from './routes/industries'
 import { Route as EurasiaRouteImport } from './routes/eurasia'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -30,6 +31,11 @@ const NewsRoute = NewsRouteImport.update({
   path: '/news',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IndustriesRoute = IndustriesRouteImport.update({
+  id: '/industries',
+  path: '/industries',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EurasiaRoute = EurasiaRouteImport.update({
   id: '/eurasia',
   path: '/eurasia',
@@ -44,6 +50,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/eurasia': typeof EurasiaRoute
+  '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/eurasia': typeof EurasiaRoute
+  '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
@@ -59,21 +67,30 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/eurasia': typeof EurasiaRoute
+  '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/eurasia' | '/news' | '/policy' | '/rates'
+  fullPaths: '/' | '/eurasia' | '/industries' | '/news' | '/policy' | '/rates'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/eurasia' | '/news' | '/policy' | '/rates'
-  id: '__root__' | '/' | '/eurasia' | '/news' | '/policy' | '/rates'
+  to: '/' | '/eurasia' | '/industries' | '/news' | '/policy' | '/rates'
+  id:
+    | '__root__'
+    | '/'
+    | '/eurasia'
+    | '/industries'
+    | '/news'
+    | '/policy'
+    | '/rates'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EurasiaRoute: typeof EurasiaRoute
+  IndustriesRoute: typeof IndustriesRoute
   NewsRoute: typeof NewsRoute
   PolicyRoute: typeof PolicyRoute
   RatesRoute: typeof RatesRoute
@@ -102,6 +119,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NewsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/industries': {
+      id: '/industries'
+      path: '/industries'
+      fullPath: '/industries'
+      preLoaderRoute: typeof IndustriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/eurasia': {
       id: '/eurasia'
       path: '/eurasia'
@@ -122,6 +146,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EurasiaRoute: EurasiaRoute,
+  IndustriesRoute: IndustriesRoute,
   NewsRoute: NewsRoute,
   PolicyRoute: PolicyRoute,
   RatesRoute: RatesRoute,

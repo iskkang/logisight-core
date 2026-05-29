@@ -26,5 +26,5 @@ export function formatWeekLabel(iso: string | undefined): string {
   if (!iso) return "업데이트: 수집 예정 (주 1회)";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "업데이트: 수집 예정 (주 1회)";
-  return `업데이트: ${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")} 기준`;
+  return `업데이트: ${d.getUTCFullYear()}.${String(d.getUTCMonth() + 1).padStart(2, "0")}.${String(d.getUTCDate()).padStart(2, "0")} 기준`;
 }
