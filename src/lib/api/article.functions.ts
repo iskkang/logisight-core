@@ -7,19 +7,33 @@ import type { Article } from "./article";
 import type { NewsItem } from "./news";
 
 const SELECT =
-  "id,title,summary,content,url,source,category,image_url,published_at,lang,tags,is_hero";
+  "id,slug,title,summary,content,url,source,category,image_url,published_at,lang,tags,is_hero";
 
-export const getArticleById = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ id: z.number().int().positive() }))
+export const getArticleBySlug = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ slug: z.string().min(1).max(200) }))
   .handler(async ({ data }): Promise<Article> => {
-    const { data: row, error } = await supabasePublicServer
+    // Try slug match first
+    const bySlug = await supabasePublicServer
       .from("maritime_news")
       .select(SELECT)
-      .eq("id", data.id)
+      .eq("slug", data.slug)
       .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!row) throw notFound();
-    return row as Article;
+    if (bySlug.error) throw new Error(bySlug.error.message);
+    if (bySlug.data) return bySlug.data as Article;
+
+    // Fallback: numeric id (for legacy rows without slug)
+    if (/^\d+$/.test(data.slug)) {
+      const id = Number(data.slug);
+      const byId = await supabasePublicServer
+        .from("maritime_news")
+        .select(SELECT)
+        .eq("id", id)
+        .maybeSingle();
+      if (byId.error) throw new Error(byId.error.message);
+      if (byId.data) return byId.data as Article;
+    }
+
+    throw notFound();
   });
 
 export const getRelatedArticles = createServerFn({ method: "GET" })
