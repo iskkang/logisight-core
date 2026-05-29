@@ -9,6 +9,11 @@ import {
   formatPublishedAt,
 } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
+import {
+  latestBriefingQueryOptions,
+  formatBriefingDate,
+} from "@/lib/api/briefing";
+import type { BriefingPoint } from "@/lib/api/briefing";
 
 export const Route = createFileRoute("/")({
   loader: ({ context }) => {
@@ -16,6 +21,7 @@ export const Route = createFileRoute("/")({
     context.queryClient.ensureQueryData(
       latestNewsQueryOptions({ lang: "ko", limit: 6 }),
     );
+    context.queryClient.ensureQueryData(latestBriefingQueryOptions());
   },
   head: () => ({
     meta: [
@@ -125,6 +131,7 @@ function Index() {
       </div>
     </section>
     <HomeNewsSection />
+    <WeeklyBriefingSection />
     </>
   );
 }
