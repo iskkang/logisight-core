@@ -13,12 +13,21 @@ const newsSearchSchema = z.object({
   cat: z.string().min(1).max(40).optional(),
 });
 
+const CATEGORIES: { value: string | undefined; label: string }[] = [
+  { value: undefined, label: "전체" },
+  { value: "해상", label: "해상" },
+  { value: "항공", label: "항공" },
+  { value: "철도", label: "철도" },
+  { value: "물류", label: "물류" },
+  { value: "무역", label: "무역" },
+];
+
 export const Route = createFileRoute("/news")({
   validateSearch: newsSearchSchema,
   loaderDeps: ({ search }) => ({ cat: search.cat }),
   loader: ({ context, deps }) =>
     context.queryClient.ensureQueryData(
-      latestNewsQueryOptions({ lang: "ko", limit: 30, category: deps.cat }),
+      latestNewsQueryOptions({ lang: "ko", limit: 40, category: deps.cat }),
     ),
   head: () => ({
     meta: [
@@ -44,112 +53,358 @@ export const Route = createFileRoute("/news")({
 function NewsPage() {
   const { cat } = Route.useSearch();
   const { data } = useSuspenseQuery(
-    latestNewsQueryOptions({ lang: "ko", limit: 30, category: cat }),
+    latestNewsQueryOptions({ lang: "ko", limit: 40, category: cat }),
   );
   const items: NewsItem[] = data ?? [];
-  const [hero, ...rest] = items;
+  const [lead, ...rest] = items;
+  const secondary = rest.slice(0, 2);
+  const opinionStrip = rest.slice(2, 5);
+  const gridSection = rest.slice(5, 14);
+  const moreSection = rest.slice(14, 22);
+  const mostPopular = items.slice(0, 6);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 lg:px-6 lg:py-14">
-      <header className="mb-10 border-b border-[var(--color-line)] pb-6">
-        <p
-          className="text-[11px] font-semibold uppercase tracking-[0.18em]"
-          style={{ color: "var(--color-navy-600)" }}
-        >
-          Market News
-        </p>
-        <h1 className="mt-2 text-3xl font-bold text-[var(--color-ink)] lg:text-4xl">
-          시장 뉴스
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--color-ink-muted)]">
-          해상·항공·철도·물류·무역. 글로벌 운임과 공급망을 흔드는 핵심 뉴스를 한국어 요약과
-          함께 매주 정리합니다.
-        </p>
+    <div className="bg-white">
+      {/* Masthead */}
+      <header className="border-b-[3px] border-double border-[var(--color-navy-900)] bg-white">
+        <div className="mx-auto max-w-[1280px] px-4 pb-3 pt-8 text-center lg:px-6">
+          <p
+            className="text-[10px] font-semibold uppercase tracking-[0.3em]"
+            style={{ color: "var(--color-navy-600)" }}
+          >
+            Logisight · Market Desk
+          </p>
+          <h1
+            className="font-serif-display mt-2 text-4xl font-black tracking-tight text-[var(--color-navy-900)] lg:text-5xl"
+          >
+            시장 뉴스 데스크
+          </h1>
+          <p className="mx-auto mt-2 max-w-2xl text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
+            해상·항공·철도·물류·무역. 글로벌 공급망을 움직이는 보도와 한국어 큐레이션.
+          </p>
+          <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
+            {new Date().toLocaleDateString("ko-KR", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              weekday: "long",
+              timeZone: "Asia/Seoul",
+            })}
+          </p>
+        </div>
+
+        {/* Section nav */}
+        <nav className="border-t border-[var(--color-line)] bg-white">
+          <ul className="mx-auto flex max-w-[1280px] items-center justify-center gap-1 overflow-x-auto px-4 py-2 text-[13px] lg:px-6">
+            {CATEGORIES.map((c) => {
+              const active = (cat ?? undefined) === c.value;
+              return (
+                <li key={c.label}>
+                  <Link
+                    to="/news"
+                    search={c.value ? { cat: c.value } : {}}
+                    className={`inline-block whitespace-nowrap rounded-sm px-3 py-1.5 font-semibold uppercase tracking-wider transition ${
+                      active
+                        ? "bg-[var(--color-navy-900)] text-white"
+                        : "text-[var(--color-ink-muted)] hover:text-[var(--color-navy-900)]"
+                    }`}
+                  >
+                    {c.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
       </header>
 
       {items.length === 0 ? (
-        <p className="text-sm text-[var(--color-ink-muted)]">
-          수집 예정 (매주 업데이트)
-        </p>
+        <div className="mx-auto max-w-[1280px] px-4 py-20 text-center text-sm text-[var(--color-ink-muted)] lg:px-6">
+          해당 카테고리의 기사가 수집되는 대로 게재합니다.
+        </div>
       ) : (
-        <div className="grid gap-10 lg:grid-cols-3">
-          {hero && (
-            <article className="lg:col-span-2">
-              <Meta item={hero} />
-              <h2 className="mt-3 text-2xl font-bold leading-tight text-[var(--color-ink)] lg:text-3xl">
-                <Link to="/article/$slug" params={{ slug: articleParam(hero) }}>
-                  {hero.title}
-                </Link>
-              </h2>
-              {hero.summary && (
-                <p className="mt-4 text-base leading-relaxed text-[var(--color-ink-muted)]">
-                  {hero.summary}
-                </p>
-              )}
-            </article>
-          )}
+        <div className="mx-auto max-w-[1280px] px-4 py-10 lg:px-6 lg:py-14">
+          {/* Section label */}
+          <SectionRule label="오늘의 헤드라인" eyebrow="Top Stories" />
 
-          <ul className="space-y-6 lg:col-span-1">
-            {rest.slice(0, 6).map((n) => (
-              <li
-                key={n.id}
-                className="border-b border-[var(--color-line)] pb-6 last:border-0"
-              >
-                <Meta item={n} />
-                <h3 className="mt-2 text-base font-semibold leading-snug text-[var(--color-ink)]">
-                  <Link to="/article/$slug" params={{ slug: articleParam(n) }}>
-                    {n.title}
+          {/* Lead + secondary */}
+          <div className="grid gap-10 lg:grid-cols-12">
+            {/* Lead story */}
+            {lead && (
+              <article className="lg:col-span-7 lg:border-r lg:border-[var(--color-line)] lg:pr-10">
+                <Exclusive item={lead} />
+                <h2 className="font-serif-display mt-3 text-3xl font-black leading-[1.1] text-[var(--color-navy-900)] lg:text-[44px]">
+                  <Link
+                    to="/article/$slug"
+                    params={{ slug: articleParam(lead) }}
+                    className="hover:underline decoration-[var(--color-cyan)] decoration-2 underline-offset-4"
+                  >
+                    {lead.title}
                   </Link>
-                </h3>
-                {n.summary && (
-                  <p className="mt-1 line-clamp-2 text-sm text-[var(--color-ink-muted)]">
-                    {n.summary}
+                </h2>
+                {lead.summary && (
+                  <p className="mt-4 text-[17px] leading-[1.65] text-[var(--color-ink)]">
+                    {lead.summary}
                   </p>
                 )}
-              </li>
-            ))}
-          </ul>
+                <Byline item={lead} className="mt-4" />
+                {lead.image_url && (
+                  <Link
+                    to="/article/$slug"
+                    params={{ slug: articleParam(lead) }}
+                    className="mt-6 block"
+                  >
+                    <figure>
+                      <img
+                        src={lead.image_url}
+                        alt={lead.title}
+                        className="aspect-[16/10] w-full object-cover"
+                        loading="eager"
+                      />
+                      <figcaption className="mt-2 text-[12px] text-[var(--color-ink-muted)]">
+                        사진 · {lead.source}
+                      </figcaption>
+                    </figure>
+                  </Link>
+                )}
+              </article>
+            )}
 
-          <ul className="grid gap-6 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-3">
-            {rest.slice(6).map((n) => (
-              <li key={n.id}>
-                <article className="h-full rounded-lg border border-[var(--color-line)] bg-white p-5">
-                  <Meta item={n} />
-                  <h3 className="mt-3 text-base font-bold leading-snug text-[var(--color-ink)]">
-                    <Link to="/article/$slug" params={{ slug: articleParam(n) }}>
-                      {n.title}
-                    </Link>
-                  </h3>
-                  {n.summary && (
-                    <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-[var(--color-ink-muted)]">
-                      {n.summary}
-                    </p>
-                  )}
-                </article>
-              </li>
-            ))}
-          </ul>
+            {/* Secondary stories column */}
+            <div className="lg:col-span-5 lg:pl-2">
+              <ul className="divide-y divide-[var(--color-line)]">
+                {secondary.map((n) => (
+                  <li key={n.id} className="grid grid-cols-3 gap-4 py-5 first:pt-0">
+                    <div className="col-span-2">
+                      <KickerCat item={n} />
+                      <h3 className="font-serif-display mt-2 text-xl font-bold leading-snug text-[var(--color-navy-900)]">
+                        <Link
+                          to="/article/$slug"
+                          params={{ slug: articleParam(n) }}
+                          className="hover:underline decoration-[var(--color-cyan)] underline-offset-4"
+                        >
+                          {n.title}
+                        </Link>
+                      </h3>
+                      {n.summary && (
+                        <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
+                          {n.summary}
+                        </p>
+                      )}
+                      <Byline item={n} className="mt-2 text-[11px]" />
+                    </div>
+                    {n.image_url ? (
+                      <Link
+                        to="/article/$slug"
+                        params={{ slug: articleParam(n) }}
+                        className="col-span-1 block"
+                      >
+                        <img
+                          src={n.image_url}
+                          alt={n.title}
+                          className="aspect-[4/3] h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      </Link>
+                    ) : (
+                      <div className="col-span-1 aspect-[4/3] bg-[var(--color-surface)]" />
+                    )}
+                  </li>
+                ))}
+              </ul>
+
+              {/* Most Popular */}
+              <aside className="mt-8 border-t-[3px] border-[var(--color-navy-900)] pt-4">
+                <h3 className="font-serif-display text-lg font-bold text-[var(--color-navy-900)]">
+                  Most Popular · 가장 많이 읽은
+                </h3>
+                <ol className="mt-4 space-y-3">
+                  {mostPopular.map((n, i) => (
+                    <li
+                      key={n.id}
+                      className="flex gap-3 border-b border-[var(--color-line)] pb-3 last:border-0"
+                    >
+                      <span className="font-serif-display text-2xl font-black leading-none text-[var(--color-cyan)]">
+                        {i + 1}
+                      </span>
+                      <Link
+                        to="/article/$slug"
+                        params={{ slug: articleParam(n) }}
+                        className="text-[13px] font-semibold leading-snug text-[var(--color-navy-900)] hover:underline"
+                      >
+                        {n.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ol>
+              </aside>
+            </div>
+          </div>
+
+          {/* Opinion / In-depth strip */}
+          {opinionStrip.length > 0 && (
+            <>
+              <div className="mt-14">
+                <SectionRule label="기획·심층" eyebrow="In Depth" />
+              </div>
+              <div className="grid gap-8 border-y border-[var(--color-line)] py-6 md:grid-cols-3">
+                {opinionStrip.map((n) => (
+                  <article
+                    key={n.id}
+                    className="border-l-2 border-[var(--color-navy-900)] pl-4"
+                  >
+                    <KickerCat item={n} />
+                    <h3 className="font-serif-display mt-2 text-lg font-bold italic leading-snug text-[var(--color-navy-900)]">
+                      <Link
+                        to="/article/$slug"
+                        params={{ slug: articleParam(n) }}
+                        className="hover:underline"
+                      >
+                        {n.title}
+                      </Link>
+                    </h3>
+                    <Byline item={n} className="mt-2 text-[11px]" />
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Grid section */}
+          {gridSection.length > 0 && (
+            <>
+              <div className="mt-14">
+                <SectionRule label="더 많은 보도" eyebrow="More News" />
+              </div>
+              <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
+                {gridSection.map((n) => (
+                  <article key={n.id} className="flex flex-col">
+                    {n.image_url && (
+                      <Link
+                        to="/article/$slug"
+                        params={{ slug: articleParam(n) }}
+                        className="mb-3 block overflow-hidden"
+                      >
+                        <img
+                          src={n.image_url}
+                          alt={n.title}
+                          className="aspect-[16/10] w-full object-cover transition-transform duration-500 hover:scale-105"
+                          loading="lazy"
+                        />
+                      </Link>
+                    )}
+                    <KickerCat item={n} />
+                    <h3 className="font-serif-display mt-2 text-xl font-bold leading-snug text-[var(--color-navy-900)]">
+                      <Link
+                        to="/article/$slug"
+                        params={{ slug: articleParam(n) }}
+                        className="hover:underline decoration-[var(--color-cyan)] underline-offset-4"
+                      >
+                        {n.title}
+                      </Link>
+                    </h3>
+                    {n.summary && (
+                      <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
+                        {n.summary}
+                      </p>
+                    )}
+                    <Byline item={n} className="mt-3 text-[11px]" />
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Wire feed (compact list) */}
+          {moreSection.length > 0 && (
+            <>
+              <div className="mt-14">
+                <SectionRule label="실시간 와이어" eyebrow="Latest Wire" />
+              </div>
+              <ul className="grid gap-x-10 gap-y-4 md:grid-cols-2">
+                {moreSection.map((n) => (
+                  <li
+                    key={n.id}
+                    className="flex gap-4 border-b border-dotted border-[var(--color-line)] pb-4"
+                  >
+                    <time
+                      dateTime={n.published_at ?? undefined}
+                      className="shrink-0 pt-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]"
+                    >
+                      {formatPublishedAt(n.published_at)}
+                    </time>
+                    <div>
+                      <KickerCat item={n} small />
+                      <h4 className="mt-1 text-[14px] font-semibold leading-snug text-[var(--color-navy-900)]">
+                        <Link
+                          to="/article/$slug"
+                          params={{ slug: articleParam(n) }}
+                          className="hover:underline"
+                        >
+                          {n.title}
+                        </Link>
+                      </h4>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function Meta({ item }: { item: NewsItem }) {
+function SectionRule({ label, eyebrow }: { label: string; eyebrow: string }) {
   return (
-    <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-[var(--color-ink-muted)]">
-      {item.category && (
-        <span
-          className="rounded-sm px-1.5 py-0.5 font-semibold"
-          style={{
-            background: "var(--color-navy-900)",
-            color: "var(--color-cyan)",
-          }}
-        >
-          {item.category}
-        </span>
-      )}
-      <span>{item.source}</span>
+    <div className="mb-6 flex items-baseline gap-3 border-b border-[var(--color-navy-900)] pb-2">
+      <h2 className="font-serif-display text-xl font-bold uppercase tracking-wide text-[var(--color-navy-900)]">
+        {label}
+      </h2>
+      <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--color-ink-muted)]">
+        {eyebrow}
+      </span>
+    </div>
+  );
+}
+
+function Exclusive({ item }: { item: NewsItem }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="border border-[var(--color-navy-900)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-navy-900)]">
+        Exclusive
+      </span>
+      <span
+        className="text-[10px] font-bold uppercase tracking-[0.22em]"
+        style={{ color: "var(--color-navy-600)" }}
+      >
+        {item.category ?? "Market"} Report
+      </span>
+    </div>
+  );
+}
+
+function KickerCat({ item, small = false }: { item: NewsItem; small?: boolean }) {
+  if (!item.category) return null;
+  return (
+    <p
+      className={`font-bold uppercase tracking-[0.22em] ${
+        small ? "text-[10px]" : "text-[11px]"
+      }`}
+      style={{ color: "var(--color-navy-600)" }}
+    >
+      {item.category}
+    </p>
+  );
+}
+
+function Byline({ item, className = "" }: { item: NewsItem; className?: string }) {
+  return (
+    <div className={`flex items-center gap-2 text-[12px] text-[var(--color-ink-muted)] ${className}`}>
+      <span className="font-semibold text-[var(--color-navy-900)]">
+        By {item.source}
+      </span>
       <span>·</span>
       <time dateTime={item.published_at ?? undefined}>
         {formatPublishedAt(item.published_at)}
