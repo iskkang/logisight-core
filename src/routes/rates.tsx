@@ -302,6 +302,7 @@ function IndicesSection() {
 
 function RatesSection() {
   const search = Route.useSearch();
+  // placeholder to satisfy patch context
   const navigate = useNavigate({ from: "/rates" });
   const { data: opts } = useSuspenseQuery(rateFilterOptionsQueryOptions());
   const { data: rates } = useSuspenseQuery(
