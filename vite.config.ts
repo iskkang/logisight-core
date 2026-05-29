@@ -16,10 +16,5 @@ export default defineConfig({
     optimizeDeps: {
       exclude: ["ws", "bufferutil", "utf-8-validate"],
     },
-    build: {
-      rollupOptions: {
-        external: ["ws", "bufferutil", "utf-8-validate"],
-      },
-    },
   },
 });
