@@ -148,10 +148,10 @@ function RootComponent() {
 
 function SiteShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen" style={{ background: "var(--color-surface)" }}>
+    <div className="flex min-h-screen flex-col" style={{ background: "var(--color-surface)" }}>
       <Navigation />
       <IndexBar />
-      <main>{children}</main>
+      <main className="flex-1">{children}</main>
       <Footer />
     </div>
   );
