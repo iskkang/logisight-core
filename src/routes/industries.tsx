@@ -124,7 +124,7 @@ function IndustriesPage() {
         metric={metric}
         view={view}
         onChange={(patch) =>
-          navigate({ search: (prev) => ({ ...prev, ...patch }) })
+          navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) })
         }
       />
       <Summary
