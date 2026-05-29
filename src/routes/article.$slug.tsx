@@ -4,24 +4,25 @@ import ReactMarkdown from "react-markdown";
 
 import {
   articleQueryOptions,
+  articleParam,
   relatedArticlesQueryOptions,
   estimateReadMinutes,
 } from "@/lib/api/article";
 import { formatPublishedAt } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
 
-export const Route = createFileRoute("/article/$id")({
+export const Route = createFileRoute("/article/$slug")({
   loader: async ({ params, context }) => {
-    const id = Number(params.id);
-    if (!Number.isFinite(id) || id <= 0) throw notFound();
+    const slug = params.slug?.trim();
+    if (!slug) throw notFound();
     const article = await context.queryClient.ensureQueryData(
-      articleQueryOptions(id),
+      articleQueryOptions(slug),
     );
     context.queryClient.prefetchQuery(
-      relatedArticlesQueryOptions({ id, category: article.category }),
+      relatedArticlesQueryOptions({ id: article.id, category: article.category }),
     );
   },
-  head: ({ loaderData: _ }) => ({
+  head: () => ({
     meta: [
       { title: "기사 — Logisight" },
       {
@@ -71,12 +72,11 @@ function categoryStyle(cat: string | null) {
 }
 
 function ArticlePage() {
-  const { id } = Route.useParams();
-  const articleId = Number(id);
-  const { data: article } = useSuspenseQuery(articleQueryOptions(articleId));
+  const { slug } = Route.useParams();
+  const { data: article } = useSuspenseQuery(articleQueryOptions(slug));
   const { data: related } = useSuspenseQuery(
     relatedArticlesQueryOptions({
-      id: articleId,
+      id: article.id,
       category: article.category,
     }),
   );
@@ -159,7 +159,7 @@ function ArticlePage() {
 
       {article.tags && article.tags.length > 0 && (
         <ul className="mt-8 flex flex-wrap gap-2">
-          {article.tags.map((t) => (
+          {article.tags.map((t: string) => (
             <li
               key={t}
               className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs text-[var(--color-ink-muted)]"
@@ -208,8 +208,8 @@ function RelatedCard({ item }: { item: NewsItem }) {
   return (
     <li>
       <Link
-        to="/article/$id"
-        params={{ id: String(item.id) }}
+        to="/article/$slug"
+        params={{ slug: articleParam(item) }}
         className="block h-full rounded-lg border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-navy-600)]"
       >
         {item.category && (

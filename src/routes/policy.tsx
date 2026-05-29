@@ -11,6 +11,7 @@ import {
   type PolicyAlertRow,
   type PolicyNewsItem,
 } from "@/lib/api/policy";
+import { articleParam } from "@/lib/api/article";
 
 export const Route = createFileRoute("/policy")({
   loader: ({ context }) => {
@@ -173,7 +174,7 @@ function RelatedNews({ code, items }: { code: string; items: PolicyNewsItem[] })
             key={n.id}
             className="rounded-lg border border-border bg-card p-4 transition-colors hover:border-[var(--color-cyan)]"
           >
-            <Link to="/article/$id" params={{ id: String(n.id) }} className="block">
+            <Link to="/article/$slug" params={{ slug: articleParam(n) }} className="block">
               <h4 className="break-keep text-sm font-medium text-foreground">
                 {n.title}
               </h4>

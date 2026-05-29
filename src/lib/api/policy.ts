@@ -16,6 +16,7 @@ export type PolicyAlertRow = {
 
 export type PolicyNewsItem = {
   id: number;
+  slug: string | null;
   title: string;
   summary: string | null;
   url: string;

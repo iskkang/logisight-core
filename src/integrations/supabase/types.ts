@@ -413,6 +413,7 @@ export type Database = {
           is_hero: boolean | null
           lang: string
           published_at: string | null
+          slug: string | null
           source: string
           summary: string | null
           tags: string[] | null
@@ -429,6 +430,7 @@ export type Database = {
           is_hero?: boolean | null
           lang?: string
           published_at?: string | null
+          slug?: string | null
           source: string
           summary?: string | null
           tags?: string[] | null
@@ -445,6 +447,7 @@ export type Database = {
           is_hero?: boolean | null
           lang?: string
           published_at?: string | null
+          slug?: string | null
           source?: string
           summary?: string | null
           tags?: string[] | null

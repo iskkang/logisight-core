@@ -4,6 +4,7 @@ import { getLatestNews } from "./news.functions";
 
 export type NewsItem = {
   id: number;
+  slug: string | null;
   title: string;
   summary: string | null;
   url: string;

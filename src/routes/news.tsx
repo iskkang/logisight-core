@@ -7,6 +7,7 @@ import {
   formatPublishedAt,
 } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
+import { articleParam } from "@/lib/api/article";
 
 const newsSearchSchema = z.object({
   cat: z.string().min(1).max(40).optional(),
@@ -74,7 +75,7 @@ function NewsPage() {
             <article className="lg:col-span-2">
               <Meta item={hero} />
               <h2 className="mt-3 text-2xl font-bold leading-tight text-[var(--color-ink)] lg:text-3xl">
-                <Link to="/article/$id" params={{ id: String(hero.id) }}>
+                <Link to="/article/$slug" params={{ slug: articleParam(hero) }}>
                   {hero.title}
                 </Link>
               </h2>
@@ -94,7 +95,7 @@ function NewsPage() {
               >
                 <Meta item={n} />
                 <h3 className="mt-2 text-base font-semibold leading-snug text-[var(--color-ink)]">
-                  <Link to="/article/$id" params={{ id: String(n.id) }}>
+                  <Link to="/article/$slug" params={{ slug: articleParam(n) }}>
                     {n.title}
                   </Link>
                 </h3>
@@ -113,7 +114,7 @@ function NewsPage() {
                 <article className="h-full rounded-lg border border-[var(--color-line)] bg-white p-5">
                   <Meta item={n} />
                   <h3 className="mt-3 text-base font-bold leading-snug text-[var(--color-ink)]">
-                    <Link to="/article/$id" params={{ id: String(n.id) }}>
+                    <Link to="/article/$slug" params={{ slug: articleParam(n) }}>
                       {n.title}
                     </Link>
                   </h3>

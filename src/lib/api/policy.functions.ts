@@ -22,7 +22,7 @@ export const getPolicyRelatedNews = createServerFn({ method: "GET" }).handler(
     // since codes vary and we render per-code sections.
     const { data, error } = await supabasePublicServer
       .from("maritime_news")
-      .select("id,title,summary,url,source,published_at,tags")
+      .select("id,slug,title,summary,url,source,published_at,tags")
       .not("tags", "is", null)
       .order("published_at", { ascending: false, nullsFirst: false })
       .limit(500);
