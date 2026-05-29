@@ -274,12 +274,12 @@ type NewsTab = (typeof NEWS_TABS)[number];
 
 function NewsBlock() {
   const [tab, setTab] = useState<NewsTab>("전체");
-  const { data } = useSuspenseQuery(latestNewsQueryOptions({ lang: "ko", limit: 8 }));
+  const { data } = useSuspenseQuery(latestNewsQueryOptions({ lang: "ko", limit: 12 }));
   const all = data ?? [];
   const filtered =
     tab === "전체" ? all : all.filter((n) => (n.category ?? "") === tab);
   const featured = filtered[0];
-  const rest = filtered.slice(1, 4);
+  const rest = filtered.slice(1, 7);
 
   return (
     <article>
