@@ -708,6 +708,7 @@ export type Database = {
       }
       weekly_briefings: {
         Row: {
+          content: string | null
           id: string
           published_at: string | null
           subtitle: string | null
@@ -715,6 +716,7 @@ export type Database = {
           week_of: string
         }
         Insert: {
+          content?: string | null
           id?: string
           published_at?: string | null
           subtitle?: string | null
@@ -722,6 +724,7 @@ export type Database = {
           week_of: string
         }
         Update: {
+          content?: string | null
           id?: string
           published_at?: string | null
           subtitle?: string | null
