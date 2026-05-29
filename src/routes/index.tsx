@@ -13,14 +13,23 @@ import {
   latestBriefingQueryOptions,
   formatBriefingDate,
 } from "@/lib/api/briefing";
+import { freightRatesQueryOptions, formatNumber } from "@/lib/api/rates";
+import { eurasiaLanesQueryOptions, eurasiaDelaysQueryOptions } from "@/lib/api/eurasia";
+import { policyAlertsQueryOptions, codeStyle } from "@/lib/api/policy";
+import { NewsletterForm } from "@/components/site/NewsletterForm";
+import { useState } from "react";
 
 export const Route = createFileRoute("/")({
   loader: ({ context }) => {
     context.queryClient.ensureQueryData(freightIndicesQueryOptions());
     context.queryClient.ensureQueryData(
-      latestNewsQueryOptions({ lang: "ko", limit: 6 }),
+      latestNewsQueryOptions({ lang: "ko", limit: 8 }),
     );
     context.queryClient.ensureQueryData(latestBriefingQueryOptions());
+    context.queryClient.ensureQueryData(freightRatesQueryOptions({}));
+    context.queryClient.ensureQueryData(eurasiaLanesQueryOptions());
+    context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
+    context.queryClient.ensureQueryData(policyAlertsQueryOptions());
   },
   head: () => ({
     meta: [
