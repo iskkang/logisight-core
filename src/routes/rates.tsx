@@ -137,9 +137,7 @@ function RatesPage() {
 
 function IndicesSection() {
   const { data } = useSuspenseQuery(freightIndicesHistoryQueryOptions());
-  const rows = ((data ?? []) as FreightIndexHistoryRow[]).filter(
-    (r) => !isNyfiCode(r.index_code),
-  );
+  const rows = (data ?? []) as FreightIndexHistoryRow[];
   const [range, setRange] = useState<RangeId>("all");
 
   const filtered = useMemo(() => {
