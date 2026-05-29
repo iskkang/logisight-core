@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { z } from "zod";
 
 import {
   latestNewsQueryOptions,
@@ -7,10 +8,16 @@ import {
 } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
 
+const newsSearchSchema = z.object({
+  cat: z.string().min(1).max(40).optional(),
+});
+
 export const Route = createFileRoute("/news")({
-  loader: ({ context }) =>
+  validateSearch: newsSearchSchema,
+  loaderDeps: ({ search }) => ({ cat: search.cat }),
+  loader: ({ context, deps }) =>
     context.queryClient.ensureQueryData(
-      latestNewsQueryOptions({ lang: "ko", limit: 30 }),
+      latestNewsQueryOptions({ lang: "ko", limit: 30, category: deps.cat }),
     ),
   head: () => ({
     meta: [
@@ -32,8 +39,9 @@ export const Route = createFileRoute("/news")({
 });
 
 function NewsPage() {
+  const { cat } = Route.useSearch();
   const { data } = useSuspenseQuery(
-    latestNewsQueryOptions({ lang: "ko", limit: 30 }),
+    latestNewsQueryOptions({ lang: "ko", limit: 30, category: cat }),
   );
   const items: NewsItem[] = data ?? [];
   const [hero, ...rest] = items;
