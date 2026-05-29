@@ -1,4 +1,4 @@
-// Sticky financial-terminal-style index ticker — live from freight_indices.
+// Sticky financial-terminal-style index ticker — live from freight_indices + NYFI API.
 import { useQuery } from "@tanstack/react-query";
 import {
   freightIndicesQueryOptions,
@@ -16,13 +16,26 @@ function ChangeChip({ change }: { change: number | null | undefined }) {
   return (
     <span
       className="text-xs font-semibold tabular-nums"
-      style={{
-        color: pos ? "var(--color-success)" : "var(--color-danger)",
-      }}
+      style={{ color: pos ? "var(--color-success)" : "var(--color-danger)" }}
     >
       {pos ? "+" : ""}
       {change.toFixed(2)}%
     </span>
+  );
+}
+
+function TickerItem({ it }: { it: Item }) {
+  return (
+    <li className="inline-flex items-center gap-2 whitespace-nowrap">
+      <span className="text-[11px] uppercase tracking-wide text-[var(--color-ink-muted)]">
+        {it.label}
+      </span>
+      <span className="text-sm font-bold tabular-nums text-[var(--color-ink)]">
+        {it.value}
+      </span>
+      <ChangeChip change={it.change} />
+      <span className="mx-4 inline-block h-3 w-px bg-[var(--color-line)]" />
+    </li>
   );
 }
 
@@ -60,29 +73,26 @@ export function IndexBar({
     .sort()
     .reverse()[0];
 
+  const track = resolved.map((it, i) => <TickerItem key={it.code + "-" + i} it={it} />);
+
   return (
     <div
       className="sticky top-14 z-40 border-b"
       style={{ background: "#fff", borderColor: "var(--color-line)" }}
     >
-      <div className="mx-auto max-w-7xl overflow-x-auto scrollbar-thin">
-        <ul className="flex min-w-max items-center gap-6 px-4 py-2 lg:px-6">
-          {resolved.map((it) => (
-            <li key={it.code} className="flex items-center gap-2 whitespace-nowrap">
-              <span className="text-[11px] uppercase tracking-wide text-[var(--color-ink-muted)]">
-                {it.label}
-              </span>
-              <span className="text-sm font-bold tabular-nums text-[var(--color-ink)]">
-                {it.value}
-              </span>
-              <ChangeChip change={it.change} />
-            </li>
-          ))}
-          <li className="ml-2 whitespace-nowrap text-[11px] text-[var(--color-ink-muted)]">
-            {updatedLabel ?? formatWeekLabel(latestWeek)}
-          </li>
+      <div className="mx-auto max-w-7xl overflow-hidden whitespace-nowrap">
+        <ul className="animate-ticker inline-flex min-w-max items-center px-4 py-2 lg:px-6">
+          {track}
+          {track}
         </ul>
       </div>
+      {resolved.length > 0 && (
+        <div className="border-t border-dashed text-center" style={{ borderColor: "var(--color-line)" }}>
+          <span className="inline-block px-3 py-1 text-[10px] text-[var(--color-ink-muted)]">
+            {updatedLabel ?? formatWeekLabel(latestWeek)}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
