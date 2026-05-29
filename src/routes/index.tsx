@@ -661,6 +661,3 @@ function IndustryInsightsSection() {
     </section>
   );
 }
-  );
-}
-
