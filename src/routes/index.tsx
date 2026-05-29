@@ -183,9 +183,9 @@ function DashboardSection() {
         <div className="lg:col-span-2">
           <NewsBlock />
         </div>
-        <aside className="flex h-full flex-col gap-6">
+        <aside className="flex flex-col gap-6 lg:self-stretch">
           <PolicySidebar />
-          <div className="hidden flex-1 lg:block" />
+          <div className="hidden flex-1 lg:block" aria-hidden="true" />
           <NewsletterSidebar />
         </aside>
       </div>
