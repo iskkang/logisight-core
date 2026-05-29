@@ -75,9 +75,9 @@ function NewsPage() {
             Logisight · Market Desk
           </p>
           <h1
-            className="font-serif-display mt-2 text-4xl font-black tracking-tight text-[var(--color-navy-900)] lg:text-5xl"
+            className="font-serif-display mt-2 font-black tracking-tight lg:text-5xl text-3xl font-sans"
           >
-            시장 뉴스 데스크
+            ​
           </h1>
           <p className="mx-auto mt-2 max-w-2xl text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
             해상·항공·철도·물류·무역. 글로벌 공급망을 움직이는 보도와 한국어 큐레이션.
