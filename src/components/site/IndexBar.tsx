@@ -1,9 +1,10 @@
 // Sticky financial-terminal-style index ticker — live from freight_indices.
+import { useQuery } from "@tanstack/react-query";
 import {
-  useLatestFreightIndices,
+  freightIndicesQueryOptions,
   formatIndexValue,
   formatWeekLabel,
-} from "@/hooks/use-freight-indices";
+} from "@/lib/api/freight-indices";
 
 type Item = { code: string; label: string; value: string; change?: number | null };
 
@@ -30,7 +31,7 @@ export function IndexBar({
   items?: Item[];
   updatedLabel?: string;
 }) {
-  const { data, isLoading } = useLatestFreightIndices();
+  const { data, isLoading } = useQuery(freightIndicesQueryOptions());
 
   const resolved: Item[] =
     items ??

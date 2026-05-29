@@ -1,10 +1,22 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import {
-  useLatestFreightIndices,
+  freightIndicesQueryOptions,
   formatIndexValue,
-} from "@/hooks/use-freight-indices";
+} from "@/lib/api/freight-indices";
+import {
+  latestNewsQueryOptions,
+  formatPublishedAt,
+} from "@/lib/api/news";
+import type { NewsItem } from "@/lib/api/news";
 
 export const Route = createFileRoute("/")({
+  loader: ({ context }) => {
+    context.queryClient.ensureQueryData(freightIndicesQueryOptions());
+    context.queryClient.ensureQueryData(
+      latestNewsQueryOptions({ lang: "ko", limit: 6 }),
+    );
+  },
   head: () => ({
     meta: [
       { title: "Logisight — 물류를 읽는 새로운 시선" },
@@ -24,9 +36,9 @@ export const Route = createFileRoute("/")({
 });
 
 function HeroCard({ code, sub }: { code: string; sub: string }) {
-  const { data, isLoading } = useLatestFreightIndices();
+  const { data } = useSuspenseQuery(freightIndicesQueryOptions());
   const row = data?.find((r) => r.index_code === code);
-  const value = isLoading ? "…" : formatIndexValue(row?.value ?? null);
+  const value = formatIndexValue(row?.value ?? null);
   const change = row?.change_pct;
   const changeLabel =
     change == null
@@ -52,6 +64,7 @@ function HeroCard({ code, sub }: { code: string; sub: string }) {
 
 function Index() {
   return (
+    <>
     <section
       className="relative overflow-hidden"
       style={{
@@ -111,5 +124,84 @@ function Index() {
         </div>
       </div>
     </section>
+    <HomeNewsSection />
+    </>
+  );
+}
+
+function HomeNewsSection() {
+  const { data } = useSuspenseQuery(
+    latestNewsQueryOptions({ lang: "ko", limit: 6 }),
+  );
+  const items = data ?? [];
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-12 lg:px-6 lg:py-16">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p
+            className="text-[11px] font-semibold uppercase tracking-[0.18em]"
+            style={{ color: "var(--color-cyan-dark, var(--color-cyan))" }}
+          >
+            Market News
+          </p>
+          <h2 className="mt-2 text-2xl font-bold text-[var(--color-ink)] lg:text-3xl">
+            시장 뉴스
+          </h2>
+        </div>
+        <Link
+          to="/news"
+          className="text-sm font-semibold text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+        >
+          전체 보기 →
+        </Link>
+      </div>
+      <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {items.length === 0 && (
+          <li className="text-sm text-[var(--color-ink-muted)]">
+            수집 예정 (매주 업데이트)
+          </li>
+        )}
+        {items.map((n) => (
+          <NewsCard key={n.id} item={n} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function NewsCard({ item }: { item: NewsItem }) {
+  return (
+    <li>
+      <article className="group h-full rounded-lg border border-[var(--color-line)] bg-white p-5 transition-shadow hover:shadow-md">
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-[var(--color-ink-muted)]">
+          {item.category && (
+            <span
+              className="rounded-sm px-1.5 py-0.5 font-semibold"
+              style={{
+                background: "var(--color-navy-900)",
+                color: "var(--color-cyan)",
+              }}
+            >
+              {item.category}
+            </span>
+          )}
+          <span>{item.source}</span>
+          <span>·</span>
+          <time dateTime={item.published_at ?? undefined}>
+            {formatPublishedAt(item.published_at)}
+          </time>
+        </div>
+        <h3 className="mt-3 text-base font-bold leading-snug text-[var(--color-ink)] group-hover:text-[var(--color-navy-600)]">
+          <a href={item.url} target="_blank" rel="noopener noreferrer">
+            {item.title}
+          </a>
+        </h3>
+        {item.summary && (
+          <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-[var(--color-ink-muted)]">
+            {item.summary}
+          </p>
+        )}
+      </article>
+    </li>
   );
 }
