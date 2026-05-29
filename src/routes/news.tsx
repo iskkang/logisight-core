@@ -211,7 +211,7 @@ function NewsPage() {
               {/* Most Popular */}
               <aside className="mt-8 border-t-[3px] border-[var(--color-navy-900)] pt-4">
                 <h3 className="font-serif-display text-lg font-bold text-[var(--color-navy-900)]">
-                  Most Popular · 가장 많이 읽은
+                  Most Popular · 많이 본 기사
                 </h3>
                 <ol className="mt-4 space-y-3">
                   {mostPopular.map((n, i) => (
