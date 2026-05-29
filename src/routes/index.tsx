@@ -13,7 +13,6 @@ import {
   latestBriefingQueryOptions,
   formatBriefingDate,
 } from "@/lib/api/briefing";
-import type { BriefingPoint } from "@/lib/api/briefing";
 
 export const Route = createFileRoute("/")({
   loader: ({ context }) => {
@@ -308,5 +307,3 @@ function WeeklyBriefingSection() {
   );
 }
 
-// silence unused-type lint when no points
-export type _BriefingPointHint = BriefingPoint;
