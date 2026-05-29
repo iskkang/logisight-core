@@ -5,7 +5,7 @@ import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { NewsItem } from "./news";
 
 const SELECT =
-  "id,title,summary,url,source,category,image_url,published_at,lang,tags,is_hero";
+  "id,slug,title,summary,url,source,category,image_url,published_at,lang,tags,is_hero";
 
 export const getLatestNews = createServerFn({ method: "GET" })
   .inputValidator(
