@@ -1,13 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { FreightIndexRow } from "./freight-indices";
 
 const CODES = ["SCFI", "WCI", "FBX", "KCCI", "CCFI"] as const;
 
 export const getLatestFreightIndices = createServerFn({ method: "GET" }).handler(
   async (): Promise<FreightIndexRow[]> => {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabasePublicServer
       .from("freight_indices")
       .select("index_code,value,change_pct,week_date,source")
       .in("index_code", CODES as unknown as string[])

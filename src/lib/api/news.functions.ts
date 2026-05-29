@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { NewsItem } from "./news";
 
 const SELECT =
@@ -16,7 +16,7 @@ export const getLatestNews = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }): Promise<NewsItem[]> => {
-    let q = supabaseAdmin
+    let q = supabasePublicServer
       .from("maritime_news")
       .select(SELECT)
       .eq("lang", data.lang)
