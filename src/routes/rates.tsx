@@ -23,10 +23,12 @@ import {
   type FreightRateRow,
 } from "@/lib/api/rates";
 import {
-  indexDisplayLabel,
-  isNyfiCode,
-  NYFI_LANE_LABELS,
-} from "@/lib/api/freight-indices";
+  nyfiQueryOptions,
+  sortNyfiLanes,
+  NYFI_ORDER,
+  formatNyfiValue,
+  type NyfiLane,
+} from "@/lib/api/nyfi";
 
 type Search = {
   pol?: string;
@@ -47,6 +49,7 @@ export const Route = createFileRoute("/rates")({
   }),
   loader: ({ context, deps }) => {
     context.queryClient.ensureQueryData(freightIndicesHistoryQueryOptions());
+    context.queryClient.ensureQueryData(nyfiQueryOptions());
     context.queryClient.ensureQueryData(rateFilterOptionsQueryOptions());
     context.queryClient.ensureQueryData(bunkerPricesQueryOptions());
     context.queryClient.ensureQueryData(
@@ -82,14 +85,6 @@ const CHART_COLORS: Record<string, string> = {
   KCCI: "#0EA5A4",
   CCFI: "#F59E0B",
 };
-
-const NYFI_CODES = [
-  "NYFI:ASIA-USWC",
-  "NYFI:ASIA-USEC",
-  "NYFI:ASIA-NEUR",
-  "NYFI:TRANS-ATLANTIC_WESTBOUND",
-  "NYFI:TRANS-ATLANTIC_EASTBOUND",
-] as const;
 
 const NYFI_COLORS: Record<string, string> = {
   "NYFI:ASIA-USWC": "#0F2D5A",
@@ -142,9 +137,7 @@ function RatesPage() {
 
 function IndicesSection() {
   const { data } = useSuspenseQuery(freightIndicesHistoryQueryOptions());
-  const rows = ((data ?? []) as FreightIndexHistoryRow[]).filter(
-    (r) => !isNyfiCode(r.index_code),
-  );
+  const rows = (data ?? []) as FreightIndexHistoryRow[];
   const [range, setRange] = useState<RangeId>("all");
 
   const filtered = useMemo(() => {
@@ -301,53 +294,32 @@ function IndicesSection() {
 /* ============================== NYFI Section ============================== */
 
 function NyfiSection() {
-  const { data } = useSuspenseQuery(freightIndicesHistoryQueryOptions());
-  const rows = ((data ?? []) as FreightIndexHistoryRow[]).filter((r) =>
-    isNyfiCode(r.index_code),
-  );
-  const [range, setRange] = useState<RangeId>("all");
+  const { data } = useSuspenseQuery(nyfiQueryOptions());
+  const lanes: NyfiLane[] = sortNyfiLanes(data ?? []);
+  const [range, setRange] = useState<RangeId>("52w");
 
-  const filtered = useMemo(() => {
-    if (range === "all") return rows;
+  const cutoffMs = useMemo(() => {
+    if (range === "all") return 0;
     const days = RANGES.find((r) => r.id === range)?.days ?? 0;
-    if (!days) return rows;
-    const cutoff = Date.now() - days * 86400000;
-    return rows.filter((r) => new Date(r.week_date).getTime() >= cutoff);
-  }, [rows, range]);
+    return days ? Date.now() - days * 86400000 : 0;
+  }, [range]);
 
   const chartData = useMemo(() => {
     const byDate = new Map<string, Record<string, number | string>>();
-    for (const r of filtered) {
-      if (r.value == null) continue;
-      const existing = byDate.get(r.week_date) ?? { week_date: r.week_date };
-      existing[r.index_code] = r.value;
-      byDate.set(r.week_date, existing);
+    for (const lane of lanes) {
+      for (const pt of lane.history) {
+        if (cutoffMs && new Date(pt.date).getTime() < cutoffMs) continue;
+        const existing = byDate.get(pt.date) ?? { date: pt.date };
+        existing[lane.code] = pt.value;
+        byDate.set(pt.date, existing);
+      }
     }
     return [...byDate.values()].sort((a, b) =>
-      String(a.week_date).localeCompare(String(b.week_date)),
+      String(a.date).localeCompare(String(b.date)),
     );
-  }, [filtered]);
+  }, [lanes, cutoffMs]);
 
-  const latest = useMemo(() => {
-    const m = new Map<string, FreightIndexHistoryRow>();
-    for (const r of rows) {
-      const prev = m.get(r.index_code);
-      if (!prev || r.week_date > prev.week_date) m.set(r.index_code, r);
-    }
-    return NYFI_CODES.map(
-      (code) =>
-        m.get(code) ?? {
-          index_code: code,
-          value: null,
-          change_pct: null,
-          week_date: "",
-          source: null,
-          source_url: null,
-        },
-    );
-  }, [rows]);
-
-  const activeCodes = NYFI_CODES.filter((c) =>
+  const activeCodes = NYFI_ORDER.filter((c) =>
     chartData.some((d) => d[c] != null),
   );
   const hasTrend = chartData.length > 1;
@@ -392,12 +364,15 @@ function NyfiSection() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
                 <CartesianGrid stroke="var(--color-line)" strokeDasharray="3 3" />
-                <XAxis dataKey="week_date" tick={{ fontSize: 11 }} />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={32} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Legend
                   wrapperStyle={{ fontSize: 12 }}
-                  formatter={(v) => indexDisplayLabel(String(v))}
+                  formatter={(v) => {
+                    const lane = lanes.find((l) => l.code === String(v));
+                    return lane ? `NYFI ${lane.nameKo}` : String(v);
+                  }}
                 />
                 {activeCodes.map((c) => (
                   <Line
@@ -432,28 +407,41 @@ function NyfiSection() {
             </tr>
           </thead>
           <tbody>
-            {latest.map((r) => (
-              <tr key={r.index_code} className="border-t border-[var(--color-line)]">
-                <td className="px-4 py-3 font-semibold text-[var(--color-ink)]">
-                  {NYFI_LANE_LABELS[r.index_code] ?? r.index_code}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {r.value != null ? `$${formatNumber(r.value, 0)}` : "—"}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <ChangeChip change={r.change_pct} />
-                </td>
-                <td className="px-4 py-3 text-[var(--color-ink-muted)]">
-                  {r.week_date ? formatDate(r.week_date) : "—"}
+            {lanes.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-[var(--color-ink-muted)]">
+                  데이터를 불러오는 중입니다.
                 </td>
               </tr>
-            ))}
+            ) : (
+              lanes.map((lane) => (
+                <tr key={lane.code} className="border-t border-[var(--color-line)]">
+                  <td className="px-4 py-3 font-semibold text-[var(--color-ink)]">
+                    {lane.nameKo}
+                    {lane.containerType ? (
+                      <span className="ml-2 text-xs font-normal text-[var(--color-ink-muted)]">
+                        {lane.containerType}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {`$${formatNumber(lane.value, 0)}`}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <ChangeChip change={lane.wow} />
+                  </td>
+                  <td className="px-4 py-3 text-[var(--color-ink-muted)]">
+                    {lane.weekDate ? formatDate(lane.weekDate) : "—"}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <p className="mt-3 text-xs text-[var(--color-ink-muted)]">
-        출처: NYSHEX NYFI · 주 1회 갱신
+        출처: NYSHEX NYFI · nyshex.com
       </p>
     </section>
   );

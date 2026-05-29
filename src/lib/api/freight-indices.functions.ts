@@ -3,15 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { FreightIndexRow } from "./freight-indices";
 
-const CODES = [
-  "SCFI",
-  "FBX",
-  "KCCI",
-  "CCFI",
-  "NYFI:ASIA-USWC",
-  "NYFI:ASIA-USEC",
-  "NYFI:ASIA-NEUR",
-] as const;
+const CODES = ["SCFI", "FBX", "KCCI", "CCFI"] as const;
 
 export const getLatestFreightIndices = createServerFn({ method: "GET" }).handler(
   async (): Promise<FreightIndexRow[]> => {

@@ -3,9 +3,12 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import {
   freightIndicesQueryOptions,
   formatIndexValue,
-  formatIndexDisplayValue,
   indexDisplayLabel,
 } from "@/lib/api/freight-indices";
+import {
+  nyfiQueryOptions,
+  formatNyfiValue,
+} from "@/lib/api/nyfi";
 import {
   latestNewsQueryOptions,
   formatPublishedAt,
@@ -24,6 +27,7 @@ import { useState } from "react";
 export const Route = createFileRoute("/")({
   loader: ({ context }) => {
     context.queryClient.ensureQueryData(freightIndicesQueryOptions());
+    context.queryClient.ensureQueryData(nyfiQueryOptions());
     context.queryClient.ensureQueryData(
       latestNewsQueryOptions({ lang: "ko", limit: 8 }),
     );
@@ -52,12 +56,25 @@ export const Route = createFileRoute("/")({
 });
 
 function HeroCard({ code, sub, label }: { code: string; sub: string; label?: string }) {
-  const { data } = useSuspenseQuery(freightIndicesQueryOptions());
-  const row = data?.find((r) => r.index_code === code);
-  const value = code.startsWith("NYFI:")
-    ? formatIndexDisplayValue(code, row?.value ?? null)
-    : formatIndexValue(row?.value ?? null);
-  const change = row?.change_pct;
+  const isNyfi = code.startsWith("NYFI:");
+  const { data: idx } = useSuspenseQuery(freightIndicesQueryOptions());
+  const { data: nyfi } = useSuspenseQuery(nyfiQueryOptions());
+
+  let value = "—";
+  let change: number | null | undefined = null;
+  let displayLabel = label ?? indexDisplayLabel(code);
+
+  if (isNyfi) {
+    const lane = (nyfi ?? []).find((l) => l.code === code);
+    value = formatNyfiValue(lane?.value);
+    change = lane?.wow ?? null;
+    if (!label && lane) displayLabel = `NYFI ${lane.nameKo}`;
+  } else {
+    const row = idx?.find((r) => r.index_code === code);
+    value = formatIndexValue(row?.value ?? null);
+    change = row?.change_pct;
+  }
+
   const changeLabel =
     change == null
       ? "수집 예정"
@@ -71,7 +88,7 @@ function HeroCard({ code, sub, label }: { code: string; sub: string; label?: str
 
   return (
     <div className="rounded-lg border border-white/10 bg-white/5 p-4 backdrop-blur">
-      <div className="text-[11px] uppercase tracking-wide text-white/60">{label ?? indexDisplayLabel(code)}</div>
+      <div className="text-[11px] uppercase tracking-wide text-white/60">{displayLabel}</div>
       <div className="mt-1 text-2xl font-bold tabular-nums text-white">{value}</div>
       <div className={`text-[11px] tabular-nums ${changeColor}`}>
         {sub} · {changeLabel}

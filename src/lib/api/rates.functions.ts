@@ -9,17 +9,7 @@ import type {
   RateFilterOptions,
 } from "./rates";
 
-const CODES = [
-  "SCFI",
-  "FBX",
-  "KCCI",
-  "CCFI",
-  "NYFI:ASIA-USWC",
-  "NYFI:ASIA-USEC",
-  "NYFI:ASIA-NEUR",
-  "NYFI:TRANS-ATLANTIC_WESTBOUND",
-  "NYFI:TRANS-ATLANTIC_EASTBOUND",
-] as const;
+const CODES = ["SCFI", "FBX", "KCCI", "CCFI"] as const;
 
 export const getFreightIndicesHistory = createServerFn({ method: "GET" }).handler(
   async (): Promise<FreightIndexHistoryRow[]> => {
