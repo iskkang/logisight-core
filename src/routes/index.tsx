@@ -36,9 +36,9 @@ export const Route = createFileRoute("/")({
 });
 
 function HeroCard({ code, sub }: { code: string; sub: string }) {
-  const { data, isLoading } = useLatestFreightIndices();
+  const { data } = useSuspenseQuery(freightIndicesQueryOptions());
   const row = data?.find((r) => r.index_code === code);
-  const value = isLoading ? "…" : formatIndexValue(row?.value ?? null);
+  const value = formatIndexValue(row?.value ?? null);
   const change = row?.change_pct;
   const changeLabel =
     change == null
