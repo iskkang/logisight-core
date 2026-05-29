@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as NewsRouteImport } from './routes/news'
+import { Route as EurasiaRouteImport } from './routes/eurasia'
 import { Route as IndexRouteImport } from './routes/index'
 
 const RatesRoute = RatesRouteImport.update({
@@ -23,6 +24,11 @@ const NewsRoute = NewsRouteImport.update({
   path: '/news',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EurasiaRoute = EurasiaRouteImport.update({
+  id: '/eurasia',
+  path: '/eurasia',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,30 +37,34 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/eurasia': typeof EurasiaRoute
   '/news': typeof NewsRoute
   '/rates': typeof RatesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/eurasia': typeof EurasiaRoute
   '/news': typeof NewsRoute
   '/rates': typeof RatesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/eurasia': typeof EurasiaRoute
   '/news': typeof NewsRoute
   '/rates': typeof RatesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/news' | '/rates'
+  fullPaths: '/' | '/eurasia' | '/news' | '/rates'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/news' | '/rates'
-  id: '__root__' | '/' | '/news' | '/rates'
+  to: '/' | '/eurasia' | '/news' | '/rates'
+  id: '__root__' | '/' | '/eurasia' | '/news' | '/rates'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  EurasiaRoute: typeof EurasiaRoute
   NewsRoute: typeof NewsRoute
   RatesRoute: typeof RatesRoute
 }
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NewsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/eurasia': {
+      id: '/eurasia'
+      path: '/eurasia'
+      fullPath: '/eurasia'
+      preLoaderRoute: typeof EurasiaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  EurasiaRoute: EurasiaRoute,
   NewsRoute: NewsRoute,
   RatesRoute: RatesRoute,
 }
