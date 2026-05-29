@@ -31,26 +31,25 @@ export function Footer() {
 
           {/* 서비스 */}
           <FooterCol title="서비스">
-            <FooterLink to="/rates">운임 대시보드</FooterLink>
-            <FooterLink to="/eurasia">유라시아 코리도어</FooterLink>
-            <FooterLink to="/policy">정책·규제</FooterLink>
-            <FooterLink to="/industries">산업별 교역</FooterLink>
+            <li><Link to="/rates" className={linkCls}>운임 대시보드</Link></li>
+            <li><Link to="/eurasia" className={linkCls}>유라시아 코리도어</Link></li>
+            <li><Link to="/policy" className={linkCls}>정책·규제</Link></li>
+            <li><Link to="/industries" className={linkCls}>산업별 교역</Link></li>
           </FooterCol>
 
           {/* 뉴스 */}
           <FooterCol title="뉴스">
-            <FooterLink to="/news" search={{ cat: "해상" }}>
-              해상
-            </FooterLink>
-            <FooterLink to="/news" search={{ cat: "항공" }}>
-              항공
-            </FooterLink>
-            <FooterLink to="/news" search={{ cat: "철도·CIS" }}>
-              철도·CIS
-            </FooterLink>
-            <FooterLink to="/news" search={{ cat: "무역" }}>
-              무역
-            </FooterLink>
+            {(["해상", "항공", "철도·CIS", "무역"] as const).map((cat) => (
+              <li key={cat}>
+                <Link
+                  to="/news"
+                  search={{ cat }}
+                  className={linkCls}
+                >
+                  {cat}
+                </Link>
+              </li>
+            ))}
           </FooterCol>
 
           {/* MTL + 뉴스레터 */}
@@ -138,24 +137,4 @@ function FooterCol({
   );
 }
 
-function FooterLink({
-  to,
-  search,
-  children,
-}: {
-  to: string;
-  search?: Record<string, string>;
-  children: React.ReactNode;
-}) {
-  return (
-    <li>
-      <Link
-        to={to}
-        search={search as never}
-        className="transition-colors hover:text-[var(--color-cyan)]"
-      >
-        {children}
-      </Link>
-    </li>
-  );
-}
+const linkCls = "transition-colors hover:text-[var(--color-cyan)]";
