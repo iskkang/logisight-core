@@ -1,10 +1,22 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import {
-  useLatestFreightIndices,
+  freightIndicesQueryOptions,
   formatIndexValue,
-} from "@/hooks/use-freight-indices";
+} from "@/lib/api/freight-indices";
+import {
+  latestNewsQueryOptions,
+  formatPublishedAt,
+} from "@/lib/api/news";
+import type { NewsItem } from "@/lib/api/news";
 
 export const Route = createFileRoute("/")({
+  loader: ({ context }) => {
+    context.queryClient.ensureQueryData(freightIndicesQueryOptions());
+    context.queryClient.ensureQueryData(
+      latestNewsQueryOptions({ lang: "ko", limit: 6 }),
+    );
+  },
   head: () => ({
     meta: [
       { title: "Logisight — 물류를 읽는 새로운 시선" },
