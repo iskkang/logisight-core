@@ -172,16 +172,20 @@ function DashboardSection() {
       className="border-t border-[var(--color-line)]"
       style={{ background: "var(--color-surface-alt, #f7f9fc)" }}
     >
-      <div className="mx-auto max-w-7xl px-4 py-10 lg:grid lg:grid-cols-3 lg:gap-8 lg:px-6 lg:py-14">
-        <div className="space-y-8 lg:col-span-2">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 lg:grid-cols-3 lg:px-6 lg:py-14">
+        <div className="lg:col-span-2">
           <WeeklyBriefingBlock />
-          <NewsBlock />
         </div>
-        <aside className="mt-8 flex flex-col gap-6 lg:mt-0 lg:h-full">
+        <aside className="flex flex-col gap-6">
           <LanesSidebar />
           <EurasiaSidebar />
+        </aside>
+        <div className="lg:col-span-2">
+          <NewsBlock />
+        </div>
+        <aside className="flex h-full flex-col gap-6">
           <PolicySidebar />
-          <div className="flex-1" />
+          <div className="hidden flex-1 lg:block" />
           <NewsletterSidebar />
         </aside>
       </div>
