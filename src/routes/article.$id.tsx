@@ -84,6 +84,10 @@ function ArticlePage() {
   const readMin = estimateReadMinutes(article.content);
   const catStyle = categoryStyle(article.category);
   const hasContent = !!article.content && article.content.trim().length > 0;
+  const isExternalSource =
+    !!article.url &&
+    /^https?:\/\//.test(article.url) &&
+    !article.url.includes("logisight.mtlship.com/sample");
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-10 lg:py-14">
@@ -168,14 +172,20 @@ function ArticlePage() {
 
       <footer className="mt-10 border-t border-[var(--color-line)] pt-6 text-sm text-[var(--color-ink-muted)]">
         출처:{" "}
-        <a
-          href={article.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-semibold text-[var(--color-navy-600)] underline"
-        >
-          {article.source}
-        </a>
+        {isExternalSource ? (
+          <a
+            href={article.url!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-[var(--color-navy-600)] underline"
+          >
+            {article.source}
+          </a>
+        ) : (
+          <span className="font-semibold text-[var(--color-ink)]">
+            {article.source}
+          </span>
+        )}
       </footer>
 
       {related.length > 0 && (

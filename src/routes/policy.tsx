@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -173,7 +173,7 @@ function RelatedNews({ code, items }: { code: string; items: PolicyNewsItem[] })
             key={n.id}
             className="rounded-lg border border-border bg-card p-4 transition-colors hover:border-[var(--color-cyan)]"
           >
-            <a href={n.url} target="_blank" rel="noreferrer" className="block">
+            <Link to="/article/$id" params={{ id: String(n.id) }} className="block">
               <h4 className="break-keep text-sm font-medium text-foreground">
                 {n.title}
               </h4>
@@ -187,7 +187,7 @@ function RelatedNews({ code, items }: { code: string; items: PolicyNewsItem[] })
                 <span>·</span>
                 <span>{formatPublishedAt(n.published_at)}</span>
               </div>
-            </a>
+            </Link>
           </li>
         ))}
       </ul>
