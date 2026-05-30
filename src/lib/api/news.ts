@@ -17,12 +17,31 @@ export type NewsItem = {
   is_hero: boolean | null;
 };
 
+/** Returns today's date in KST as "YYYY-MM-DD". */
+export function todayKST(): string {
+  // Swedish locale produces ISO date format "YYYY-MM-DD"
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+}
+
+/** Given "YYYY-MM-DD", returns KST start-of-day and end-of-day ISO strings. */
+export function dateToKSTRange(date: string): {
+  dateFrom: string;
+  dateTo: string;
+} {
+  return {
+    dateFrom: `${date}T00:00:00+09:00`,
+    dateTo: `${date}T23:59:59+09:00`,
+  };
+}
+
 export const latestNewsQueryOptions = (input: {
   lang?: string;
   limit?: number;
   category?: string;
-}) =>
-  queryOptions({
+  date?: string; // "YYYY-MM-DD" — undefined means no date filter
+}) => {
+  const range = input.date ? dateToKSTRange(input.date) : undefined;
+  return queryOptions({
     queryKey: ["maritime_news", "latest", input],
     queryFn: () =>
       getLatestNews({
@@ -30,10 +49,13 @@ export const latestNewsQueryOptions = (input: {
           lang: input.lang ?? "ko",
           limit: input.limit ?? 20,
           category: input.category,
+          dateFrom: range?.dateFrom,
+          dateTo: range?.dateTo,
         },
       }),
     staleTime: 5 * 60 * 1000,
   });
+};
 
 export function formatPublishedAt(iso: string | null): string {
   if (!iso) return "—";
