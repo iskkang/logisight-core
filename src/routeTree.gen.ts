@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TradeRouteImport } from './routes/trade'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RatesRouteImport } from './routes/rates'
-import { Route as PolicyRouteImport } from './routes/policy'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as IndustriesRouteImport } from './routes/industries'
 import { Route as EurasiaRouteImport } from './routes/eurasia'
@@ -34,11 +33,6 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const RatesRoute = RatesRouteImport.update({
   id: '/rates',
   path: '/rates',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PolicyRoute = PolicyRouteImport.update({
-  id: '/policy',
-  path: '/policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NewsRoute = NewsRouteImport.update({
@@ -82,7 +76,6 @@ export interface FileRoutesByFullPath {
   '/eurasia': typeof EurasiaRoute
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
-  '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
@@ -95,7 +88,6 @@ export interface FileRoutesByTo {
   '/eurasia': typeof EurasiaRoute
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
-  '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
@@ -109,7 +101,6 @@ export interface FileRoutesById {
   '/eurasia': typeof EurasiaRoute
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
-  '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
@@ -124,7 +115,6 @@ export interface FileRouteTypes {
     | '/eurasia'
     | '/industries'
     | '/news'
-    | '/policy'
     | '/rates'
     | '/sitemap.xml'
     | '/trade'
@@ -137,7 +127,6 @@ export interface FileRouteTypes {
     | '/eurasia'
     | '/industries'
     | '/news'
-    | '/policy'
     | '/rates'
     | '/sitemap.xml'
     | '/trade'
@@ -150,7 +139,6 @@ export interface FileRouteTypes {
     | '/eurasia'
     | '/industries'
     | '/news'
-    | '/policy'
     | '/rates'
     | '/sitemap.xml'
     | '/trade'
@@ -164,7 +152,6 @@ export interface RootRouteChildren {
   EurasiaRoute: typeof EurasiaRoute
   IndustriesRoute: typeof IndustriesRoute
   NewsRoute: typeof NewsRoute
-  PolicyRoute: typeof PolicyRoute
   RatesRoute: typeof RatesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TradeRoute: typeof TradeRoute
@@ -194,13 +181,6 @@ declare module '@tanstack/react-router' {
       path: '/rates'
       fullPath: '/rates'
       preLoaderRoute: typeof RatesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/policy': {
-      id: '/policy'
-      path: '/policy'
-      fullPath: '/policy'
-      preLoaderRoute: typeof PolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/news': {
@@ -260,7 +240,6 @@ const rootRouteChildren: RootRouteChildren = {
   EurasiaRoute: EurasiaRoute,
   IndustriesRoute: IndustriesRoute,
   NewsRoute: NewsRoute,
-  PolicyRoute: PolicyRoute,
   RatesRoute: RatesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TradeRoute: TradeRoute,

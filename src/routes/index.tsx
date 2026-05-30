@@ -21,7 +21,6 @@ import {
 } from "@/lib/api/briefing";
 import { freightRatesQueryOptions, formatNumber } from "@/lib/api/rates";
 import { eurasiaLanesQueryOptions, eurasiaDelaysQueryOptions } from "@/lib/api/eurasia";
-import { policyAlertsQueryOptions, codeStyle } from "@/lib/api/policy";
 import { tradeProvisionalQueryOptions } from "@/lib/api/trade";
 import { HomeExportWidget } from "@/components/trade/HomeExportWidget";
 import { NewsletterForm } from "@/components/site/NewsletterForm";
@@ -38,7 +37,6 @@ export const Route = createFileRoute("/")({
     context.queryClient.ensureQueryData(freightRatesQueryOptions({}));
     context.queryClient.ensureQueryData(eurasiaLanesQueryOptions());
     context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
-    context.queryClient.ensureQueryData(policyAlertsQueryOptions());
     context.queryClient.ensureQueryData(tradeProvisionalQueryOptions());
   },
   head: () => ({
@@ -203,7 +201,6 @@ function DashboardSection() {
           <NewsBlock />
         </div>
         <aside className="flex flex-col gap-6 lg:self-stretch">
-          <PolicySidebar />
           <div className="hidden flex-1 lg:block" aria-hidden="true" />
           <NewsletterSidebar />
         </aside>
