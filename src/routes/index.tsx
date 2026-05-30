@@ -173,6 +173,8 @@ function Index() {
 }
 
 function TradeWidgetBand() {
+  const { data } = useSuspenseQuery(tradeProvisionalQueryOptions());
+  if (!data || data.length === 0) return null;
   return (
     <section className="border-t border-[var(--color-line)] bg-white">
       <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
