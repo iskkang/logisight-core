@@ -22,6 +22,8 @@ import {
 import { freightRatesQueryOptions, formatNumber } from "@/lib/api/rates";
 import { eurasiaLanesQueryOptions, eurasiaDelaysQueryOptions } from "@/lib/api/eurasia";
 import { policyAlertsQueryOptions, codeStyle } from "@/lib/api/policy";
+import { tradeProvisionalQueryOptions } from "@/lib/api/trade";
+import { HomeExportWidget } from "@/components/trade/HomeExportWidget";
 import { NewsletterForm } from "@/components/site/NewsletterForm";
 import { useState } from "react";
 
@@ -37,6 +39,7 @@ export const Route = createFileRoute("/")({
     context.queryClient.ensureQueryData(eurasiaLanesQueryOptions());
     context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
     context.queryClient.ensureQueryData(policyAlertsQueryOptions());
+    context.queryClient.ensureQueryData(tradeProvisionalQueryOptions());
   },
   head: () => ({
     meta: [
@@ -162,9 +165,22 @@ function Index() {
         </div>
       </div>
     </section>
+    <TradeWidgetBand />
     <DashboardSection />
     <IndustryInsightsSection />
     </>
+  );
+}
+
+function TradeWidgetBand() {
+  return (
+    <section className="border-t border-[var(--color-line)] bg-white">
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <HomeExportWidget />
+        </div>
+      </div>
+    </section>
   );
 }
 
