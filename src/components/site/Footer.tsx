@@ -33,7 +33,6 @@ export function Footer() {
           <FooterCol title="서비스">
             <li><Link to="/rates" className={linkCls}>운임 대시보드</Link></li>
             <li><Link to="/eurasia" className={linkCls}>유라시아 코리도어</Link></li>
-            <li><Link to="/policy" className={linkCls}>정책·규제</Link></li>
             <li><Link to="/industries" className={linkCls}>산업별 교역</Link></li>
           </FooterCol>
 

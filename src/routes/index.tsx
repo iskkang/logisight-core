@@ -21,7 +21,6 @@ import {
 } from "@/lib/api/briefing";
 import { freightRatesQueryOptions, formatNumber } from "@/lib/api/rates";
 import { eurasiaLanesQueryOptions, eurasiaDelaysQueryOptions } from "@/lib/api/eurasia";
-import { policyAlertsQueryOptions, codeStyle } from "@/lib/api/policy";
 import { tradeProvisionalQueryOptions } from "@/lib/api/trade";
 import { HomeExportWidget } from "@/components/trade/HomeExportWidget";
 import { NewsletterForm } from "@/components/site/NewsletterForm";
@@ -38,7 +37,6 @@ export const Route = createFileRoute("/")({
     context.queryClient.ensureQueryData(freightRatesQueryOptions({}));
     context.queryClient.ensureQueryData(eurasiaLanesQueryOptions());
     context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
-    context.queryClient.ensureQueryData(policyAlertsQueryOptions());
     context.queryClient.ensureQueryData(tradeProvisionalQueryOptions());
   },
   head: () => ({
@@ -203,7 +201,6 @@ function DashboardSection() {
           <NewsBlock />
         </div>
         <aside className="flex flex-col gap-6 lg:self-stretch">
-          <PolicySidebar />
           <div className="hidden flex-1 lg:block" aria-hidden="true" />
           <NewsletterSidebar />
         </aside>
@@ -587,42 +584,6 @@ function EurasiaSidebar() {
   );
 }
 
-function PolicySidebar() {
-  const { data } = useSuspenseQuery(policyAlertsQueryOptions());
-  const alerts = (data ?? []).slice(0, 3);
-  return (
-    <SidebarCard title="정책 규제 모니터" href="/policy" hrefLabel="자세히 보기 →">
-      {alerts.length === 0 ? (
-        <p className="text-xs text-[var(--color-ink-muted)]">활성 알림 없음</p>
-      ) : (
-        <ul className="space-y-2">
-          {alerts.map((a) => {
-            const s = codeStyle(a.code);
-            return (
-              <li
-                key={a.id}
-                className="rounded-md border border-[var(--color-line)] p-2"
-              >
-                <div className="flex items-center gap-2">
-                  <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${s.badge}`}
-                  >
-                    {a.code}
-                  </span>
-                </div>
-                <p className="mt-1.5 text-xs font-semibold text-[var(--color-ink)]">
-                  {a.title}
-                </p>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </SidebarCard>
-  );
-}
-
 function NewsletterSidebar() {
   return (
     <section
@@ -646,19 +607,13 @@ function IndustryInsightsSection() {
     icon: string;
     title: string;
     desc: string;
-    to: "/eurasia" | "/policy" | "/industries";
+    to: "/eurasia" | "/industries";
   }[] = [
     {
       icon: "🚉",
       title: "철도 인사이트",
       desc: "TCR·TSR 노선의 평균 운송일수와 지연 패턴",
       to: "/eurasia",
-    },
-    {
-      icon: "📋",
-      title: "정책 인사이트",
-      desc: "CBAM·EU ETS 일정 및 화주 영향",
-      to: "/policy",
     },
     {
       icon: "↗",
