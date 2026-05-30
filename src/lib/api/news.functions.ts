@@ -13,6 +13,8 @@ export const getLatestNews = createServerFn({ method: "GET" })
       lang: z.string().min(2).max(5).default("ko"),
       limit: z.number().int().min(1).max(50).default(20),
       category: z.string().min(1).max(40).optional(),
+      dateFrom: z.string().optional(), // e.g. "2026-05-31T00:00:00+09:00"
+      dateTo: z.string().optional(),   // e.g. "2026-05-31T23:59:59+09:00"
     }),
   )
   .handler(async ({ data }): Promise<NewsItem[]> => {
@@ -20,9 +22,14 @@ export const getLatestNews = createServerFn({ method: "GET" })
       .from("maritime_news")
       .select(SELECT)
       .eq("lang", data.lang)
+      .not("agent_type", "in", "(daily_card,external)")
       .order("published_at", { ascending: false, nullsFirst: false })
       .limit(data.limit);
+
     if (data.category) q = q.eq("category", data.category);
+    if (data.dateFrom) q = q.gte("published_at", data.dateFrom);
+    if (data.dateTo)   q = q.lte("published_at", data.dateTo);
+
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return (rows ?? []) as NewsItem[];
