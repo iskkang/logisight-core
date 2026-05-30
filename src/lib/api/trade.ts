@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { getTradeProvisional } from "./trade.functions";
+import { getTradeProvisional, getTradeByCountry } from "./trade.functions";
 
 export type TradeProvisionalRow = {
   period: string; // YYYYMM
@@ -13,10 +13,26 @@ export type TradeProvisionalRow = {
   trade_balance: number | null;
 };
 
+export type TradeCountryRow = {
+  period: string; // YYYY-MM
+  country_code: string | null;
+  country_name: string | null;
+  export_usd: number | null;
+  import_usd: number | null;
+  trade_balance: number | null;
+};
+
 export const tradeProvisionalQueryOptions = () =>
   queryOptions({
     queryKey: ["trade_statistics", "provisional"],
     queryFn: () => getTradeProvisional(),
+    staleTime: 10 * 60 * 1000,
+  });
+
+export const tradeByCountryQueryOptions = () =>
+  queryOptions({
+    queryKey: ["trade_statistics", "country"],
+    queryFn: () => getTradeByCountry(),
     staleTime: 10 * 60 * 1000,
   });
 
