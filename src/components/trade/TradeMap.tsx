@@ -5,6 +5,18 @@ import {
   Geography,
 } from "react-simple-maps";
 import { scaleSequentialLog } from "d3-scale";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { ISO2_TO_NUMERIC, flagEmoji } from "@/lib/iso-country-codes";
 import { formatUSD } from "@/lib/api/trade";
@@ -30,6 +42,19 @@ type Props = {
   onTabChange: (t: Tab) => void;
   period: string | null;
 };
+
+function periodLabel(p: string): string {
+  const [y, m] = p.split("-");
+  if (!y || !m) return p;
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${months[Number(m) - 1]} ${y.slice(2)}`;
+}
+
+function yoyPeriodOf(p: string): string {
+  const [y, m] = p.split("-");
+  if (!y || !m) return p;
+  return `${Number(y) - 1}-${m}`;
+}
 
 export function TradeMap({ rows, tab, onTabChange, period }: Props) {
   const [mounted, setMounted] = useState(false);
@@ -120,7 +145,7 @@ export function TradeMap({ rows, tab, onTabChange, period }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px]">
         <div
           className="relative bg-slate-50"
           onMouseLeave={() => setHover(null)}
@@ -232,6 +257,7 @@ export function TradeMap({ rows, tab, onTabChange, period }: Props) {
           {selected ? (
             <DetailPanel
               agg={selected}
+              rows={rows}
               onClose={() => setSelected(null)}
             />
           ) : (
@@ -293,13 +319,72 @@ function Legend({ tab }: { tab: Tab }) {
 
 function DetailPanel({
   agg,
+  rows,
   onClose,
 }: {
   agg: CountryAgg;
+  rows: TradeCountryRow[];
   onClose: () => void;
 }) {
+  // Monthly data for this country
+  const countryRows = useMemo(
+    () => rows.filter((r) => r.country_code?.toUpperCase() === agg.iso2),
+    [rows, agg.iso2],
+  );
+
+  const allPeriods = useMemo(
+    () => [...new Set(countryRows.map((r) => r.period))].sort(),
+    [countryRows],
+  );
+
+  const byPeriod = useMemo(() => {
+    const map = new Map<string, { exp: number; imp: number }>();
+    for (const r of countryRows) {
+      const prev = map.get(r.period) ?? { exp: 0, imp: 0 };
+      map.set(r.period, {
+        exp: prev.exp + (r.export_usd ?? 0),
+        imp: prev.imp + (r.import_usd ?? 0),
+      });
+    }
+    return map;
+  }, [countryRows]);
+
+  // Last 6 months bar chart data
+  const chartData = useMemo(
+    () =>
+      allPeriods.slice(-6).map((p) => {
+        const d = byPeriod.get(p) ?? { exp: 0, imp: 0 };
+        return {
+          label: periodLabel(p),
+          exp_b: +(d.exp / 1e9).toFixed(2),
+          imp_b: +(d.imp / 1e9).toFixed(2),
+        };
+      }),
+    [allPeriods, byPeriod],
+  );
+
+  // YoY
+  const { yoyExp, yoyImp } = useMemo(() => {
+    if (allPeriods.length < 13) return { yoyExp: null, yoyImp: null };
+    const latest = allPeriods[allPeriods.length - 1];
+    const yoyP = yoyPeriodOf(latest);
+    const curr = byPeriod.get(latest);
+    const prev = byPeriod.get(yoyP);
+    if (!curr || !prev) return { yoyExp: null, yoyImp: null };
+    return {
+      yoyExp: prev.exp > 0 ? ((curr.exp - prev.exp) / prev.exp) * 100 : null,
+      yoyImp: prev.imp > 0 ? ((curr.imp - prev.imp) / prev.imp) * 100 : null,
+    };
+  }, [allPeriods, byPeriod]);
+
+  const totalTrade = agg.export_usd + agg.import_usd;
+  const donutData = [
+    { name: "수출", value: agg.export_usd },
+    { name: "수입", value: agg.import_usd },
+  ];
+
   return (
-    <div className="relative p-6">
+    <div className="relative max-h-[640px] overflow-y-auto p-5">
       <button
         type="button"
         onClick={onClose}
@@ -308,48 +393,205 @@ function DetailPanel({
       >
         ×
       </button>
+
+      {/* Header */}
       <div className="text-2xl">{flagEmoji(agg.iso2)}</div>
       <div className="mt-1 text-lg font-bold text-[var(--color-navy-900)]">
         {agg.name}
       </div>
-      <div className="mt-0.5 text-xs text-slate-500">{agg.iso2}</div>
+      <div className="mt-0.5 text-xs text-slate-400">{agg.iso2}</div>
 
-      <dl className="mt-5 space-y-3">
-        <Stat label="수출액" value={formatUSD(agg.export_usd)} tone="export" />
-        <Stat label="수입액" value={formatUSD(agg.import_usd)} tone="import" />
-        <Stat
+      {/* 1. Summary stat cards */}
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <StatCard
+          label="수출액"
+          value={formatUSD(agg.export_usd)}
+          color="text-[#0d9488]"
+          yoy={yoyExp}
+        />
+        <StatCard
+          label="수입액"
+          value={formatUSD(agg.import_usd)}
+          color="text-slate-700"
+          yoy={yoyImp}
+        />
+      </div>
+      <div className="mt-2">
+        <StatCard
           label="무역수지"
           value={formatUSD(agg.balance)}
-          tone={agg.balance >= 0 ? "export" : "balance-neg"}
+          color={agg.balance >= 0 ? "text-[#0d9488]" : "text-amber-600"}
+          yoy={null}
         />
-      </dl>
+      </div>
 
-      <p className="mt-5 text-[11px] text-slate-400">
-        ※ 전년 동기 대비·월별 추이는 데이터 누적 시 표시됩니다.
-      </p>
+      {/* 2. Monthly bar chart */}
+      {chartData.length > 0 && (
+        <div className="mt-5">
+          <p className="mb-2 text-xs font-semibold text-slate-600">
+            최근 6개월 수출입 추이
+          </p>
+          <div className="h-44">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData}
+                margin={{ top: 4, right: 4, left: -18, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#e2e8f0"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="label"
+                  fontSize={10}
+                  tickLine={false}
+                  stroke="#94a3b8"
+                />
+                <YAxis
+                  fontSize={10}
+                  tickLine={false}
+                  stroke="#94a3b8"
+                  tickFormatter={(v) => `$${v}B`}
+                />
+                <Tooltip content={<BarTooltip />} />
+                <Bar
+                  dataKey="exp_b"
+                  name="수출"
+                  fill="#14b8a6"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="imp_b"
+                  name="수입"
+                  fill="#94a3b8"
+                  radius={[2, 2, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-1 flex gap-4 text-[10px] text-slate-500">
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2 w-2 rounded-sm bg-[#14b8a6]" />
+              수출
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2 w-2 rounded-sm bg-[#94a3b8]" />
+              수입
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Donut chart */}
+      {totalTrade > 0 && (
+        <div className="mt-5">
+          <p className="mb-2 text-xs font-semibold text-slate-600">
+            수출 / 수입 비중
+          </p>
+          <div className="flex items-center gap-4">
+            <div className="h-28 w-28 shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={donutData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={32}
+                    outerRadius={48}
+                    dataKey="value"
+                    paddingAngle={2}
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    <Cell fill="#14b8a6" />
+                    <Cell fill="#94a3b8" />
+                  </Pie>
+                  <Tooltip
+                    formatter={(v: number) => [formatUSD(v), ""]}
+                    contentStyle={{ fontSize: 11 }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#14b8a6]" />
+                <span className="text-slate-600">수출</span>
+                <span className="font-bold text-[#0d9488]">
+                  {((agg.export_usd / totalTrade) * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#94a3b8]" />
+                <span className="text-slate-600">수입</span>
+                <span className="font-bold text-slate-700">
+                  {((agg.import_usd / totalTrade) * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function Stat({
+function StatCard({
   label,
   value,
-  tone,
+  color,
+  yoy,
 }: {
   label: string;
   value: string;
-  tone: "export" | "import" | "balance-neg";
+  color: string;
+  yoy: number | null;
 }) {
-  const color =
-    tone === "export"
-      ? "text-[#0d9488]"
-      : tone === "balance-neg"
-        ? "text-amber-600"
-        : "text-slate-700";
   return (
-    <div>
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className={`text-2xl font-black tracking-tight ${color}`}>{value}</dd>
+    <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+      <div className="text-[11px] text-slate-500">{label}</div>
+      <div className={`mt-1 text-xl font-black tracking-tight ${color}`}>
+        {value}
+      </div>
+      {yoy != null && Number.isFinite(yoy) ? (
+        <div className="mt-0.5 flex items-center gap-1 text-[10px]">
+          <span
+            className={
+              "font-semibold " +
+              (yoy >= 0 ? "text-[#0d9488]" : "text-amber-600")
+            }
+          >
+            {yoy >= 0 ? "▲" : "▼"} {Math.abs(yoy).toFixed(1)}%
+          </span>
+          <span className="text-slate-400">전년 동기</span>
+        </div>
+      ) : (
+        <div className="mt-0.5 text-[10px] text-slate-400">전년 동기 —</div>
+      )}
+    </div>
+  );
+}
+
+function BarTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ value: number; name: string }>;
+  label?: string;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  return (
+    <div className="rounded border border-slate-200 bg-white px-2.5 py-2 text-xs shadow-md">
+      <div className="font-bold text-slate-800">{label}</div>
+      {payload.map((p, i) => (
+        <div key={i} className="mt-0.5 text-slate-600">
+          {p.name}:{" "}
+          <span className="font-semibold">${p.value.toFixed(2)}B</span>
+        </div>
+      ))}
     </div>
   );
 }
