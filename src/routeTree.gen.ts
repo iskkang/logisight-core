@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TradeRouteImport } from './routes/trade'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PolicyRouteImport } from './routes/policy'
@@ -20,6 +21,11 @@ import { Route as ArticleSlugRouteImport } from './routes/article.$slug'
 import { Route as AdminRoutesRouteImport } from './routes/admin.routes'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 
+const TradeRoute = TradeRouteImport.update({
+  id: '/trade',
+  path: '/trade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/trade': typeof TradeRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/trade': typeof TradeRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/trade': typeof TradeRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/policy'
     | '/rates'
     | '/sitemap.xml'
+    | '/trade'
     | '/admin/login'
     | '/admin/routes'
     | '/article/$slug'
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/policy'
     | '/rates'
     | '/sitemap.xml'
+    | '/trade'
     | '/admin/login'
     | '/admin/routes'
     | '/article/$slug'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/policy'
     | '/rates'
     | '/sitemap.xml'
+    | '/trade'
     | '/admin/login'
     | '/admin/routes'
     | '/article/$slug'
@@ -155,6 +167,7 @@ export interface RootRouteChildren {
   PolicyRoute: typeof PolicyRoute
   RatesRoute: typeof RatesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TradeRoute: typeof TradeRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminRoutesRoute: typeof AdminRoutesRoute
   ArticleSlugRoute: typeof ArticleSlugRoute
@@ -162,6 +175,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/trade': {
+      id: '/trade'
+      path: '/trade'
+      fullPath: '/trade'
+      preLoaderRoute: typeof TradeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -243,6 +263,7 @@ const rootRouteChildren: RootRouteChildren = {
   PolicyRoute: PolicyRoute,
   RatesRoute: RatesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TradeRoute: TradeRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminRoutesRoute: AdminRoutesRoute,
   ArticleSlugRoute: ArticleSlugRoute,
@@ -250,3 +271,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
