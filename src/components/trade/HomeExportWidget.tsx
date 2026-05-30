@@ -1,8 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
 
 import {
-  tradeProvisionalQueryOptions,
   formatUSD,
   pctChange,
   prevPeriod,
@@ -100,10 +98,26 @@ function formatDayRange(priodDt: string | null): string {
   return `1~${d}일 기준`;
 }
 
-export function HomeExportWidget() {
-  const { data: rows } = useSuspenseQuery(tradeProvisionalQueryOptions());
+function EmptyCard() {
+  return (
+    <div className="block rounded-lg border border-dashed border-[var(--color-line)] bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#0d9488]">
+        <span>📦</span>
+        <span>이달 수출 현황</span>
+      </div>
+      <p className="mt-3 text-xs text-[var(--color-ink-muted)]">
+        데이터 수집 중입니다
+      </p>
+      <p className="mt-1 text-[10px] text-[var(--color-ink-muted)]">
+        매월 11일부터 잠정치가 표시됩니다.
+      </p>
+    </div>
+  );
+}
+
+export function HomeExportWidget({ rows }: { rows: TradeProvisionalRow[] }) {
   const view = compute(rows);
-  if (!view) return null;
+  if (!view) return <EmptyCard />;
 
   const up = (view.totalMom ?? 0) >= 0;
 

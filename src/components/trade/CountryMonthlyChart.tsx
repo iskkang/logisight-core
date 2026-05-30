@@ -118,6 +118,9 @@ export function CountryMonthlyChart({ rows }: { rows: TradeCountryRow[] }) {
   const series = useMemo(() => buildSeries(rows, tab), [rows, tab]);
   const tabLabel = TABS.find((t) => t.key === tab)?.label ?? tab;
   const insight = useMemo(() => buildInsight(series, tabLabel), [series, tabLabel]);
+  const hasCountryData = series.some(
+    (p) => (p.export_b ?? 0) > 0 || (p.import_b ?? 0) > 0,
+  );
 
   return (
     <section className="mt-10 rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -150,10 +153,15 @@ export function CountryMonthlyChart({ rows }: { rows: TradeCountryRow[] }) {
       </div>
 
       <div className="p-5">
-        {series.length === 0 ? (
-          <p className="py-12 text-center text-sm text-slate-500">
-            표시할 월간 데이터가 없습니다.
-          </p>
+        {series.length === 0 || !hasCountryData ? (
+          <div className="py-12 text-center">
+            <p className="text-sm font-semibold text-slate-600">
+              데이터 수집 중입니다
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              {tabLabel} 관련 월간 통계가 아직 수집되지 않았습니다.
+            </p>
+          </div>
         ) : (
           <>
             <div className="h-72 w-full">
