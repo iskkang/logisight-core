@@ -12,6 +12,7 @@ import {
   type TradeProvisionalRow,
 } from "@/lib/api/trade";
 import { TradeMap } from "@/components/trade/TradeMap";
+import { CountryMonthlyChart } from "@/components/trade/CountryMonthlyChart";
 
 export const Route = createFileRoute("/trade")({
   loader: ({ context }) =>
@@ -123,6 +124,8 @@ function TradePage() {
           onTabChange={setTab}
           period={null}
         />
+
+        <CountryMonthlyChart rows={countryRows} />
 
         <p className="mt-6 text-xs text-slate-500">
           잠정치 기준 · 매월 11일·21일·익월 1일 갱신 · 관세청 공공데이터
