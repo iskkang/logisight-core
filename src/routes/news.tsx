@@ -10,7 +10,8 @@ import type { NewsItem } from "@/lib/api/news";
 import { articleParam } from "@/lib/api/article";
 
 const newsSearchSchema = z.object({
-  cat: z.string().min(1).max(40).optional(),
+  cat:  z.string().min(1).max(40).optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 const CATEGORIES: { value: string | undefined; label: string }[] = [
@@ -24,10 +25,10 @@ const CATEGORIES: { value: string | undefined; label: string }[] = [
 
 export const Route = createFileRoute("/news")({
   validateSearch: newsSearchSchema,
-  loaderDeps: ({ search }) => ({ cat: search.cat }),
+  loaderDeps: ({ search }) => ({ cat: search.cat, date: search.date }),
   loader: ({ context, deps }) =>
     context.queryClient.ensureQueryData(
-      latestNewsQueryOptions({ lang: "ko", limit: 40, category: deps.cat }),
+      latestNewsQueryOptions({ lang: "ko", limit: 40, category: deps.cat, date: deps.date }),
     ),
   head: () => ({
     meta: [
@@ -51,9 +52,9 @@ export const Route = createFileRoute("/news")({
 });
 
 function NewsPage() {
-  const { cat } = Route.useSearch();
+  const { cat, date } = Route.useSearch();
   const { data } = useSuspenseQuery(
-    latestNewsQueryOptions({ lang: "ko", limit: 40, category: cat }),
+    latestNewsQueryOptions({ lang: "ko", limit: 40, category: cat, date }),
   );
   const items: NewsItem[] = data ?? [];
   const [lead, ...rest] = items;
