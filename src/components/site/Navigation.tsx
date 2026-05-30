@@ -10,6 +10,7 @@ const NAV = [
   { to: "/eurasia", label: "유라시아" },
   { to: "/policy", label: "정책·규제" },
   { to: "/industries", label: "산업별" },
+  { to: "/trade", label: "무역동향" },
 ] as const;
 
 export function Navigation() {
