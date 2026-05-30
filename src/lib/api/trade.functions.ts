@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
-import type { TradeProvisionalRow } from "./trade";
+import type { TradeProvisionalRow, TradeCountryRow } from "./trade";
 
 export const getTradeProvisional = createServerFn({ method: "GET" }).handler(
   async (): Promise<TradeProvisionalRow[]> => {
@@ -23,6 +23,31 @@ export const getTradeProvisional = createServerFn({ method: "GET" }).handler(
       if (rows.length < pageSize) break;
       from += pageSize;
       if (from > 10000) break;
+    }
+    return all;
+  },
+);
+
+export const getTradeByCountry = createServerFn({ method: "GET" }).handler(
+  async (): Promise<TradeCountryRow[]> => {
+    const all: TradeCountryRow[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data, error } = await supabasePublicServer
+        .from("trade_statistics")
+        .select(
+          "period,country_code,country_name,export_usd,import_usd,trade_balance",
+        )
+        .eq("stat_type", "country")
+        .order("period", { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (error) throw new Error(error.message);
+      const rows = (data ?? []) as TradeCountryRow[];
+      all.push(...rows);
+      if (rows.length < pageSize) break;
+      from += pageSize;
+      if (from > 20000) break;
     }
     return all;
   },
