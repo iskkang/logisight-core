@@ -607,19 +607,13 @@ function IndustryInsightsSection() {
     icon: string;
     title: string;
     desc: string;
-    to: "/eurasia" | "/policy" | "/industries";
+    to: "/eurasia" | "/industries";
   }[] = [
     {
       icon: "🚉",
       title: "철도 인사이트",
       desc: "TCR·TSR 노선의 평균 운송일수와 지연 패턴",
       to: "/eurasia",
-    },
-    {
-      icon: "📋",
-      title: "정책 인사이트",
-      desc: "CBAM·EU ETS 일정 및 화주 영향",
-      to: "/policy",
     },
     {
       icon: "↗",
