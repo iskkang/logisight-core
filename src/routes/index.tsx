@@ -584,42 +584,6 @@ function EurasiaSidebar() {
   );
 }
 
-function PolicySidebar() {
-  const { data } = useSuspenseQuery(policyAlertsQueryOptions());
-  const alerts = (data ?? []).slice(0, 3);
-  return (
-    <SidebarCard title="정책 규제 모니터" href="/policy" hrefLabel="자세히 보기 →">
-      {alerts.length === 0 ? (
-        <p className="text-xs text-[var(--color-ink-muted)]">활성 알림 없음</p>
-      ) : (
-        <ul className="space-y-2">
-          {alerts.map((a) => {
-            const s = codeStyle(a.code);
-            return (
-              <li
-                key={a.id}
-                className="rounded-md border border-[var(--color-line)] p-2"
-              >
-                <div className="flex items-center gap-2">
-                  <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${s.badge}`}
-                  >
-                    {a.code}
-                  </span>
-                </div>
-                <p className="mt-1.5 text-xs font-semibold text-[var(--color-ink)]">
-                  {a.title}
-                </p>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </SidebarCard>
-  );
-}
-
 function NewsletterSidebar() {
   return (
     <section
