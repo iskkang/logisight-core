@@ -1,9 +1,13 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
+import viteConfig from "./vite.config";
 
-export default defineConfig({
-  test: {
-    environment: "node",
-    include: ["src/**/__tests__/**/*.test.ts"],
-    passWithNoTests: true,
-  },
-});
+export default mergeConfig(
+  viteConfig,
+  defineConfig({
+    test: {
+      environment: "node",
+      include: ["src/**/__tests__/**/*.test.ts"],
+      passWithNoTests: true,
+    },
+  }),
+);
