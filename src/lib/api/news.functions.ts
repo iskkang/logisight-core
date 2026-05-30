@@ -22,7 +22,7 @@ export const getLatestNews = createServerFn({ method: "GET" })
       .from("maritime_news")
       .select(SELECT)
       .eq("lang", data.lang)
-      .not("agent_type", "in", "(daily_card,external)")
+      .not("agent_type", "in", "(daily_card,external)") // exclude card/feed-only types; NULL agent_type rows pass through
       .order("published_at", { ascending: false, nullsFirst: false })
       .limit(data.limit);
 

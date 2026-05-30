@@ -461,12 +461,14 @@ function DateNavigator({
 
       {/* Date label */}
       <span className="font-semibold text-[var(--color-navy-900)]">
-        {new Date(`${displayDate}T12:00:00+09:00`).toLocaleDateString("ko-KR", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-          timeZone: "Asia/Seoul",
-        })}
+        {date
+          ? new Date(`${displayDate}T12:00:00+09:00`).toLocaleDateString("ko-KR", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              timeZone: "Asia/Seoul",
+            })
+          : "전체 기간"}
         {date && (
           <span className="ml-1.5 text-[11px] font-normal text-[var(--color-ink-muted)]">
             ({count}건)

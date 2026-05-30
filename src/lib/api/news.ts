@@ -30,7 +30,7 @@ export function dateToKSTRange(date: string): {
 } {
   return {
     dateFrom: `${date}T00:00:00+09:00`,
-    dateTo: `${date}T23:59:59+09:00`,
+    dateTo: `${date}T23:59:59.999+09:00`,
   };
 }
 
