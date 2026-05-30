@@ -8,7 +8,6 @@ const NAV = [
   { to: "/news", label: "뉴스" },
   { to: "/rates", label: "운임·지수" },
   { to: "/eurasia", label: "유라시아" },
-  { to: "/policy", label: "정책·규제" },
   { to: "/industries", label: "산업별" },
   { to: "/trade", label: "무역동향" },
 ] as const;
