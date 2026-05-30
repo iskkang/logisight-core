@@ -2,19 +2,10 @@
   "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "npm run build",
   "outputDirectory": "dist/client",
-  "functions": {
-    "dist/server/index.mjs": {
-      "runtime": "nodejs22.x"
-    }
-  },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/dist/server/index.mjs"
+      "source": "/(.*)",
+      "destination": "/dist/server/index.mjs"
     }
   ]
 }
