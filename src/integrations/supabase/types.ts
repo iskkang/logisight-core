@@ -625,6 +625,7 @@ export type Database = {
           country_code: string | null
           country_name: string | null
           data_source: string | null
+          direction: string | null
           export_usd: number | null
           export_weight: number | null
           fetched_at: string | null
@@ -634,6 +635,7 @@ export type Database = {
           import_usd: number | null
           import_weight: number | null
           period: string
+          priod_dt: string | null
           stat_type: string
           trade_balance: number | null
         }
@@ -641,6 +643,7 @@ export type Database = {
           country_code?: string | null
           country_name?: string | null
           data_source?: string | null
+          direction?: string | null
           export_usd?: number | null
           export_weight?: number | null
           fetched_at?: string | null
@@ -650,6 +653,7 @@ export type Database = {
           import_usd?: number | null
           import_weight?: number | null
           period: string
+          priod_dt?: string | null
           stat_type: string
           trade_balance?: number | null
         }
@@ -657,6 +661,7 @@ export type Database = {
           country_code?: string | null
           country_name?: string | null
           data_source?: string | null
+          direction?: string | null
           export_usd?: number | null
           export_weight?: number | null
           fetched_at?: string | null
@@ -666,6 +671,7 @@ export type Database = {
           import_usd?: number | null
           import_weight?: number | null
           period?: string
+          priod_dt?: string | null
           stat_type?: string
           trade_balance?: number | null
         }
@@ -768,6 +774,60 @@ export type Database = {
           import_weight: number | null
           period: string | null
           trade_balance: number | null
+        }
+        Relationships: []
+      }
+      v_maritime_articles: {
+        Row: {
+          agent_type: string | null
+          category: string | null
+          content: string | null
+          fetched_at: string | null
+          id: number | null
+          image_url: string | null
+          is_hero: boolean | null
+          lang: string | null
+          published_at: string | null
+          slug: string | null
+          source: string | null
+          summary: string | null
+          tags: string[] | null
+          title: string | null
+          url: string | null
+        }
+        Insert: {
+          agent_type?: string | null
+          category?: string | null
+          content?: string | null
+          fetched_at?: string | null
+          id?: number | null
+          image_url?: string | null
+          is_hero?: boolean | null
+          lang?: string | null
+          published_at?: string | null
+          slug?: string | null
+          source?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          title?: string | null
+          url?: string | null
+        }
+        Update: {
+          agent_type?: string | null
+          category?: string | null
+          content?: string | null
+          fetched_at?: string | null
+          id?: number | null
+          image_url?: string | null
+          is_hero?: boolean | null
+          lang?: string | null
+          published_at?: string | null
+          slug?: string | null
+          source?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          title?: string | null
+          url?: string | null
         }
         Relationships: []
       }
