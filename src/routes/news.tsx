@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   latestNewsQueryOptions,
   formatPublishedAt,
+  todayKST,
 } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
 import { articleParam } from "@/lib/api/article";
@@ -112,6 +113,13 @@ function NewsPage() {
             })}
           </ul>
         </nav>
+
+        {/* Date navigator */}
+        <div className="border-t border-[var(--color-line)] bg-[var(--color-surface)]">
+          <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-4 py-2 lg:px-6">
+            <DateNavigator date={date} cat={cat} count={items.length} />
+          </div>
+        </div>
       </header>
 
       {items.length === 0 ? (
@@ -121,7 +129,10 @@ function NewsPage() {
       ) : (
         <div className="mx-auto max-w-[1280px] px-4 py-10 lg:px-6 lg:py-14">
           {/* Section label */}
-          <SectionRule label="오늘의 헤드라인" eyebrow="Top Stories" />
+          <SectionRule
+            label={date ? `${date.replace(/-/g, ".")} 뉴스` : "오늘의 헤드라인"}
+            eyebrow="Top Stories"
+          />
 
           {/* Lead + secondary */}
           <div className="grid gap-10 lg:grid-cols-12">
@@ -405,6 +416,96 @@ function Byline({ item, className = "" }: { item: NewsItem; className?: string }
       <time dateTime={item.published_at ?? undefined}>
         {formatPublishedAt(item.published_at)}
       </time>
+    </div>
+  );
+}
+
+function DateNavigator({
+  date,
+  cat,
+  count,
+}: {
+  date: string | undefined;
+  cat: string | undefined;
+  count: number;
+}) {
+  const today = todayKST();
+  const displayDate = date ?? today;
+
+  function prevDay(d: string): string {
+    const dt = new Date(`${d}T12:00:00+09:00`);
+    dt.setDate(dt.getDate() - 1);
+    return dt.toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+  }
+
+  function nextDay(d: string): string {
+    const dt = new Date(`${d}T12:00:00+09:00`);
+    dt.setDate(dt.getDate() + 1);
+    return dt.toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+  }
+
+  const isToday = displayDate >= today;
+  const baseSearch = cat ? { cat } : {};
+
+  return (
+    <div className="flex items-center gap-3 text-[13px]">
+      {/* Prev arrow */}
+      <Link
+        to="/news"
+        search={{ ...baseSearch, date: prevDay(displayDate) }}
+        className="flex h-7 w-7 items-center justify-center rounded border border-[var(--color-line)] text-[var(--color-ink-muted)] hover:border-[var(--color-navy-900)] hover:text-[var(--color-navy-900)]"
+        aria-label="이전 날짜"
+      >
+        ←
+      </Link>
+
+      {/* Date label */}
+      <span className="font-semibold text-[var(--color-navy-900)]">
+        {new Date(`${displayDate}T12:00:00+09:00`).toLocaleDateString("ko-KR", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          timeZone: "Asia/Seoul",
+        })}
+        {date && (
+          <span className="ml-1.5 text-[11px] font-normal text-[var(--color-ink-muted)]">
+            ({count}건)
+          </span>
+        )}
+      </span>
+
+      {/* Next arrow — disabled when at today */}
+      {isToday ? (
+        <span
+          className="flex h-7 w-7 cursor-not-allowed items-center justify-center rounded border border-[var(--color-line)] text-[var(--color-line)]"
+          aria-disabled="true"
+          aria-label="다음 날짜"
+        >
+          →
+        </span>
+      ) : (
+        <Link
+          to="/news"
+          search={{ ...baseSearch, date: nextDay(displayDate) }}
+          className="flex h-7 w-7 items-center justify-center rounded border border-[var(--color-line)] text-[var(--color-ink-muted)] hover:border-[var(--color-navy-900)] hover:text-[var(--color-navy-900)]"
+          aria-label="다음 날짜"
+        >
+          →
+        </Link>
+      )}
+
+      {/* 전체 기간 toggle */}
+      <Link
+        to="/news"
+        search={baseSearch}
+        className={`ml-2 rounded-sm px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider transition ${
+          !date
+            ? "bg-[var(--color-navy-900)] text-white"
+            : "border border-[var(--color-line)] text-[var(--color-ink-muted)] hover:border-[var(--color-navy-900)] hover:text-[var(--color-navy-900)]"
+        }`}
+      >
+        전체 기간
+      </Link>
     </div>
   );
 }
