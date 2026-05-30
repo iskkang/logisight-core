@@ -70,8 +70,7 @@ function TradePage() {
         {!view ? (
           <EmptyState />
         ) : (
-          <>
-            <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <SummaryCard
                 label="이달 수출 합계"
                 value={view.totals.export_usd}
@@ -88,9 +87,11 @@ function TradePage() {
                 deltaPct={view.totals.balance_mom}
                 emphasizeSign
               />
-            </section>
+          </section>
+        )}
 
-            <section className="mt-10 rounded-xl border border-slate-200 bg-white shadow-sm">
+        {view && (
+          <section className="mt-10 rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-lg font-bold text-[var(--color-navy-900)]">
@@ -113,20 +114,19 @@ function TradePage() {
               <div className="p-5">
                 <CountryBars rows={tab === "export" ? view.exportByCountry : view.importByCountry} />
               </div>
-            </section>
-
-            <TradeMap
-              rows={countryRows}
-              tab={tab}
-              onTabChange={setTab}
-              period={null}
-            />
-
-            <p className="mt-6 text-xs text-slate-500">
-              잠정치 기준 · 매월 11일·21일·익월 1일 갱신 · 관세청 공공데이터
-            </p>
-          </>
+          </section>
         )}
+
+        <TradeMap
+          rows={countryRows}
+          tab={tab}
+          onTabChange={setTab}
+          period={null}
+        />
+
+        <p className="mt-6 text-xs text-slate-500">
+          잠정치 기준 · 매월 11일·21일·익월 1일 갱신 · 관세청 공공데이터
+        </p>
       </div>
     </div>
   );
