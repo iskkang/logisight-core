@@ -4,16 +4,21 @@ import { useMemo, useState } from "react";
 
 import {
   tradeProvisionalQueryOptions,
+  tradeByCountryQueryOptions,
   formatUSD,
   formatPeriod,
   prevPeriod,
   pctChange,
   type TradeProvisionalRow,
 } from "@/lib/api/trade";
+import { TradeMap } from "@/components/trade/TradeMap";
 
 export const Route = createFileRoute("/trade")({
   loader: ({ context }) =>
-    context.queryClient.ensureQueryData(tradeProvisionalQueryOptions()),
+    Promise.all([
+      context.queryClient.ensureQueryData(tradeProvisionalQueryOptions()),
+      context.queryClient.ensureQueryData(tradeByCountryQueryOptions()),
+    ]),
   head: () => ({
     meta: [
       { title: "한국 무역 동향 — Logisight" },
@@ -40,6 +45,7 @@ type Tab = "export" | "import";
 
 function TradePage() {
   const { data: rows } = useSuspenseQuery(tradeProvisionalQueryOptions());
+  const { data: countryRows } = useSuspenseQuery(tradeByCountryQueryOptions());
   const [tab, setTab] = useState<Tab>("export");
 
   const view = useMemo(() => buildView(rows), [rows]);
@@ -108,6 +114,13 @@ function TradePage() {
                 <CountryBars rows={tab === "export" ? view.exportByCountry : view.importByCountry} />
               </div>
             </section>
+
+            <TradeMap
+              rows={countryRows}
+              tab={tab}
+              onTabChange={setTab}
+              period={null}
+            />
 
             <p className="mt-6 text-xs text-slate-500">
               잠정치 기준 · 매월 11일·21일·익월 1일 갱신 · 관세청 공공데이터
