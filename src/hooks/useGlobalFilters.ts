@@ -1,4 +1,5 @@
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 
 export type GlobalFilters = {
   period: "3m" | "12m" | "36m";
@@ -20,48 +21,61 @@ const DEFAULTS: GlobalFilters = {
 
 const STORAGE_KEY = "logisight:global-filters";
 
+// SSR-safe: only uses URL params, no localStorage access during render
 export function resolveFilters(s: Record<string, unknown>): GlobalFilters {
-  const stored = (() => {
-    try {
-      const raw = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-      return raw ? (JSON.parse(raw) as Partial<GlobalFilters>) : {};
-    } catch {
-      return {};
-    }
-  })();
-
-  const merge = { ...DEFAULTS, ...stored, ...s };
-
-  const period = (["3m", "12m", "36m"] as const).includes(merge.period as "3m" | "12m" | "36m")
-    ? (merge.period as GlobalFilters["period"])
+  const period = (["3m", "12m", "36m"] as const).includes(s.period as "3m" | "12m" | "36m")
+    ? (s.period as GlobalFilters["period"])
     : DEFAULTS.period;
 
-  const mode = (["ocean", "air", "rail", "all"] as const).includes(merge.mode as "ocean" | "air" | "rail" | "all")
-    ? (merge.mode as GlobalFilters["mode"])
+  const mode = (["ocean", "air", "rail", "all"] as const).includes(s.mode as "ocean" | "air" | "rail" | "all")
+    ? (s.mode as GlobalFilters["mode"])
     : DEFAULTS.mode;
 
-  const currency = (["USD", "KRW"] as const).includes(merge.currency as "USD" | "KRW")
-    ? (merge.currency as GlobalFilters["currency"])
+  const currency = (["USD", "KRW"] as const).includes(s.currency as "USD" | "KRW")
+    ? (s.currency as GlobalFilters["currency"])
     : DEFAULTS.currency;
 
   return {
     period,
-    origin: typeof merge.origin === "string" && merge.origin ? merge.origin : DEFAULTS.origin,
-    dest: typeof merge.dest === "string" ? merge.dest : undefined,
+    origin: typeof s.origin === "string" && s.origin ? s.origin : DEFAULTS.origin,
+    dest: typeof s.dest === "string" ? s.dest : undefined,
     mode,
-    hs: typeof merge.hs === "string" ? merge.hs : undefined,
+    hs: typeof s.hs === "string" ? s.hs : undefined,
     currency,
-    compare: typeof merge.compare === "string" ? merge.compare : undefined,
-    detail: typeof merge.detail === "string" ? merge.detail : undefined,
+    compare: typeof s.compare === "string" ? s.compare : undefined,
+    detail: typeof s.detail === "string" ? s.detail : undefined,
   };
 }
 
 export function useGlobalFilters(currentSearch: Record<string, unknown>) {
   const navigate = useNavigate();
-  const filters = resolveFilters(currentSearch);
+  const [filters, setFiltersState] = useState<GlobalFilters>(() =>
+    resolveFilters(currentSearch),
+  );
+
+  // After hydration, merge with localStorage backup (client-only)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const stored = JSON.parse(raw) as Partial<GlobalFilters>;
+      // Only apply stored values if URL has no overrides
+      const hasUrlParams = Object.keys(currentSearch).some(
+        (k) => k in DEFAULTS && currentSearch[k] !== undefined,
+      );
+      if (!hasUrlParams) {
+        setFiltersState((prev) => resolveFilters({ ...stored, ...prev }));
+      }
+    } catch {
+      // ignore
+    }
+    // Only on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function setFilters(patch: Partial<GlobalFilters>) {
     const next = { ...filters, ...patch };
+    setFiltersState(next);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
