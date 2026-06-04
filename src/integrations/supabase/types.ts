@@ -410,6 +410,8 @@ export type Database = {
           fetched_at: string
           id: number
           image_url: string | null
+          image_source: string | null
+          image_credit: string | null
           is_hero: boolean | null
           lang: string
           published_at: string | null
@@ -427,6 +429,8 @@ export type Database = {
           fetched_at?: string
           id?: number
           image_url?: string | null
+          image_source?: string | null
+          image_credit?: string | null
           is_hero?: boolean | null
           lang?: string
           published_at?: string | null
@@ -444,6 +448,8 @@ export type Database = {
           fetched_at?: string
           id?: number
           image_url?: string | null
+          image_source?: string | null
+          image_credit?: string | null
           is_hero?: boolean | null
           lang?: string
           published_at?: string | null

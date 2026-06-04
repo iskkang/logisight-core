@@ -11,11 +11,18 @@ export type NewsItem = {
   source: string;
   category: string | null;
   image_url: string | null;
+  image_source: string | null;
+  image_credit: string | null;
+  agent_type: string | null;
   published_at: string | null;
   lang: string;
   tags: string[] | null;
   is_hero: boolean | null;
 };
+
+export function isInternalNewsItem(item: Pick<NewsItem, "slug" | "agent_type">): boolean {
+  return Boolean(item.slug && item.agent_type !== "external");
+}
 
 /** Returns today's date in KST as "YYYY-MM-DD". */
 export function todayKST(): string {

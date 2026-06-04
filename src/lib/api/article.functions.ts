@@ -7,7 +7,7 @@ import type { Article } from "./article";
 import type { NewsItem } from "./news";
 
 const SELECT =
-  "id,slug,title,summary,content,url,source,category,image_url,published_at,lang,tags,is_hero";
+  "id,slug,title,summary,content,url,source,category,image_url,image_source,image_credit,published_at,lang,tags,is_hero,agent_type";
 
 export const getArticleBySlug = createServerFn({ method: "GET" })
   .inputValidator(z.object({ slug: z.string().min(1).max(200) }))
@@ -50,6 +50,7 @@ export const getRelatedArticles = createServerFn({ method: "GET" })
       .select(SELECT)
       .eq("category", data.category)
       .neq("id", data.id)
+      .like("url", "http%")
       .order("published_at", { ascending: false, nullsFirst: false })
       .limit(3);
     if (error) throw new Error(error.message);

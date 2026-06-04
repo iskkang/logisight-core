@@ -1,18 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { z } from "zod";
+import type { ReactNode } from "react";
 
 import {
   latestNewsQueryOptions,
   formatPublishedAt,
   todayKST,
+  isInternalNewsItem,
 } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
 import { articleParam } from "@/lib/api/article";
 
 const newsSearchSchema = z.object({
-  cat:  z.string().min(1).max(40).optional(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  cat: z.string().min(1).max(40).optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 const CATEGORIES: { value: string | undefined; label: string }[] = [
@@ -42,8 +47,7 @@ export const Route = createFileRoute("/news")({
       { property: "og:title", content: "시장 뉴스 — Logisight" },
       {
         property: "og:description",
-        content:
-          "해상·항공·철도·물류·무역 분야의 글로벌 시장 뉴스를 한국어로 큐레이션.",
+        content: "해상·항공·철도·물류·무역 분야의 글로벌 시장 뉴스를 한국어로 큐레이션.",
       },
       { property: "og:url", content: "https://logisight-core.lovable.app/news" },
     ],
@@ -141,13 +145,12 @@ function NewsPage() {
               <article className="lg:col-span-7 lg:border-r lg:border-[var(--color-line)] lg:pr-10">
                 <Exclusive item={lead} />
                 <h2 className="font-serif-display mt-3 text-3xl font-black leading-[1.1] text-[var(--color-navy-900)] lg:text-[44px]">
-                  <Link
-                    to="/article/$slug"
-                    params={{ slug: articleParam(lead) }}
+                  <NewsItemLink
+                    item={lead}
                     className="hover:underline decoration-[var(--color-cyan)] decoration-2 underline-offset-4"
                   >
                     {lead.title}
-                  </Link>
+                  </NewsItemLink>
                 </h2>
                 {lead.summary && (
                   <p className="mt-4 text-[17px] leading-[1.65] text-[var(--color-ink)]">
@@ -156,11 +159,7 @@ function NewsPage() {
                 )}
                 <Byline item={lead} className="mt-4" />
                 {lead.image_url && (
-                  <Link
-                    to="/article/$slug"
-                    params={{ slug: articleParam(lead) }}
-                    className="mt-6 block"
-                  >
+                  <NewsItemLink item={lead} className="mt-6 block">
                     <figure>
                       <img
                         src={lead.image_url}
@@ -172,7 +171,7 @@ function NewsPage() {
                         사진 · {lead.source}
                       </figcaption>
                     </figure>
-                  </Link>
+                  </NewsItemLink>
                 )}
               </article>
             )}
@@ -185,13 +184,12 @@ function NewsPage() {
                     <div className="col-span-2">
                       <KickerCat item={n} />
                       <h3 className="font-serif-display mt-2 text-xl font-bold leading-snug text-[var(--color-navy-900)]">
-                        <Link
-                          to="/article/$slug"
-                          params={{ slug: articleParam(n) }}
+                        <NewsItemLink
+                          item={n}
                           className="hover:underline decoration-[var(--color-cyan)] underline-offset-4"
                         >
                           {n.title}
-                        </Link>
+                        </NewsItemLink>
                       </h3>
                       {n.summary && (
                         <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
@@ -201,18 +199,14 @@ function NewsPage() {
                       <Byline item={n} className="mt-2 text-[11px]" />
                     </div>
                     {n.image_url ? (
-                      <Link
-                        to="/article/$slug"
-                        params={{ slug: articleParam(n) }}
-                        className="col-span-1 block"
-                      >
+                      <NewsItemLink item={n} className="col-span-1 block">
                         <img
                           src={n.image_url}
                           alt={n.title}
                           className="aspect-[4/3] h-full w-full object-cover"
                           loading="lazy"
                         />
-                      </Link>
+                      </NewsItemLink>
                     ) : (
                       <div className="col-span-1 aspect-[4/3] bg-[var(--color-surface)]" />
                     )}
@@ -234,13 +228,12 @@ function NewsPage() {
                       <span className="font-serif-display text-2xl font-black leading-none text-[var(--color-cyan)]">
                         {i + 1}
                       </span>
-                      <Link
-                        to="/article/$slug"
-                        params={{ slug: articleParam(n) }}
+                      <NewsItemLink
+                        item={n}
                         className="text-[13px] font-semibold leading-snug text-[var(--color-navy-900)] hover:underline"
                       >
                         {n.title}
-                      </Link>
+                      </NewsItemLink>
                     </li>
                   ))}
                 </ol>
@@ -256,19 +249,12 @@ function NewsPage() {
               </div>
               <div className="grid gap-8 border-y border-[var(--color-line)] py-6 md:grid-cols-3">
                 {opinionStrip.map((n) => (
-                  <article
-                    key={n.id}
-                    className="border-l-2 border-[var(--color-navy-900)] pl-4"
-                  >
+                  <article key={n.id} className="border-l-2 border-[var(--color-navy-900)] pl-4">
                     <KickerCat item={n} />
                     <h3 className="font-serif-display mt-2 text-lg font-bold italic leading-snug text-[var(--color-navy-900)]">
-                      <Link
-                        to="/article/$slug"
-                        params={{ slug: articleParam(n) }}
-                        className="hover:underline"
-                      >
+                      <NewsItemLink item={n} className="hover:underline">
                         {n.title}
-                      </Link>
+                      </NewsItemLink>
                     </h3>
                     <Byline item={n} className="mt-2 text-[11px]" />
                   </article>
@@ -287,28 +273,23 @@ function NewsPage() {
                 {gridSection.map((n) => (
                   <article key={n.id} className="flex flex-col">
                     {n.image_url && (
-                      <Link
-                        to="/article/$slug"
-                        params={{ slug: articleParam(n) }}
-                        className="mb-3 block overflow-hidden"
-                      >
+                      <NewsItemLink item={n} className="mb-3 block overflow-hidden">
                         <img
                           src={n.image_url}
                           alt={n.title}
                           className="aspect-[16/10] w-full object-cover transition-transform duration-500 hover:scale-105"
                           loading="lazy"
                         />
-                      </Link>
+                      </NewsItemLink>
                     )}
                     <KickerCat item={n} />
                     <h3 className="font-serif-display mt-2 text-xl font-bold leading-snug text-[var(--color-navy-900)]">
-                      <Link
-                        to="/article/$slug"
-                        params={{ slug: articleParam(n) }}
+                      <NewsItemLink
+                        item={n}
                         className="hover:underline decoration-[var(--color-cyan)] underline-offset-4"
                       >
                         {n.title}
-                      </Link>
+                      </NewsItemLink>
                     </h3>
                     {n.summary && (
                       <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
@@ -343,13 +324,9 @@ function NewsPage() {
                     <div>
                       <KickerCat item={n} small />
                       <h4 className="mt-1 text-[14px] font-semibold leading-snug text-[var(--color-navy-900)]">
-                        <Link
-                          to="/article/$slug"
-                          params={{ slug: articleParam(n) }}
-                          className="hover:underline"
-                        >
+                        <NewsItemLink item={n} className="hover:underline">
                           {n.title}
-                        </Link>
+                        </NewsItemLink>
                       </h4>
                     </div>
                   </li>
@@ -396,9 +373,7 @@ function KickerCat({ item, small = false }: { item: NewsItem; small?: boolean })
   if (!item.category) return null;
   return (
     <p
-      className={`font-bold uppercase tracking-[0.22em] ${
-        small ? "text-[10px]" : "text-[11px]"
-      }`}
+      className={`font-bold uppercase tracking-[0.22em] ${small ? "text-[10px]" : "text-[11px]"}`}
       style={{ color: "var(--color-navy-600)" }}
     >
       {item.category}
@@ -408,14 +383,12 @@ function KickerCat({ item, small = false }: { item: NewsItem; small?: boolean })
 
 function Byline({ item, className = "" }: { item: NewsItem; className?: string }) {
   return (
-    <div className={`flex items-center gap-2 text-[12px] text-[var(--color-ink-muted)] ${className}`}>
-      <span className="font-semibold text-[var(--color-navy-900)]">
-        By {item.source}
-      </span>
+    <div
+      className={`flex items-center gap-2 text-[12px] text-[var(--color-ink-muted)] ${className}`}
+    >
+      <span className="font-semibold text-[var(--color-navy-900)]">By {item.source}</span>
       <span>·</span>
-      <time dateTime={item.published_at ?? undefined}>
-        {formatPublishedAt(item.published_at)}
-      </time>
+      <time dateTime={item.published_at ?? undefined}>{formatPublishedAt(item.published_at)}</time>
     </div>
   );
 }
@@ -509,5 +482,25 @@ function DateNavigator({
         전체 기간
       </Link>
     </div>
+  );
+}
+
+function NewsItemLink({
+  item,
+  className,
+  children,
+}: {
+  item: NewsItem;
+  className?: string;
+  children: ReactNode;
+}) {
+  return isInternalNewsItem(item) ? (
+    <Link to="/article/$slug" params={{ slug: articleParam(item) }} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <a href={item.url} target="_blank" rel="noopener noreferrer" className={className}>
+      {children}
+    </a>
   );
 }

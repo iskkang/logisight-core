@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
+import type { ReactNode } from "react";
 
 import {
   articleQueryOptions,
@@ -8,16 +9,15 @@ import {
   relatedArticlesQueryOptions,
   estimateReadMinutes,
 } from "@/lib/api/article";
-import { formatPublishedAt } from "@/lib/api/news";
+import { formatPublishedAt, isInternalNewsItem } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
+import { normalizeArticleContent } from "@/lib/article-content";
 
 export const Route = createFileRoute("/article/$slug")({
   loader: async ({ params, context }) => {
     const slug = params.slug?.trim();
     if (!slug) throw notFound();
-    const article = await context.queryClient.ensureQueryData(
-      articleQueryOptions(slug),
-    );
+    const article = await context.queryClient.ensureQueryData(articleQueryOptions(slug));
     context.queryClient.prefetchQuery(
       relatedArticlesQueryOptions({ id: article.id, category: article.category }),
     );
@@ -27,11 +27,9 @@ export const Route = createFileRoute("/article/$slug")({
     const a = loaderData?.article;
     const title = a ? `${a.title} — Logisight` : "기사 — Logisight";
     const desc =
-      (a?.summary && a.summary.trim().length > 0
-        ? a.summary
-        : a?.title) ?? "Logisight 큐레이션 시장 뉴스 상세 기사.";
-    const slugParam =
-      a?.slug && a.slug.length > 0 ? a.slug : a ? String(a.id) : params.slug;
+      (a?.summary && a.summary.trim().length > 0 ? a.summary : a?.title) ??
+      "Logisight 큐레이션 시장 뉴스 상세 기사.";
+    const slugParam = a?.slug && a.slug.length > 0 ? a.slug : a ? String(a.id) : params.slug;
     const url = `https://logisight-core.lovable.app/article/${slugParam}`;
     const meta: Array<Record<string, string>> = [
       { title },
@@ -71,12 +69,8 @@ export const Route = createFileRoute("/article/$slug")({
   },
   notFoundComponent: () => (
     <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-      <p className="text-sm uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
-        404
-      </p>
-      <h1 className="mt-2 text-2xl font-bold text-[var(--color-ink)]">
-        기사를 찾을 수 없습니다
-      </h1>
+      <p className="text-sm uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">404</p>
+      <h1 className="mt-2 text-2xl font-bold text-[var(--color-ink)]">기사를 찾을 수 없습니다</h1>
       <Link
         to="/news"
         className="mt-6 inline-block text-sm font-semibold text-[var(--color-navy-600)] underline"
@@ -103,10 +97,12 @@ const CATEGORY_COLORS: Record<string, { bg: string; fg: string }> = {
 
 function categoryStyle(cat: string | null) {
   if (!cat) return { bg: "var(--color-navy-900)", fg: "var(--color-cyan)" };
-  return CATEGORY_COLORS[cat] ?? {
-    bg: "var(--color-navy-900)",
-    fg: "var(--color-cyan)",
-  };
+  return (
+    CATEGORY_COLORS[cat] ?? {
+      bg: "var(--color-navy-900)",
+      fg: "var(--color-cyan)",
+    }
+  );
 }
 
 function ArticlePage() {
@@ -119,9 +115,16 @@ function ArticlePage() {
     }),
   );
 
-  const readMin = estimateReadMinutes(article.content);
+  const normalizedContent = normalizeArticleContent({
+    content: article.content,
+    title: article.title,
+    summary: article.summary,
+    imageUrl: article.image_url,
+    imageCredit: article.image_credit,
+  });
+  const readMin = estimateReadMinutes(normalizedContent);
   const catStyle = categoryStyle(article.category);
-  const hasContent = !!article.content && article.content.trim().length > 0;
+  const hasContent = normalizedContent.length > 0;
   const isExternalSource =
     !!article.url &&
     /^https?:\/\//.test(article.url) &&
@@ -146,6 +149,11 @@ function ArticlePage() {
         >
           {article.title}
         </h1>
+        {article.summary && (
+          <p className="mt-4 text-lg leading-relaxed text-[var(--color-ink-muted)]">
+            {article.summary}
+          </p>
+        )}
         <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-ink-muted)]">
           <span className="font-semibold">{article.source}</span>
           <span>·</span>
@@ -169,6 +177,11 @@ function ArticlePage() {
             className="w-full rounded-lg border border-[var(--color-line)]"
             loading="lazy"
           />
+          {article.image_credit && (
+            <figcaption className="mt-2 text-xs text-[var(--color-ink-muted)]">
+              {article.image_credit}
+            </figcaption>
+          )}
         </figure>
       )}
 
@@ -177,7 +190,7 @@ function ArticlePage() {
           className="prose prose-neutral max-w-none text-[var(--color-ink)]"
           style={{ lineHeight: 1.8, wordBreak: "keep-all" }}
         >
-          <ReactMarkdown>{article.content!}</ReactMarkdown>
+          <ReactMarkdown>{normalizedContent}</ReactMarkdown>
         </div>
       ) : (
         <div
@@ -185,9 +198,7 @@ function ArticlePage() {
           style={{ lineHeight: 1.8, wordBreak: "keep-all" }}
         >
           {article.summary && (
-            <p className="text-base text-[var(--color-ink)]">
-              {article.summary}
-            </p>
+            <p className="text-base text-[var(--color-ink)]">{article.summary}</p>
           )}
           <p className="mt-4 text-sm text-[var(--color-ink-muted)]">
             이 기사의 전문은 수집 예정입니다.
@@ -220,17 +231,13 @@ function ArticlePage() {
             {article.source}
           </a>
         ) : (
-          <span className="font-semibold text-[var(--color-ink)]">
-            {article.source}
-          </span>
+          <span className="font-semibold text-[var(--color-ink)]">{article.source}</span>
         )}
       </footer>
 
       {related.length > 0 && (
         <section className="mt-16">
-          <h2 className="mb-6 text-lg font-bold text-[var(--color-ink)]">
-            관련 기사
-          </h2>
+          <h2 className="mb-6 text-lg font-bold text-[var(--color-ink)]">관련 기사</h2>
           <ul className="grid gap-6 sm:grid-cols-3">
             {related.map((n) => (
               <RelatedCard key={n.id} item={n} />
@@ -243,34 +250,58 @@ function ArticlePage() {
 }
 
 function RelatedCard({ item }: { item: NewsItem }) {
+  const content = (
+    <>
+      {item.category && (
+        <span
+          className="inline-block rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase"
+          style={{
+            background: "var(--color-navy-900)",
+            color: "var(--color-cyan)",
+          }}
+        >
+          {item.category}
+        </span>
+      )}
+      <h3
+        className="mt-2 text-sm font-bold leading-snug text-[var(--color-ink)]"
+        style={{ wordBreak: "keep-all" }}
+      >
+        {item.title}
+      </h3>
+      <p className="mt-2 text-xs text-[var(--color-ink-muted)]">
+        {item.source} · {formatPublishedAt(item.published_at)}
+      </p>
+    </>
+  );
   return (
     <li>
-      <Link
-        to="/article/$slug"
-        params={{ slug: articleParam(item) }}
+      <NewsItemLink
+        item={item}
         className="block h-full rounded-lg border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-navy-600)]"
       >
-        {item.category && (
-          <span
-            className="inline-block rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase"
-            style={{
-              background: "var(--color-navy-900)",
-              color: "var(--color-cyan)",
-            }}
-          >
-            {item.category}
-          </span>
-        )}
-        <h3
-          className="mt-2 text-sm font-bold leading-snug text-[var(--color-ink)]"
-          style={{ wordBreak: "keep-all" }}
-        >
-          {item.title}
-        </h3>
-        <p className="mt-2 text-xs text-[var(--color-ink-muted)]">
-          {item.source} · {formatPublishedAt(item.published_at)}
-        </p>
-      </Link>
+        {content}
+      </NewsItemLink>
     </li>
+  );
+}
+
+function NewsItemLink({
+  item,
+  className,
+  children,
+}: {
+  item: NewsItem;
+  className?: string;
+  children: ReactNode;
+}) {
+  return isInternalNewsItem(item) ? (
+    <Link to="/article/$slug" params={{ slug: articleParam(item) }} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <a href={item.url} target="_blank" rel="noopener noreferrer" className={className}>
+      {children}
+    </a>
   );
 }
