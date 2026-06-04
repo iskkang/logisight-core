@@ -1,6 +1,6 @@
 create table if not exists eurasia_disruptions (
   id uuid primary key default gen_random_uuid(),
-  lane_id uuid references lanes(id),
+  lane_id text references lanes(id),
   segment text not null,
   title text not null,
   severity text not null check (severity in ('high', 'medium', 'low')),
