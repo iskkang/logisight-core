@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { getTradeProvisional, getTradeByCountry } from "./trade.functions";
+import { getTradeProvisional, getTradeByCountry, getTradeByItem } from "./trade.functions";
 
 export type TradeProvisionalRow = {
   period: string; // YYYYMM
@@ -60,6 +60,25 @@ export function prevPeriod(p: string): string {
   const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
   return `${yy}${mm}`;
 }
+
+export type TradeItemRow = {
+  period: string;
+  hs_code: string | null;
+  hs_name: string | null;
+  export_usd: number | null;
+  export_weight: number | null;
+  import_usd: number | null;
+  import_weight: number | null;
+  country_code: string | null;
+  country_name: string | null;
+};
+
+export const tradeByItemQueryOptions = () =>
+  queryOptions({
+    queryKey: ["trade_statistics", "item"],
+    queryFn: () => getTradeByItem(),
+    staleTime: 60 * 60 * 1000,
+  });
 
 export function pctChange(curr: number | null, prev: number | null): number | null {
   if (curr == null || prev == null || prev === 0) return null;

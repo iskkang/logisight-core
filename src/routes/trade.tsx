@@ -2,394 +2,543 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { resolveFilters, useGlobalFilters, type GlobalFilters } from "@/hooks/useGlobalFilters";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { GlobalContextBar } from "@/components/dashboard/GlobalContextBar";
+import { StatusStrip, type StatusItem } from "@/components/dashboard/StatusStrip";
+import { IntelTable, type ColDef } from "@/components/dashboard/IntelTable";
+import { DetailDrawer } from "@/components/dashboard/DetailDrawer";
+import { Sparkline } from "@/components/dashboard/Sparkline";
+import { DataQualityBar } from "@/components/dashboard/DataQualityBar";
+
 import {
+  tradeByItemQueryOptions,
   tradeProvisionalQueryOptions,
   tradeByCountryQueryOptions,
   formatUSD,
-  formatPeriod,
-  prevPeriod,
-  pctChange,
+  type TradeItemRow,
   type TradeProvisionalRow,
 } from "@/lib/api/trade";
-import { TradeMap } from "@/components/trade/TradeMap";
-import { CountryMonthlyChart } from "@/components/trade/CountryMonthlyChart";
+import { indexStatsQueryOptions } from "@/lib/api/rates";
+
+// --- Sufficiency constants ---
+const SUFFICIENCY_MIN_MONTHS = 3;
+const SUFFICIENCY_MAX_DELAY_DAYS = 45;
 
 export const Route = createFileRoute("/trade")({
-  loader: ({ context }) =>
-    Promise.all([
-      context.queryClient.ensureQueryData(tradeProvisionalQueryOptions()),
-      context.queryClient.ensureQueryData(tradeByCountryQueryOptions()),
-    ]),
+  validateSearch: (s: Record<string, unknown>): GlobalFilters => resolveFilters(s),
+  loaderDeps: ({ search }) => search,
+  loader: ({ context }) => {
+    context.queryClient.ensureQueryData(tradeByItemQueryOptions());
+    context.queryClient.ensureQueryData(tradeProvisionalQueryOptions());
+    context.queryClient.ensureQueryData(tradeByCountryQueryOptions());
+    context.queryClient.ensureQueryData(indexStatsQueryOptions());
+  },
   head: () => ({
     meta: [
-      { title: "한국 무역 동향 — Logisight" },
+      { title: "무역 인텔리전스 — Logisight" },
       {
         name: "description",
-        content:
-          "관세청 공공데이터 기반 한국 수출입 잠정치와 국가별 교역 현황을 실시간으로 확인하세요.",
+        content: "한국 품목별 수출 모멘텀 및 잠정 수출입 현황.",
       },
-      { property: "og:title", content: "한국 무역 동향 — Logisight" },
-      {
-        property: "og:description",
-        content: "한국 수출입 잠정치, 국가별 교역 비중, 전월 동기 대비 변화.",
-      },
-      { property: "og:url", content: "https://logisight-core.lovable.app/trade" },
-    ],
-    links: [
-      { rel: "canonical", href: "https://logisight-core.lovable.app/trade" },
     ],
   }),
   component: TradePage,
 });
 
-type Tab = "export" | "import";
+// --- Types ---
+type ItemStat = {
+  hs_code: string;
+  hs_name: string;
+  latestExportUsd: number | null;
+  exportYoY: number | null;
+  exportMoM: number | null;
+  weightYoY: number | null;
+  interpretation: string;
+  spark: (number | null)[];
+  topMarkets: string[];
+  sufficient: boolean;
+  latestPeriod: string | null;
+  monthCount: number;
+};
 
-function TradePage() {
-  const { data: rows } = useSuspenseQuery(tradeProvisionalQueryOptions());
-  const { data: countryRows } = useSuspenseQuery(tradeByCountryQueryOptions());
-  const [tab, setTab] = useState<Tab>("export");
-
-  const view = useMemo(() => buildView(rows), [rows]);
-
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-7xl px-4 py-10 lg:px-6 lg:py-14">
-        <header className="mb-8">
-          <h1 className="text-3xl font-black tracking-tight text-[var(--color-navy-900)] lg:text-4xl">
-            한국 무역 동향
-          </h1>
-          <p className="mt-2 text-sm text-slate-600 lg:text-base">
-            관세청 공공데이터 기반 수출입 실시간 현황
-          </p>
-          {view && (
-            <p className="mt-1 text-xs text-slate-500">
-              기준 시점 · {formatPeriod(view.period)} (잠정치 {view.priodDt ?? "—"})
-            </p>
-          )}
-        </header>
-
-        {!view ? (
-          <EmptyState />
-        ) : (
-          <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <SummaryCard
-                label="이달 수출 합계"
-                value={view.totals.export_usd}
-                deltaPct={view.totals.export_mom}
-              />
-              <SummaryCard
-                label="이달 수입 합계"
-                value={view.totals.import_usd}
-                deltaPct={view.totals.import_mom}
-              />
-              <SummaryCard
-                label="무역수지"
-                value={view.totals.balance}
-                deltaPct={view.totals.balance_mom}
-                emphasizeSign
-              />
-          </section>
-        )}
-
-        {view && (
-          <section className="mt-10 rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-[var(--color-navy-900)]">
-                    국가별 교역 현황
-                  </h2>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    전체 대비 비중 및 전월 동기 대비 변화
-                  </p>
-                </div>
-                <div className="inline-flex rounded-md border border-slate-200 p-0.5">
-                  <TabButton active={tab === "export"} onClick={() => setTab("export")}>
-                    수출
-                  </TabButton>
-                  <TabButton active={tab === "import"} onClick={() => setTab("import")}>
-                    수입
-                  </TabButton>
-                </div>
-              </div>
-
-              <div className="p-5">
-                <CountryBars rows={tab === "export" ? view.exportByCountry : view.importByCountry} />
-              </div>
-          </section>
-        )}
-
-        <TradeMap
-          rows={countryRows}
-          tab={tab}
-          onTabChange={setTab}
-          period={null}
-        />
-
-        <CountryMonthlyChart rows={countryRows} />
-
-        <p className="mt-6 text-xs text-slate-500">
-          잠정치 기준 · 매월 11일·21일·익월 1일 갱신 · 관세청 공공데이터
-        </p>
-      </div>
-    </div>
-  );
+function interpretYoY(exportYoY: number | null, weightYoY: number | null): string {
+  if (exportYoY === null) return "—";
+  if (weightYoY !== null) {
+    const diff = exportYoY - weightYoY;
+    if (diff > 5) return "단가 상승 주도";
+    if (diff < -5) return "물량 대비 단가 하락";
+    return "금액·물량 동반";
+  }
+  if (exportYoY > 10) return "수출액 상승";
+  if (exportYoY < -10) return "수출액 하락";
+  return "보합";
 }
 
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        "rounded px-4 py-1.5 text-sm font-medium transition-colors " +
-        (active
-          ? "bg-[var(--color-navy-900)] text-white"
-          : "text-slate-600 hover:text-slate-900")
-      }
-    >
-      {children}
-    </button>
-  );
+function fmtPct(v: number | null): string {
+  if (v == null) return "—";
+  return `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
 }
 
-function SummaryCard({
-  label,
-  value,
-  deltaPct,
-  emphasizeSign,
-}: {
-  label: string;
-  value: number | null;
-  deltaPct: number | null;
-  emphasizeSign?: boolean;
-}) {
-  const valColor =
-    emphasizeSign && value != null
-      ? value >= 0
-        ? "text-[#0d9488]"
-        : "text-amber-600"
-      : "text-[var(--color-navy-900)]";
+// --- Policy risk badge ---
+const RISK_STYLE: Record<string, string> = {
+  high: "text-status-alert bg-status-alert/10",
+  medium: "text-status-caution bg-status-caution/10",
+  low: "text-status-normal bg-status-normal/10",
+};
+function PolicyRiskBadge({ level }: { level: string }) {
+  const label = level === "high" ? "높음" : level === "medium" ? "중간" : "낮음";
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="text-xs font-medium text-slate-500">{label}</div>
-      <div className={`mt-2 text-3xl font-black tracking-tight ${valColor}`}>
-        {formatUSD(value)}
-      </div>
-      <div className="mt-2 text-xs">
-        <DeltaChip pct={deltaPct} />
-        <span className="ml-1 text-slate-400">전월 동기 대비</span>
-      </div>
-    </div>
-  );
-}
-
-function DeltaChip({ pct }: { pct: number | null }) {
-  if (pct == null || !Number.isFinite(pct))
-    return <span className="text-slate-400">—</span>;
-  const up = pct >= 0;
-  return (
-    <span
-      className={
-        "inline-flex items-center gap-0.5 font-semibold " +
-        (up ? "text-[#0d9488]" : "text-amber-600")
-      }
-    >
-      {up ? "▲" : "▼"} {Math.abs(pct).toFixed(1)}%
+    <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${RISK_STYLE[level] ?? ""}`}>
+      {label}
     </span>
   );
 }
 
-type CountryRow = {
-  country_code: string;
-  country_name: string;
-  value: number;
-  share: number;
-  momPct: number | null;
-};
+// --- Main page ---
+function TradePage() {
+  const search = Route.useSearch();
+  const { filters, setFilters } = useGlobalFilters(search);
 
-function CountryBars({ rows }: { rows: CountryRow[] }) {
-  if (rows.length === 0)
-    return <p className="text-sm text-slate-500">표시할 국가 데이터가 없습니다.</p>;
-  const max = rows[0]?.value ?? 1;
-  return (
-    <ol className="space-y-2.5">
-      {rows.map((r, i) => {
-        const pctWidth = max > 0 ? Math.max(2, (r.value / max) * 100) : 0;
-        const top3 = i < 3;
-        return (
-          <li key={r.country_code} className="group">
-            <div className="flex items-baseline justify-between text-sm">
-              <span className="font-medium text-slate-800">
-                <span className="mr-2 inline-block w-5 text-right text-xs text-slate-400">
-                  {i + 1}
-                </span>
-                {r.country_name}
-              </span>
-              <span className="flex items-center gap-3 tabular-nums">
-                <span className="text-slate-500">{r.share.toFixed(1)}%</span>
-                <span className="font-bold text-[var(--color-navy-900)]">
-                  {formatUSD(r.value)}
-                </span>
-                <span className="w-16 text-right">
-                  <DeltaChip pct={r.momPct} />
-                </span>
-              </span>
-            </div>
-            <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${pctWidth}%`,
-                  background: top3 ? "#0d9488" : "#5eead4",
-                }}
-              />
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
+  const { data: tradeItems } = useSuspenseQuery(tradeByItemQueryOptions());
+  const { data: provisional } = useSuspenseQuery(tradeProvisionalQueryOptions());
+  const { data: rateStats } = useSuspenseQuery(indexStatsQueryOptions());
 
-function EmptyState() {
-  return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
-      <p className="text-base font-medium text-slate-700">
-        데이터 수집 중입니다.
-      </p>
-      <p className="mt-1 text-sm text-slate-500">
-        매월 11일부터 잠정치가 표시됩니다.
-      </p>
-    </div>
-  );
-}
+  const [selectedItem, setSelectedItem] = useState<ItemStat | null>(null);
 
-// ---------- Data shaping ----------
+  const today = new Date();
 
-type View = {
-  period: string;
-  priodDt: string | null;
-  totals: {
-    export_usd: number | null;
-    import_usd: number | null;
-    balance: number | null;
-    export_mom: number | null;
-    import_mom: number | null;
-    balance_mom: number | null;
-  };
-  exportByCountry: CountryRow[];
-  importByCountry: CountryRow[];
-};
+  // --- Latest provisional period ---
+  const latestProvisional = useMemo(() => {
+    const sorted = provisional
+      .filter((r) => r.stat_type === "provisional_exp")
+      .sort((a, b) => b.period.localeCompare(a.period));
+    return sorted.at(0) ?? null;
+  }, [provisional]);
 
-function buildView(rows: TradeProvisionalRow[]): View | null {
-  if (!rows || rows.length === 0) return null;
+  // --- Item-level stats ---
+  const itemStats: ItemStat[] = useMemo(() => {
+    if (tradeItems.length === 0) return [];
 
-  // Latest period overall
-  const periods = Array.from(new Set(rows.map((r) => r.period))).sort((a, b) =>
-    b.localeCompare(a),
-  );
-  const latest = periods[0];
-  if (!latest) return null;
-  const prev = prevPeriod(latest);
+    const byHs = new Map<string, TradeItemRow[]>();
+    for (const r of tradeItems) {
+      if (!r.hs_code) continue;
+      const arr = byHs.get(r.hs_code) ?? [];
+      arr.push(r);
+      byHs.set(r.hs_code, arr);
+    }
 
-  const inLatest = rows.filter((r) => r.period === latest);
-  // Pick most recent priod_dt within latest period
-  const latestDt = inLatest
-    .map((r) => r.priod_dt)
-    .filter((v): v is string => !!v)
-    .sort((a, b) => b.localeCompare(a))[0] ?? null;
+    return [...byHs.entries()]
+      .map(([hs, rows]) => {
+        const sorted = [...rows].sort((a, b) => a.period.localeCompare(b.period));
+        const latest = sorted.at(-1)!;
+        const latestYear = latest.period.slice(0, 4);
+        const latestMon = latest.period.slice(4, 6);
 
-  const currRows = latestDt
-    ? inLatest.filter((r) => r.priod_dt === latestDt)
-    : inLatest;
-  const prevRows = rows.filter((r) => r.period === prev);
-  // For previous comparison, prefer same priod_dt; else latest in prev period
-  const prevDt =
-    (latestDt && prevRows.find((r) => r.priod_dt === latestDt)?.priod_dt) ||
-    prevRows
-      .map((r) => r.priod_dt)
-      .filter((v): v is string => !!v)
-      .sort((a, b) => b.localeCompare(a))[0] ||
-    null;
-  const prevCmp = prevDt
-    ? prevRows.filter((r) => r.priod_dt === prevDt)
-    : prevRows;
+        // YoY: same month last year
+        const prevYearPeriod = `${parseInt(latestYear) - 1}${latestMon}`;
+        const yearAgoRow = sorted.find((r) => r.period === prevYearPeriod);
+        const exportYoY =
+          latest.export_usd && yearAgoRow?.export_usd
+            ? ((latest.export_usd - yearAgoRow.export_usd) / yearAgoRow.export_usd) * 100
+            : null;
+        const weightYoY =
+          latest.export_weight && yearAgoRow?.export_weight
+            ? ((latest.export_weight - yearAgoRow.export_weight) / yearAgoRow.export_weight) * 100
+            : null;
 
-  const findAll = (
-    list: TradeProvisionalRow[],
-    type: "provisional_exp" | "provisional_imp",
-  ) =>
-    list.find((r) => r.stat_type === type && r.country_code === "ALL") ?? null;
+        // MoM
+        const prevRow = sorted.at(-2);
+        const exportMoM =
+          latest.export_usd && prevRow?.export_usd
+            ? ((latest.export_usd - prevRow.export_usd) / prevRow.export_usd) * 100
+            : null;
 
-  const expAll = findAll(currRows, "provisional_exp");
-  const impAll = findAll(currRows, "provisional_imp");
-  const expAllPrev = findAll(prevCmp, "provisional_exp");
-  const impAllPrev = findAll(prevCmp, "provisional_imp");
+        const spark = sorted.slice(-12).map((r) => r.export_usd);
+        const topMarkets = [
+          ...new Set(
+            rows
+              .filter((r) => r.country_name)
+              .sort((a, b) => (b.export_usd ?? 0) - (a.export_usd ?? 0))
+              .map((r) => r.country_name!),
+          ),
+        ].slice(0, 3);
 
-  const expVal = expAll?.export_usd ?? null;
-  const impVal = impAll?.import_usd ?? null;
-  const balance =
-    expVal != null && impVal != null ? expVal - impVal : null;
-  const balancePrev =
-    expAllPrev?.export_usd != null && impAllPrev?.import_usd != null
-      ? expAllPrev.export_usd - impAllPrev.import_usd
-      : null;
+        const monthCount = new Set(sorted.map((r) => r.period)).size;
 
-  const byCountry = (
-    list: TradeProvisionalRow[],
-    type: "provisional_exp" | "provisional_imp",
-  ) =>
-    list.filter(
-      (r) =>
-        r.stat_type === type &&
-        r.country_code != null &&
-        r.country_code !== "ALL",
-    );
-
-  const buildCountry = (
-    type: "provisional_exp" | "provisional_imp",
-  ): CountryRow[] => {
-    const valKey = type === "provisional_exp" ? "export_usd" : "import_usd";
-    const curr = byCountry(currRows, type);
-    const prevMap = new Map(
-      byCountry(prevCmp, type).map((r) => [r.country_code!, r[valKey]]),
-    );
-    const total = curr.reduce((s, r) => s + (r[valKey] ?? 0), 0);
-    return curr
-      .map((r) => {
-        const v = r[valKey] ?? 0;
         return {
-          country_code: r.country_code!,
-          country_name: r.country_name ?? r.country_code!,
-          value: v,
-          share: total > 0 ? (v / total) * 100 : 0,
-          momPct: pctChange(v, prevMap.get(r.country_code!) ?? null),
+          hs_code: hs,
+          hs_name: latest.hs_name ?? hs,
+          latestExportUsd: latest.export_usd,
+          exportYoY: exportYoY !== null ? Math.round(exportYoY * 10) / 10 : null,
+          exportMoM: exportMoM !== null ? Math.round(exportMoM * 10) / 10 : null,
+          weightYoY: weightYoY !== null ? Math.round(weightYoY * 10) / 10 : null,
+          interpretation: interpretYoY(exportYoY, weightYoY),
+          spark,
+          topMarkets,
+          sufficient: monthCount >= SUFFICIENCY_MIN_MONTHS,
+          latestPeriod: latest.period,
+          monthCount,
         };
       })
-      .filter((r) => r.value > 0)
-      .sort((a, b) => b.value - a.value);
-  };
+      .sort((a, b) => (b.exportYoY ?? -Infinity) - (a.exportYoY ?? -Infinity));
+  }, [tradeItems]);
 
-  return {
-    period: latest,
-    priodDt: latestDt,
-    totals: {
-      export_usd: expVal,
-      import_usd: impVal,
-      balance,
-      export_mom: pctChange(expVal, expAllPrev?.export_usd ?? null),
-      import_mom: pctChange(impVal, impAllPrev?.import_usd ?? null),
-      balance_mom: pctChange(balance, balancePrev),
+  // --- Sufficiency gate ---
+  const latestItemPeriod = itemStats.at(0)?.latestPeriod ?? null;
+  const latestItemDate = latestItemPeriod
+    ? new Date(`${latestItemPeriod.slice(0, 4)}-${latestItemPeriod.slice(4, 6)}-01`)
+    : null;
+  const delayDays = latestItemDate
+    ? Math.round((today.getTime() - latestItemDate.getTime()) / 86400000)
+    : 999;
+  const itemDataSufficient = tradeItems.length > 0 && delayDays <= SUFFICIENCY_MAX_DELAY_DAYS;
+
+  // --- StatusStrip ---
+  const kcciStat = rateStats.find((s) => s.index_code === "KCCI");
+  const topItem = itemStats.at(0);
+  const provisionalExport = latestProvisional?.export_usd;
+
+  const statusItems = useMemo((): StatusItem[] => [
+    {
+      label: "수출 잠정",
+      value: provisionalExport != null ? formatUSD(provisionalExport) : "—",
+      state: "normal",
     },
-    exportByCountry: buildCountry("provisional_exp"),
-    importByCountry: buildCountry("provisional_imp"),
-  };
+    {
+      label: "최신 기준월",
+      value: latestItemPeriod
+        ? `${latestItemPeriod.slice(0, 4)}.${latestItemPeriod.slice(4, 6)}`
+        : "—",
+      state:
+        delayDays > SUFFICIENCY_MAX_DELAY_DAYS ? "caution" : latestItemPeriod ? "normal" : "observe",
+    },
+    {
+      label: "상승 품목 수",
+      value: itemStats.filter((i) => (i.exportYoY ?? 0) > 0).length.toString(),
+      state: "normal",
+    },
+    {
+      label: "KCCI WoW",
+      value: kcciStat?.change_pct != null ? fmtPct(kcciStat.change_pct) : "—",
+      state:
+        kcciStat?.change_pct == null
+          ? "normal"
+          : Math.abs(kcciStat.change_pct) >= 5
+          ? "caution"
+          : "normal",
+    },
+  ], [provisionalExport, latestItemPeriod, delayDays, itemStats, kcciStat]);
+
+  // --- Table columns ---
+  const ITEM_COLS: ColDef<ItemStat>[] = [
+    {
+      key: "hs_name",
+      header: "품목",
+      cell: (r) => (
+        <span className="font-medium text-foreground">
+          {r.hs_name}
+          {!r.sufficient && (
+            <span className="ml-1.5 text-[10px] text-muted-foreground">데이터 부족</span>
+          )}
+        </span>
+      ),
+    },
+    {
+      key: "latestExportUsd",
+      header: "수출액",
+      cell: (r) => formatUSD(r.latestExportUsd),
+      className: "text-right tabular-nums",
+      headerClassName: "text-right",
+    },
+    {
+      key: "exportYoY",
+      header: "YoY",
+      cell: (r) =>
+        r.sufficient ? (
+          <span
+            className={
+              r.exportYoY == null
+                ? "text-muted-foreground"
+                : r.exportYoY > 0
+                ? "text-status-alert font-medium"
+                : r.exportYoY < 0
+                ? "text-status-normal"
+                : ""
+            }
+          >
+            {fmtPct(r.exportYoY)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-[11px]">데이터 수집 중</span>
+        ),
+      className: "text-right",
+      headerClassName: "text-right",
+    },
+    {
+      key: "exportMoM",
+      header: "MoM",
+      cell: (r) =>
+        r.sufficient ? (
+          <span
+            className={
+              r.exportMoM == null
+                ? "text-muted-foreground"
+                : r.exportMoM > 0
+                ? "text-status-alert"
+                : r.exportMoM < 0
+                ? "text-status-normal"
+                : ""
+            }
+          >
+            {fmtPct(r.exportMoM)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+      className: "text-right",
+      headerClassName: "text-right",
+    },
+    {
+      key: "interpretation",
+      header: "해석",
+      cell: (r) => (
+        <span className="text-muted-foreground text-[11px]">
+          {r.sufficient ? r.interpretation : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "spark",
+      header: "12개월",
+      cell: (r) => <Sparkline values={r.spark} color="var(--color-cyan)" />,
+    },
+    {
+      key: "topMarkets",
+      header: "주요 시장",
+      cell: (r) => (
+        <span className="text-muted-foreground text-[11px]">
+          {r.topMarkets.length > 0 ? r.topMarkets.join("·") : "—"}
+        </span>
+      ),
+    },
+  ];
+
+  // --- Provisional table (top-level summary) ---
+  const provTopRows = useMemo(() => {
+    const exp = provisional
+      .filter((r) => r.stat_type === "provisional_exp" && r.period)
+      .sort((a, b) => b.period.localeCompare(a.period))
+      .slice(0, 6);
+    return exp;
+  }, [provisional]);
+
+  type ProvRow = TradeProvisionalRow;
+  const PROV_COLS: ColDef<ProvRow>[] = [
+    {
+      key: "period",
+      header: "기간",
+      cell: (r) => `${r.period.slice(0, 4)}.${r.period.slice(4, 6)}`,
+    },
+    {
+      key: "export_usd",
+      header: "수출 (USD)",
+      cell: (r) => formatUSD(r.export_usd),
+      className: "text-right tabular-nums",
+      headerClassName: "text-right",
+    },
+    {
+      key: "import_usd",
+      header: "수입 (USD)",
+      cell: (r) => formatUSD(r.import_usd),
+      className: "text-right tabular-nums",
+      headerClassName: "text-right",
+    },
+    {
+      key: "trade_balance",
+      header: "무역수지",
+      cell: (r) => (
+        <span
+          className={
+            r.trade_balance == null
+              ? ""
+              : r.trade_balance >= 0
+              ? "text-status-alert"
+              : "text-status-normal"
+          }
+        >
+          {formatUSD(r.trade_balance)}
+        </span>
+      ),
+      className: "text-right tabular-nums",
+      headerClassName: "text-right",
+    },
+  ];
+
+  return (
+    <DashboardShell title="무역 인텔리전스" subtitle="한국 수출입 현황 · 품목별 모멘텀">
+      <GlobalContextBar filters={filters} onChange={setFilters} collapsed />
+
+      <StatusStrip items={statusItems} />
+
+      {/* Provisional export summary */}
+      <section>
+        <h2 className="mb-2 text-[13px] font-semibold">
+          잠정 수출입{" "}
+          <span className="text-[11px] font-normal text-muted-foreground">관세청 잠정치 · 월별</span>
+        </h2>
+        {provTopRows.length === 0 ? (
+          <p className="py-4 text-sm text-muted-foreground">데이터 수집 중</p>
+        ) : (
+          <IntelTable
+            cols={PROV_COLS}
+            rows={provTopRows}
+            rowKey={(r) => r.period + (r.country_code ?? "")}
+          />
+        )}
+      </section>
+
+      {/* Item-first section with sufficiency gate */}
+      <section>
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <h2 className="text-[13px] font-semibold">품목별 수출 모멘텀</h2>
+          {latestItemPeriod && (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+              기준 {latestItemPeriod.slice(0, 4)}.{latestItemPeriod.slice(4, 6)}
+            </span>
+          )}
+          {delayDays > SUFFICIENCY_MAX_DELAY_DAYS && latestItemPeriod && (
+            <span className="rounded bg-status-caution/10 px-1.5 py-0.5 text-[11px] text-status-caution">
+              최신성 주의 D−{delayDays}
+            </span>
+          )}
+        </div>
+
+        {tradeItems.length === 0 ? (
+          <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+            trade_statistics (stat_type='item') 데이터 수집 중 — 수집 완료 후 자동 표시됩니다
+          </div>
+        ) : (
+          <>
+            <IntelTable
+              cols={ITEM_COLS}
+              rows={itemStats}
+              rowKey={(r) => r.hs_code}
+              onRowClick={(r) => setSelectedItem(r)}
+              emptyText="품목 데이터 없음"
+            />
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              YoY·MoM은 동일 월 비교 · 데이터 {SUFFICIENCY_MIN_MONTHS}개월 미만 품목은 "데이터 수집 중" 표시 · 출처: 관세청
+            </p>
+          </>
+        )}
+      </section>
+
+      {/* Trade-Rate alignment — only when both data sources available */}
+      {itemDataSufficient && kcciStat?.latest_value !== null && topItem?.sufficient && (
+        <section>
+          <h2 className="mb-2 text-[13px] font-semibold">무역–운임 방향 정합</h2>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-[11px] text-muted-foreground mb-1">
+                수출 신호 ({latestItemPeriod?.slice(0, 4)}.{latestItemPeriod?.slice(4, 6)})
+              </p>
+              {topItem ? (
+                <>
+                  <p className="text-sm font-semibold">{topItem.hs_name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">YoY {fmtPct(topItem.exportYoY)}</p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">데이터 수집 중</p>
+              )}
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-[11px] text-muted-foreground mb-1">
+                운임 신호 ({kcciStat?.latest_date?.slice(0, 10)})
+              </p>
+              <p className="text-sm font-semibold">KCCI {kcciStat?.latest_value?.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">WoW {fmtPct(kcciStat?.change_pct ?? null)}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-[11px] text-muted-foreground mb-1">방향 정합 판단</p>
+              {topItem?.exportYoY !== null && kcciStat?.change_pct !== null ? (
+                <>
+                  <p className="text-sm font-semibold">
+                    {Math.sign(topItem.exportYoY ?? 0) === Math.sign(kcciStat.change_pct ?? 0)
+                      ? "방향 일치 — 상관 신호"
+                      : "방향 비일치 — 추가 관찰 필요"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    인과 미확정 · 시점 차 주의 (무역 {latestItemPeriod?.slice(0, 4)}.{latestItemPeriod?.slice(4, 6)} vs 운임 {kcciStat?.latest_date?.slice(0, 7)})
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">데이터 수집 중</p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <DataQualityBar
+        sources={[
+          {
+            label: "무역통계 (품목)",
+            asOf: latestItemPeriod
+              ? `${latestItemPeriod.slice(0, 4)}-${latestItemPeriod.slice(4, 6)}-01`
+              : null,
+            expectedDays: SUFFICIENCY_MAX_DELAY_DAYS,
+          },
+          {
+            label: "무역통계 (잠정)",
+            asOf: latestProvisional?.priod_dt?.slice(0, 10) ?? null,
+            expectedDays: 7,
+          },
+          { label: "KCCI", asOf: kcciStat?.latest_date?.slice(0, 10) ?? null, expectedDays: 7 },
+        ]}
+      />
+
+      {/* Detail Drawer */}
+      <DetailDrawer
+        open={selectedItem !== null}
+        onClose={() => setSelectedItem(null)}
+        title={selectedItem?.hs_name ?? ""}
+      >
+        {selectedItem && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-y-2 text-xs">
+              <span className="text-muted-foreground">HS 코드</span>
+              <span className="font-mono">{selectedItem.hs_code}</span>
+              <span className="text-muted-foreground">기준 기간</span>
+              <span>
+                {selectedItem.latestPeriod
+                  ? `${selectedItem.latestPeriod.slice(0, 4)}.${selectedItem.latestPeriod.slice(4, 6)}`
+                  : "—"}
+              </span>
+              <span className="text-muted-foreground">수출액</span>
+              <span>{formatUSD(selectedItem.latestExportUsd)}</span>
+              <span className="text-muted-foreground">YoY</span>
+              <span>{selectedItem.sufficient ? fmtPct(selectedItem.exportYoY) : "데이터 수집 중"}</span>
+              <span className="text-muted-foreground">MoM</span>
+              <span>{selectedItem.sufficient ? fmtPct(selectedItem.exportMoM) : "데이터 수집 중"}</span>
+              <span className="text-muted-foreground">금액–물량 해석</span>
+              <span>{selectedItem.sufficient ? selectedItem.interpretation : "—"}</span>
+              <span className="text-muted-foreground">주요 시장</span>
+              <span>{selectedItem.topMarkets.join(", ") || "—"}</span>
+              <span className="text-muted-foreground">데이터 충분성</span>
+              <span>
+                {selectedItem.sufficient
+                  ? `충분 (${selectedItem.monthCount}개월)`
+                  : `부족 (${selectedItem.monthCount}/${SUFFICIENCY_MIN_MONTHS}개월)`}
+              </span>
+            </div>
+            <div>
+              <p className="mb-1 text-[11px] text-muted-foreground">수출액 추이 (12개월)</p>
+              <Sparkline values={selectedItem.spark} width={280} height={48} color="var(--color-cyan)" />
+            </div>
+          </div>
+        )}
+      </DetailDrawer>
+    </DashboardShell>
+  );
 }
