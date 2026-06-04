@@ -2714,13 +2714,59 @@ git push
 
 ## Phase 2 — /eurasia Eurasia Control Tower
 
-### Task 2.1: Eurasia Disruptions API
+### Task 2.1: Eurasia Data Layer — CORRECTION
+
+**Corrected architecture:**
+```
+Eurasia Control Tower data layer
+│
+├── Automatic (already running)
+│   ├── delay_index_weekly   ← Weekly delay metrics (median, P90, OTP, quality) from FESCO TSR
+│   └── tcr_snapshots        ← Daily TCR operational snapshots (in_transit, arrived, alert_count)
+│
+└── Manual supplement (new)
+    └── eurasia_disruptions  ← Admin-entered cause/segment explanations
+                                "N days delayed" comes from delay_index_weekly.
+                                "Because of Alashankou backlog" comes from eurasia_disruptions.
+```
+
+`eurasia_disruptions` is still needed but only as an explanatory layer on top of automatic data.
 
 **Files:**
 - Create: `src/lib/api/eurasia-disruptions.ts`
 - Create: `src/lib/api/eurasia-disruptions.functions.ts`
-- Modify: `src/lib/api/eurasia.ts` (add disruption query options)
-- Modify: `src/lib/api/eurasia.functions.ts` (already has getEurasiaDisruptions pointing to `disruption_events` — update to use `eurasia_disruptions`)
+- Create: `src/lib/api/tcr-snapshots.functions.ts` (new — reads tcr_snapshots)
+- Modify: `src/lib/api/eurasia.ts` (add disruption + TCR query options)
+- Note: `src/lib/api/eurasia.functions.ts` existing `getEurasiaDisruptions` targets `disruption_events` — leave unchanged; new eurasia_disruptions is separate
+
+- [ ] Also create `src/lib/api/tcr-snapshots.functions.ts` to expose TCR daily data:
+```ts
+import { createServerFn } from "@tanstack/react-start";
+import { supabasePublicServer } from "@/integrations/supabase/public.server";
+
+export type TcrSnapshotRow = {
+  id: number;
+  snapshot_date: string;
+  lane_id: string | null;
+  in_transit: number | null;
+  arrived: number | null;
+  alert_count: number | null;
+  source: string;
+  fetched_at: string;
+};
+
+export const getTcrSnapshots = createServerFn({ method: "GET" }).handler(
+  async (): Promise<TcrSnapshotRow[]> => {
+    const { data, error } = await supabasePublicServer
+      .from("tcr_snapshots")
+      .select("id,snapshot_date,lane_id,in_transit,arrived,alert_count,source,fetched_at")
+      .order("snapshot_date", { ascending: false })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as TcrSnapshotRow[];
+  },
+);
+```
 
 - [ ] Create `src/lib/api/eurasia-disruptions.ts`:
 ```ts
@@ -2836,13 +2882,34 @@ git commit -m "feat: eurasia_disruptions API with admin upsert/resolve"
 **Files:**
 - Modify (full rewrite): `src/routes/eurasia.tsx`
 
+**Data sources (corrected):**
+- "N days delayed" → `delay_index_weekly` (FESCO TSR auto)
+- "TCR operational counts" → `tcr_snapshots` (TCR auto)
+- "Why delayed / which segment" → `eurasia_disruptions` (admin manual supplement)
+
+- [ ] Add `tcrSnapshotsQueryOptions` to `src/lib/api/eurasia.ts`:
+```ts
+import { getTcrSnapshots } from "./tcr-snapshots.functions";
+import type { TcrSnapshotRow } from "./tcr-snapshots.functions";
+export type { TcrSnapshotRow };
+export const tcrSnapshotsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["tcr_snapshots"],
+    queryFn: () => getTcrSnapshots(),
+    staleTime: 30 * 60 * 1000,
+  });
+```
+
 - [ ] Replace `src/routes/eurasia.tsx` with the Eurasia Control Tower page. The structure follows the spec exactly:
   1. GlobalContextBar (collapsed default)
   2. StatusStrip (활성 장애 / 평균 지연 / 경고 노선 수 / 기준일)
-  3. Corridor status board (IntelTable)
+     - "활성 장애 N건" sourced from `eurasia_disruptions` (admin-entered "why" layer)
+     - "평균 지연" sourced from `delay_index_weekly` (auto)
+     - "데이터 기준일" sourced from `delay_index_weekly` latest week_iso
+  3. Corridor status board (IntelTable) — rows from `delay_index_weekly` joined with `lanes`
   4. Selected lane concept diagram (SVG)
-  5. Lane Detail Drawer
-  6. Footer caption
+  5. Lane Detail Drawer — shows delay trend (sparkline from delay_index_weekly), TCR counts (tcr_snapshots), and disruption causes (eurasia_disruptions)
+  6. Footer caption: "원본 shipment_legs 비공개 — 집계 지연·신뢰도만 표시"
 
 ```tsx
 import { createFileRoute } from "@tanstack/react-router";
@@ -2863,6 +2930,7 @@ import { DataQualityBar } from "@/components/dashboard/DataQualityBar";
 import {
   eurasiaLanesQueryOptions,
   eurasiaDelaysQueryOptions,
+  tcrSnapshotsQueryOptions,
   type LaneRow,
   type DelayWeeklyRow,
 } from "@/lib/api/eurasia";
@@ -2880,7 +2948,8 @@ export const Route = createFileRoute("/eurasia")({
   loader: ({ context }) => {
     context.queryClient.ensureQueryData(eurasiaLanesQueryOptions());
     context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
-    context.queryClient.ensureQueryData(eurasiaDisruptionsActiveQueryOptions());
+    context.queryClient.ensureQueryData(tcrSnapshotsQueryOptions());   // TCR auto
+    context.queryClient.ensureQueryData(eurasiaDisruptionsActiveQueryOptions()); // admin supplement
   },
   head: () => ({
     meta: [
@@ -3093,8 +3162,9 @@ function EurasiaPage() {
 
       <DataQualityBar
         sources={[
-          { label: "delay_index_weekly", asOf: latestWeek, expectedDays: 7 },
-          { label: "eurasia_disruptions", asOf: disruptions[0]?.created_at?.slice(0, 10) ?? null, expectedDays: 7 },
+          { label: "delay_index_weekly (FESCO 자동)", asOf: latestWeek, expectedDays: 7 },
+          { label: "tcr_snapshots (TCR 자동)", asOf: null /* from tcrSnapshots[0]?.snapshot_date */, expectedDays: 1 },
+          { label: "eurasia_disruptions (어드민 보완)", asOf: disruptions[0]?.created_at?.slice(0, 10) ?? null, expectedDays: 7 },
         ]}
       />
 

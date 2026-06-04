@@ -33,7 +33,9 @@
 | `lanes` | transit_min/max, border_points | ✅ 있음 | |
 | `delay_index_weekly` | Eurasia aggregated delays | ✅ 있음 | `median_delay_d`, `otp_pct`, `week_iso` |
 | `disruption_events` | (kept, separate from new table) | ✅ 있음 | Different schema; not extended |
-| `eurasia_disruptions` (NEW) | Admin-entered disruptions | ❌ 없음 | Per spec 6.2 — new table with `segment`, `delay_contribution_days`, `confidence` |
+| `delay_index_weekly` | **Primary** Eurasia delay data | ✅ 있음 | FESCO TSR auto-collected weekly (median, P90, OTP) |
+| `tcr_snapshots` | TCR daily operational snapshots | ✅ 있음 | **CORRECTION** — already exists. Columns: in_transit, arrived, alert_count. Not yet in types.ts — added manually. |
+| `eurasia_disruptions` (NEW) | Admin "why" layer supplement | ❌ 없음 | Admin manually explains segments/causes on top of auto delay data. NOT the primary data source. |
 | `trade_statistics` | `stat_type='item'` | ✅ 있음 | Has `stat_type` column; 'item' data presence to be verified at runtime |
 | `maritime_news` | Alert source | ✅ 있음 | `content`, `category`, `tags` |
 | `policy_alerts` | (kept as-is, minimal) | ⚠️ 부분 | Too minimal for new spec; new `policies` table created instead |

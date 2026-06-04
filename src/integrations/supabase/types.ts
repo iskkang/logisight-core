@@ -707,6 +707,47 @@ export type Database = {
           },
         ]
       }
+      tcr_snapshots: {
+        Row: {
+          id: number
+          snapshot_date: string           // ISO date
+          lane_id: string | null
+          in_transit: number | null       // shipments currently in transit
+          arrived: number | null          // arrived this day
+          alert_count: number | null      // active alerts
+          source: string
+          fetched_at: string
+        }
+        Insert: {
+          id?: number
+          snapshot_date: string
+          lane_id?: string | null
+          in_transit?: number | null
+          arrived?: number | null
+          alert_count?: number | null
+          source?: string
+          fetched_at?: string
+        }
+        Update: {
+          id?: number
+          snapshot_date?: string
+          lane_id?: string | null
+          in_transit?: number | null
+          arrived?: number | null
+          alert_count?: number | null
+          source?: string
+          fetched_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tcr_snapshots_lane_id_fkey"
+            columns: ["lane_id"]
+            isOneToOne: false
+            referencedRelation: "lanes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       trade_statistics: {
         Row: {
           country_code: string | null
