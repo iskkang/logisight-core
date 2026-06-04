@@ -1,5 +1,16 @@
 type Severity = "high" | "medium" | "low" | "info";
 
+export type AlertCandidate = {
+  key: string;
+  severity: "high" | "medium" | "low" | "info";
+  status: "new" | "escalated" | "unchanged";
+  title: string;
+  sub: string;
+  source: "rates" | "eurasia" | "policy";
+  deepLink: string;
+  asOf: string | null;
+};
+
 export type AlertRow = {
   id: string;
   snapshot_date: string;
