@@ -5,6 +5,8 @@ import {
   getEurasiaDelays,
   getEurasiaDisruptions,
 } from "./eurasia.functions";
+import { getTcrSnapshots } from "./tcr-snapshots.functions";
+export type { TcrSnapshotRow } from "./tcr-snapshots.functions";
 
 export type LaneRow = {
   id: string;
@@ -60,6 +62,13 @@ export const eurasiaDisruptionsQueryOptions = () =>
   queryOptions({
     queryKey: ["eurasia", "disruptions"],
     queryFn: () => getEurasiaDisruptions(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const tcrSnapshotsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["tcr_snapshots"],
+    queryFn: () => getTcrSnapshots(),
     staleTime: 5 * 60 * 1000,
   });
 
