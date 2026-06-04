@@ -9,13 +9,38 @@ export type ComputedSignal = {
   confidence: "high" | "medium" | "low";
 };
 
-type KcciPoint = { week_iso: string; value: number | null };
+export type FreightIndexPoint = {
+  week_date: string;
+  value: number | null;
+  change_pct: number | null;
+};
+
 type IndexPoint = { period: string; value: number | null };
 
-function percentile52w(series: number[], current: number): number {
-  if (series.length === 0) return 0;
-  const below = series.filter((v) => v <= current).length;
-  return Math.round((below / series.length) * 100);
+// --- Exported statistical helpers ---
+
+export function percentile52wSeries(series: FreightIndexPoint[], current: number): number {
+  const values = series.filter((p) => p.value !== null).map((p) => p.value as number);
+  if (values.length === 0) return 0;
+  const below = values.filter((v) => v <= current).length;
+  return Math.round((below / values.length) * 100);
+}
+
+export function normalRange52w(series: FreightIndexPoint[]): [number, number] | null {
+  const values = series.filter((p) => p.value !== null).map((p) => p.value as number);
+  if (values.length < 4) return null;
+  const mean = values.reduce((s, v) => s + v, 0) / values.length;
+  const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length;
+  const sigma = Math.sqrt(variance);
+  return [Math.round(mean - sigma), Math.round(mean + sigma)];
+}
+
+// --- Internal helpers ---
+
+function percentile52wValues(values: number[], current: number): number {
+  if (values.length === 0) return 0;
+  const below = values.filter((v) => v <= current).length;
+  return Math.round((below / values.length) * 100);
 }
 
 function momChange(series: IndexPoint[]): number | null {
@@ -29,12 +54,12 @@ function momChange(series: IndexPoint[]): number | null {
 
 // KCCI 3-week WoW average + 52w percentile ≥70 → caution/alert
 export function computeOceanPressureSignal(
-  kcciSeries: KcciPoint[],
-  asOf: string | null,
+  kcciSeries: FreightIndexPoint[],
+  asOf?: string | null,
 ): ComputedSignal | null {
   const valid = kcciSeries
-    .filter((p): p is { week_iso: string; value: number } => p.value !== null)
-    .sort((a, b) => a.week_iso.localeCompare(b.week_iso));
+    .filter((p): p is FreightIndexPoint & { value: number } => p.value !== null)
+    .sort((a, b) => a.week_date.localeCompare(b.week_date));
 
   if (valid.length < 4) return null;
 
@@ -47,32 +72,47 @@ export function computeOceanPressureSignal(
   const wow = avgPrev === 0 ? 0 : ((avgLast - avgPrev) / avgPrev) * 100;
 
   const allValues = valid.map((p) => p.value);
-  const pct = percentile52w(allValues, avgLast);
+  const pct = percentile52wValues(allValues, avgLast);
 
   let state: SignalState = "normal";
   if (pct >= 80 && wow > 0) state = "alert";
   else if (pct >= 70 && wow > 0) state = "caution";
   else if (pct >= 60) state = "observe";
 
+  const resolvedAsOf = asOf ?? valid.at(-1)?.week_date ?? null;
+
   return {
     label: "해상 운임 압력",
     state,
     basis: `KCCI 3주 평균 ${Math.round(avgLast).toLocaleString()} — 52주 백분위 ${pct}%, WoW ${wow >= 0 ? "+" : ""}${wow.toFixed(1)}%`,
     sources: ["KCCI"],
-    asOf,
+    asOf: resolvedAsOf,
     confidence: valid.length >= 12 ? "high" : "medium",
   };
 }
 
-// SCFI MoM ±5% + WCI 정합 여부 (인과 단정 금지 — 상관 표현만)
+// SCFI MoM ±5% + WCI 방향 정합 여부 (인과 단정 금지 — 상관 표현만)
 export function computeGlobalMomentumSignal(
-  scfiSeries: IndexPoint[],
-  wciSeries: IndexPoint[],
-  asOf: string | null,
+  scfiSeries: FreightIndexPoint[],
+  wciSeries: FreightIndexPoint[],
+  asOf?: string | null,
 ): ComputedSignal | null {
-  const scfiMoM = momChange(scfiSeries);
-  const wciMoM = momChange(wciSeries);
+  const scfiPoints = scfiSeries
+    .filter((p) => p.value !== null)
+    .sort((a, b) => a.week_date.localeCompare(b.week_date));
+  const wciPoints = wciSeries
+    .filter((p) => p.value !== null)
+    .sort((a, b) => a.week_date.localeCompare(b.week_date));
+
+  if (scfiPoints.length < 5) return null;
+
+  const scfiMoM = momChange(scfiPoints.map((p) => ({ period: p.week_date, value: p.value })));
   if (scfiMoM === null) return null;
+
+  const wciMoM =
+    wciPoints.length >= 5
+      ? momChange(wciPoints.map((p) => ({ period: p.week_date, value: p.value })))
+      : null;
 
   const aligned = wciMoM !== null && Math.sign(scfiMoM) === Math.sign(wciMoM);
   const magnitude = Math.abs(scfiMoM);
@@ -81,21 +121,22 @@ export function computeGlobalMomentumSignal(
   if (magnitude >= 10) state = aligned ? "alert" : "caution";
   else if (magnitude >= 5) state = aligned ? "caution" : "observe";
 
-  const alignText = wciMoM !== null
-    ? `WCI MoM ${wciMoM >= 0 ? "+" : ""}${wciMoM.toFixed(1)}%와 ${aligned ? "방향 정합" : "방향 비정합"}`
-    : "WCI 데이터 없음";
+  const alignText =
+    wciMoM !== null
+      ? `WCI MoM ${wciMoM >= 0 ? "+" : ""}${wciMoM.toFixed(1)}%와 방향 ${aligned ? "정합" : "비정합"}`
+      : "WCI 데이터 없음";
 
   return {
     label: "글로벌 운임 모멘텀",
     state,
     basis: `SCFI MoM ${scfiMoM >= 0 ? "+" : ""}${scfiMoM.toFixed(1)}% — ${alignText}`,
     sources: ["SCFI", ...(wciMoM !== null ? ["WCI"] : [])],
-    asOf,
+    asOf: asOf ?? scfiPoints.at(-1)?.week_date ?? null,
     confidence: aligned ? "high" : "medium",
   };
 }
 
-// Air MoM ≥10% + ocean percentile ≥70 → modal shift 가능성 (추정 표현)
+// Air MoM ≥10% + ocean percentile ≥70 → 모달 전환 가능성 (추정 표현)
 export function computeAirModalShiftSignal(
   airMoM: number | null,
   routeLabel: string,

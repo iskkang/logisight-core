@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
+import { percentile52wSeries, normalRange52w, type FreightIndexPoint } from "@/server/signals";
 import type {
   FreightIndexHistoryRow,
   FreightRateRow,
@@ -10,6 +11,7 @@ import type {
   KitaAirRateRow,
   KitaSeaRateRow,
   KitaPercentileResult,
+  IndexStats,
 } from "./rates";
 
 const CODES = ["SCFI", "FBX", "KCCI", "CCFI"] as const;
@@ -129,6 +131,69 @@ export const getKitaAirPercentile = createServerFn({ method: "GET" })
 
     return { pct52w: pct, normalLow: mean - sigma, normalHigh: mean + sigma, asOf };
   });
+
+const INDEX_CODES = ["SCFI", "KCCI", "CCFI", "FBX", "WCI", "BDI"] as const;
+
+export const getIndexStats = createServerFn({ method: "GET" }).handler(
+  async (): Promise<IndexStats[]> => {
+    const { data, error } = await supabasePublicServer
+      .from("freight_indices")
+      .select("index_code,value,change_pct,week_date,source")
+      .in("index_code", INDEX_CODES as unknown as string[])
+      .order("week_date", { ascending: true })
+      .limit(10000);
+    if (error) throw new Error(error.message);
+
+    const rows = (data ?? []) as (FreightIndexPoint & { index_code: string; source: string | null })[];
+
+    const grouped = new Map<string, (FreightIndexPoint & { source: string | null })[]>();
+    for (const r of rows) {
+      const arr = grouped.get(r.index_code) ?? [];
+      arr.push(r);
+      grouped.set(r.index_code, arr);
+    }
+
+    return INDEX_CODES.map((code) => {
+      const series = grouped.get(code) ?? [];
+      const last = series.at(-1);
+      if (!last || last.value === null) {
+        return { index_code: code, latest_value: null, latest_date: null, change_pct: null, mom_pct: null, yoy_pct: null, pct_52w: null, normal_range: null, source: null };
+      }
+
+      const lastDate = new Date(last.week_date).getTime();
+      const monthAgo = series
+        .filter((p) => p.value !== null && new Date(p.week_date).getTime() <= lastDate - 28 * 86400000)
+        .at(-1);
+      const yearAgo = series
+        .filter((p) => p.value !== null && new Date(p.week_date).getTime() <= lastDate - 365 * 86400000)
+        .at(-1);
+
+      const mom_pct =
+        monthAgo?.value && last.value
+          ? Math.round(((last.value - monthAgo.value) / monthAgo.value) * 1000) / 10
+          : null;
+      const yoy_pct =
+        yearAgo?.value && last.value
+          ? Math.round(((last.value - yearAgo.value) / yearAgo.value) * 1000) / 10
+          : null;
+
+      const pct_52w = percentile52wSeries(series, last.value);
+      const normal_range = normalRange52w(series);
+
+      return {
+        index_code: code,
+        latest_value: last.value,
+        latest_date: last.week_date,
+        change_pct: last.change_pct,
+        mom_pct,
+        yoy_pct,
+        pct_52w,
+        normal_range,
+        source: last.source,
+      };
+    });
+  },
+);
 
 export const getBunkerPrices = createServerFn({ method: "GET" }).handler(
   async (): Promise<BunkerPriceRow[]> => {

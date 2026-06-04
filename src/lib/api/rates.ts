@@ -7,6 +7,7 @@ import {
   getBunkerPrices,
   getKitaAirRates,
   getKitaSeaRates,
+  getIndexStats,
 } from "./rates.functions";
 
 export type FreightIndexHistoryRow = {
@@ -151,6 +152,25 @@ export function computeMoM(
   if (latest.value === null || prev.value === null || prev.value === 0) return null;
   return ((latest.value - prev.value) / prev.value) * 100;
 }
+
+export type IndexStats = {
+  index_code: string;
+  latest_value: number | null;
+  latest_date: string | null;
+  change_pct: number | null;
+  mom_pct: number | null;
+  yoy_pct: number | null;
+  pct_52w: number | null;
+  normal_range: [number, number] | null;
+  source: string | null;
+};
+
+export const indexStatsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["freight_indices", "stats"],
+    queryFn: () => getIndexStats(),
+    staleTime: 30 * 60 * 1000,
+  });
 
 export const kitaAirRatesQueryOptions = () =>
   queryOptions({
