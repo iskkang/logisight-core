@@ -255,84 +255,124 @@ export type Database = {
           },
         ]
       }
-      kita_air_rates: {
+      kita_air_indices: {
         Row: {
-          id: number
-          route_code: string           // e.g. 'ICN-DXB'
-          origin_code: string          // e.g. 'KRICN'
-          dest_code: string
-          dest_name_ko: string | null
-          kg100: number | null         // KRW/kg for ≤100 kg
-          kg300: number | null         // KRW/kg for ≤300 kg
-          kg500: number | null         // KRW/kg for ≤500 kg
-          week_date: string            // ISO date (Monday)
-          source: string
-          fetched_at: string
+          year_mon: string            // e.g. '202506'
+          na_index: number | null
+          eu_index: number | null
+          asia_index: number | null
+          cn_index: number | null
         }
         Insert: {
-          id?: number
-          route_code: string
-          origin_code: string
-          dest_code: string
-          dest_name_ko?: string | null
-          kg100?: number | null
-          kg300?: number | null
-          kg500?: number | null
-          week_date: string
-          source?: string
-          fetched_at?: string
+          year_mon: string
+          na_index?: number | null
+          eu_index?: number | null
+          asia_index?: number | null
+          cn_index?: number | null
         }
         Update: {
-          id?: number
-          route_code?: string
-          origin_code?: string
-          dest_code?: string
-          dest_name_ko?: string | null
+          year_mon?: string
+          na_index?: number | null
+          eu_index?: number | null
+          asia_index?: number | null
+          cn_index?: number | null
+        }
+        Relationships: []
+      }
+      kita_air_rates: {
+        // ⚠️ kg100/300/500 unit is USD/kg (NOT KRW/kg). Source: kita-fare.js comment "rates 단위: USD"
+        Row: {
+          origin: string              // e.g. 'ICN'
+          dest: string
+          region: string | null
+          year_mon: string            // e.g. '202506'
+          kg100: number | null        // USD/kg for ≤100 kg
+          kg300: number | null        // USD/kg for ≤300 kg
+          kg500: number | null        // USD/kg for ≤500 kg
+          chg100: number | null       // MoM change
+          chg300: number | null
+          chg500: number | null
+        }
+        Insert: {
+          origin: string
+          dest: string
+          region?: string | null
+          year_mon: string
           kg100?: number | null
           kg300?: number | null
           kg500?: number | null
-          week_date?: string
-          source?: string
-          fetched_at?: string
+          chg100?: number | null
+          chg300?: number | null
+          chg500?: number | null
+        }
+        Update: {
+          origin?: string
+          dest?: string
+          region?: string | null
+          year_mon?: string
+          kg100?: number | null
+          kg300?: number | null
+          kg500?: number | null
+          chg100?: number | null
+          chg300?: number | null
+          chg500?: number | null
+        }
+        Relationships: []
+      }
+      kita_sea_indices: {
+        Row: {
+          year_mon: string
+          radis: number | null
+          na_index: number | null
+          eu_index: number | null
+          asia_index: number | null
+        }
+        Insert: {
+          year_mon: string
+          radis?: number | null
+          na_index?: number | null
+          eu_index?: number | null
+          asia_index?: number | null
+        }
+        Update: {
+          year_mon?: string
+          radis?: number | null
+          na_index?: number | null
+          eu_index?: number | null
+          asia_index?: number | null
         }
         Relationships: []
       }
       kita_sea_rates: {
         Row: {
-          id: number
-          route_code: string           // e.g. 'KRPUS-USLAX'
-          origin_code: string          // e.g. 'KRPUS'
-          dest_code: string
-          dest_name_ko: string | null
-          teu: number | null           // USD/TEU
-          feu: number | null           // USD/FEU
-          week_date: string
-          source: string
-          fetched_at: string
+          origin: string              // e.g. 'KRPUS'
+          dest: string
+          region: string | null
+          year_mon: string            // e.g. '202506'
+          teu: number | null          // USD/TEU
+          feu: number | null          // USD/FEU
+          teu_chg: number | null      // MoM change
+          feu_chg: number | null
         }
         Insert: {
-          id?: number
-          route_code: string
-          origin_code: string
-          dest_code: string
-          dest_name_ko?: string | null
+          origin: string
+          dest: string
+          region?: string | null
+          year_mon: string
           teu?: number | null
           feu?: number | null
-          week_date: string
-          source?: string
-          fetched_at?: string
+          teu_chg?: number | null
+          feu_chg?: number | null
         }
         Update: {
-          id?: number
-          route_code?: string
-          origin_code?: string
-          dest_code?: string
-          dest_name_ko?: string | null
+          origin?: string
+          dest?: string
+          region?: string | null
+          year_mon?: string
           teu?: number | null
           feu?: number | null
-          week_date?: string
-          source?: string
-          fetched_at?: string
+          teu_chg?: number | null
+          feu_chg?: number | null
         }
         Relationships: []
       }
@@ -573,6 +613,27 @@ export type Database = {
         }
         Relationships: []
       }
+      port_throughput: {
+        Row: {
+          port_code: string
+          year: number
+          month: number
+          teu: number | null
+        }
+        Insert: {
+          port_code: string
+          year: number
+          month: number
+          teu?: number | null
+        }
+        Update: {
+          port_code?: string
+          year?: number
+          month?: number
+          teu?: number | null
+        }
+        Relationships: []
+      }
       policy_alerts: {
         Row: {
           code: string
@@ -708,45 +769,35 @@ export type Database = {
         ]
       }
       tcr_snapshots: {
+        // Global TCR operational snapshot — no lane_id; breakdown in jsonb fields
         Row: {
-          id: number
           snapshot_date: string           // ISO date
-          lane_id: string | null
-          in_transit: number | null       // shipments currently in transit
-          arrived: number | null          // arrived this day
-          alert_count: number | null      // active alerts
-          source: string
-          fetched_at: string
+          total: number | null
+          in_transit: number | null
+          arrived: number | null
+          alert_count: number | null
+          by_destination: Json | null     // jsonb breakdown by destination
+          by_segment: Json | null         // jsonb breakdown by segment
         }
         Insert: {
-          id?: number
           snapshot_date: string
-          lane_id?: string | null
+          total?: number | null
           in_transit?: number | null
           arrived?: number | null
           alert_count?: number | null
-          source?: string
-          fetched_at?: string
+          by_destination?: Json | null
+          by_segment?: Json | null
         }
         Update: {
-          id?: number
           snapshot_date?: string
-          lane_id?: string | null
+          total?: number | null
           in_transit?: number | null
           arrived?: number | null
           alert_count?: number | null
-          source?: string
-          fetched_at?: string
+          by_destination?: Json | null
+          by_segment?: Json | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "tcr_snapshots_lane_id_fkey"
-            columns: ["lane_id"]
-            isOneToOne: false
-            referencedRelation: "lanes"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       trade_statistics: {
         Row: {

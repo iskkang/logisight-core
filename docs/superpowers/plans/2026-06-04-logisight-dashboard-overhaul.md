@@ -1844,33 +1844,30 @@ export const localWatchlist: WatchlistStore = {
 import { queryOptions } from "@tanstack/react-query";
 import { getKitaAirRates, getKitaSeaRates } from "./kita-rates.functions";
 
-// IMPORTANT: kita_air_rates columns reflect KITA's actual schema.
-// If column names differ from what's typed, update types.ts and this file.
+// ⚠️ kita_air_rates: kg100/300/500 are USD/kg (NOT KRW/kg). Source: kita-fare.js comment.
+// The spec assumed KRW, but actual stored unit is USD. Display must make this explicit.
 export type KitaAirRow = {
-  id: number;
-  route_code: string;
-  origin_code: string;
-  dest_code: string;
-  dest_name_ko: string | null;
-  kg100: number | null;   // KRW/kg
-  kg300: number | null;
-  kg500: number | null;
-  week_date: string;
-  source: string;
-  fetched_at: string;
+  origin: string;         // e.g. 'ICN'
+  dest: string;
+  region: string | null;
+  year_mon: string;       // e.g. '202506'
+  kg100: number | null;   // USD/kg for ≤100 kg
+  kg300: number | null;   // USD/kg for ≤300 kg
+  kg500: number | null;   // USD/kg for ≤500 kg
+  chg100: number | null;  // MoM change
+  chg300: number | null;
+  chg500: number | null;
 };
 
 export type KitaSeaRow = {
-  id: number;
-  route_code: string;
-  origin_code: string;
-  dest_code: string;
-  dest_name_ko: string | null;
+  origin: string;         // e.g. 'KRPUS'
+  dest: string;
+  region: string | null;
+  year_mon: string;       // e.g. '202506'
   teu: number | null;    // USD/TEU
   feu: number | null;    // USD/FEU
-  week_date: string;
-  source: string;
-  fetched_at: string;
+  teu_chg: number | null;
+  feu_chg: number | null;
 };
 
 export const kitaAirQueryOptions = () =>
@@ -1887,40 +1884,43 @@ export const kitaSeaQueryOptions = () =>
     staleTime: 60 * 60 * 1000,
   });
 
-/** Latest rate per route (most recent week_date) */
-export function latestByRoute<T extends { route_code: string; week_date: string }>(rows: T[]): T[] {
+/**
+ * Latest rate per origin+dest pair (most recent year_mon).
+ * year_mon format: 'YYYYMM' — string comparison works for recency.
+ */
+export function latestByRoute<T extends { origin: string; dest: string; year_mon: string }>(rows: T[]): T[] {
   const map = new Map<string, T>();
   for (const r of rows) {
-    const existing = map.get(r.route_code);
-    if (!existing || r.week_date > existing.week_date) map.set(r.route_code, r);
+    const key = `${r.origin}__${r.dest}`;
+    const existing = map.get(key);
+    if (!existing || r.year_mon > existing.year_mon) map.set(key, r);
   }
   return [...map.values()];
 }
 
 /**
- * Compute MoM for a single route.
- * Returns null if insufficient history (<= 4 weeks).
- * NOTE: Uses KRW/kg reference column (e.g. kg300) for air; FEU for sea.
+ * Compute MoM % change using the chg field if available, or from history series.
+ * year_mon is 'YYYYMM'; MoM = compare to 1 month prior entry.
+ * Returns null if fewer than 2 data points.
+ * NOTE: kita_air_rates values are USD/kg; kita_sea_rates values are USD/FEU.
  */
 export function computeMoM(
-  series: { week_date: string; value: number | null }[],
+  series: { year_mon: string; value: number | null }[],
 ): number | null {
   const sorted = [...series]
     .filter((p) => p.value !== null)
-    .sort((a, b) => a.week_date.localeCompare(b.week_date));
-  if (sorted.length < 4) return null;
+    .sort((a, b) => a.year_mon.localeCompare(b.year_mon));
+  if (sorted.length < 2) return null;
   const latest = sorted.at(-1)!;
-  const monthAgo = sorted.find(
-    (p) =>
-      p.week_date <=
-      new Date(
-        new Date(latest.week_date).getTime() - 28 * 24 * 60 * 60 * 1000,
-      )
-        .toISOString()
-        .slice(0, 10),
-  );
-  if (!monthAgo || monthAgo.value === null || monthAgo.value === 0) return null;
-  return ((latest.value! - monthAgo.value) / monthAgo.value) * 100;
+  // Find entry 1 month prior (YYYYMM - 1 month)
+  const y = parseInt(latest.year_mon.slice(0, 4));
+  const m = parseInt(latest.year_mon.slice(4, 6));
+  const prevM = m === 1 ? 12 : m - 1;
+  const prevY = m === 1 ? y - 1 : y;
+  const prevKey = `${prevY}${String(prevM).padStart(2, "0")}`;
+  const prev = sorted.find((p) => p.year_mon === prevKey);
+  if (!prev || prev.value === null || prev.value === 0) return null;
+  return ((latest.value! - prev.value) / prev.value) * 100;
 }
 ```
 
@@ -1932,11 +1932,12 @@ import type { KitaAirRow, KitaSeaRow } from "./kita-rates";
 
 export const getKitaAirRates = createServerFn({ method: "GET" }).handler(
   async (): Promise<KitaAirRow[]> => {
+    // ⚠️ kg100/300/500 are USD/kg (not KRW/kg)
     const { data, error } = await supabasePublicServer
       .from("kita_air_rates")
-      .select("id,route_code,origin_code,dest_code,dest_name_ko,kg100,kg300,kg500,week_date,source,fetched_at")
-      .order("week_date", { ascending: false })
-      .limit(1000);
+      .select("origin,dest,region,year_mon,kg100,kg300,kg500,chg100,chg300,chg500")
+      .order("year_mon", { ascending: false })
+      .limit(2000);
     if (error) throw new Error(error.message);
     return (data ?? []) as KitaAirRow[];
   },
@@ -1946,9 +1947,9 @@ export const getKitaSeaRates = createServerFn({ method: "GET" }).handler(
   async (): Promise<KitaSeaRow[]> => {
     const { data, error } = await supabasePublicServer
       .from("kita_sea_rates")
-      .select("id,route_code,origin_code,dest_code,dest_name_ko,teu,feu,week_date,source,fetched_at")
-      .order("week_date", { ascending: false })
-      .limit(1000);
+      .select("origin,dest,region,year_mon,teu,feu,teu_chg,feu_chg")
+      .order("year_mon", { ascending: false })
+      .limit(2000);
     if (error) throw new Error(error.message);
     return (data ?? []) as KitaSeaRow[];
   },
@@ -2332,8 +2333,8 @@ function RatesPage() {
     const sorted = latestAir
       .map((r) => {
         const series = airRates
-          .filter((a) => a.route_code === r.route_code)
-          .map((a) => ({ week_date: a.week_date, value: a.kg300 }));
+          .filter((a) => a.origin === r.origin && a.dest === r.dest)
+          .map((a) => ({ year_mon: a.year_mon, value: a.kg300 }));
         const mom = computeMoM(series);
         return { route: r, mom };
       })
@@ -2374,45 +2375,46 @@ function RatesPage() {
 
   const seaRows = useMemo(() =>
     latestSea
-      .filter((r) => r.origin_code === (filters.origin || "KRPUS"))
+      .filter((r) => !filters.origin || r.origin === filters.origin || r.origin.includes("KRPUS") || r.origin.includes("KRICN"))
       .map((r) => {
         const series = seaRates
-          .filter((s) => s.route_code === r.route_code)
-          .map((s) => ({ week_date: s.week_date, value: s.feu }))
-          .sort((a, b) => a.week_date.localeCompare(b.week_date));
-        const mom = computeMoM(series);
-        const pct52w = r.feu !== null ? percentile52w(series.map((s) => ({ ...s, change_pct: null })), r.feu) : null;
-        const normalRange = normalRange52w(series.map((s) => ({ ...s, change_pct: null })));
+          .filter((s) => s.origin === r.origin && s.dest === r.dest)
+          .map((s) => ({ year_mon: s.year_mon, value: s.feu }))
+          .sort((a, b) => a.year_mon.localeCompare(b.year_mon));
+        const mom = r.feu_chg ?? computeMoM(series);
+        const pct52w = r.feu !== null ? percentile52w(series.map((s) => ({ week_date: s.year_mon, value: s.value, change_pct: null })), r.feu) : null;
+        const normalRange = normalRange52w(series.map((s) => ({ week_date: s.year_mon, value: s.value, change_pct: null })));
         const spark = series.slice(-12).map((s) => s.value ?? 0);
         return { ...r, mom, pct52w, normalRange, spark };
       }),
     [latestSea, seaRates, filters.origin],
   );
 
-  // Air table
+  // Air table — ⚠️ kg100/300/500 are USD/kg (KITA source unit)
+  // KRW 환산 = USD/kg × exchange_rate.usd_krw (표시용)
   const AIR_COLS: IntelTableColumn<KitaAirRow & { mom: number | null; pct52w: number | null; normalRange: [number, number] | null; spark: number[] }>[] = [
-    { key: "dest", header: "목적지", render: (r) => r.dest_name_ko ?? r.dest_code, width: "160px" },
-    { key: "kg300", header: "KRW/kg", numeric: true, render: (r) => fmt(r.kg300, 0, "₩") },
-    { key: "usd", header: "USD 환산", numeric: true, render: (r) =>
-      r.kg300 && exRate ? `$${(r.kg300 / exRate.usd_krw).toFixed(2)}` : "—"
+    { key: "dest", header: "목적지", render: (r) => r.dest, width: "120px" },
+    { key: "kg300", header: "USD/kg", numeric: true, render: (r) => fmt(r.kg300, 2, "$") },
+    { key: "krw", header: "KRW 환산", numeric: true, render: (r) =>
+      r.kg300 && exRate ? `₩${Math.round(r.kg300 * exRate.usd_krw).toLocaleString("ko-KR")}` : "—"
     },
     { key: "mom", header: "MoM", numeric: true, render: (r) => fmtPct(r.mom) },
-    { key: "spark", header: "3개월", render: (r) => <Sparkline data={r.spark} className="text-muted-foreground" /> },
-    { key: "pct", header: "52주 백분위", numeric: true, render: (r) => r.pct52w !== null ? `상위 ${100 - r.pct52w}%` : "—" },
+    { key: "spark", header: "추세", render: (r) => <Sparkline data={r.spark} className="text-muted-foreground" /> },
+    { key: "pct", header: "백분위", numeric: true, render: (r) => r.pct52w !== null ? `상위 ${100 - r.pct52w}%` : "—" },
     { key: "status", header: "상태", render: (r) => <StatusBadge level={statusFromPct(r.pct52w)} /> },
   ];
 
   const airRows = useMemo(() =>
     latestAir
-      .filter((r) => r.origin_code === "KRICN")
+      .filter((r) => r.origin === "ICN" || r.origin.includes("ICN"))
       .map((r) => {
         const series = airRates
-          .filter((a) => a.route_code === r.route_code)
-          .map((a) => ({ week_date: a.week_date, value: a.kg300 }))
-          .sort((a, b) => a.week_date.localeCompare(b.week_date));
-        const mom = computeMoM(series);
-        const pct52w = r.kg300 !== null ? percentile52w(series.map((s) => ({ ...s, change_pct: null })), r.kg300) : null;
-        const normalRange = normalRange52w(series.map((s) => ({ ...s, change_pct: null })));
+          .filter((a) => a.origin === r.origin && a.dest === r.dest)
+          .map((a) => ({ year_mon: a.year_mon, value: a.kg300 }))
+          .sort((a, b) => a.year_mon.localeCompare(b.year_mon));
+        const mom = r.chg300 ?? computeMoM(series);
+        const pct52w = r.kg300 !== null ? percentile52w(series.map((s) => ({ week_date: s.year_mon, value: s.value, change_pct: null })), r.kg300) : null;
+        const normalRange = normalRange52w(series.map((s) => ({ week_date: s.year_mon, value: s.value, change_pct: null })));
         const spark = series.slice(-12).map((s) => s.value ?? 0);
         return { ...r, mom, pct52w, normalRange, spark };
       }),
@@ -2538,22 +2540,23 @@ function RatesPage() {
             rows={airRows}
             getKey={(r) => r.route_code}
             onRowClick={(r) =>
-              openDrawer(`${r.dest_name_ko ?? r.dest_code} 항공 상세`, (
+              openDrawer(`${r.dest} 항공 상세`, (
                 <div className="space-y-2 text-[12px]">
-                  <p>KRW/kg(300): {fmt(r.kg300, 0, "₩")}</p>
-                  <p>USD 환산: {r.kg300 && exRate ? `$${(r.kg300 / exRate.usd_krw).toFixed(2)}/kg` : "—"}</p>
-                  <p>MoM (KRW/kg 기준): {fmtPct(r.mom)}</p>
-                  <p>52주 백분위: {r.pct52w !== null ? `상위 ${100 - r.pct52w}%` : "—"}</p>
+                  <p>USD/kg(300): {fmt(r.kg300, 2, "$")} <span className="text-muted-foreground text-[11px]">(KITA 원본 단위: USD)</span></p>
+                  <p>KRW 환산: {r.kg300 && exRate ? `₩${Math.round(r.kg300 * exRate.usd_krw).toLocaleString("ko-KR")}/kg` : "—"}</p>
+                  <p>적용 환율: {exRate ? `USD/KRW ${exRate.usd_krw.toLocaleString("ko-KR")} (${exRate.rate_date})` : "환율 없음"}</p>
+                  <p>MoM (USD/kg 기준): {fmtPct(r.mom)}</p>
+                  <p>백분위: {r.pct52w !== null ? `상위 ${100 - r.pct52w}%` : "—"}</p>
                 </div>
               ))
             }
             caption={
               exRate ? (
                 <span>
-                  적용 환율 USD/KRW {exRate.usd_krw.toLocaleString("ko-KR")} · 환율 기준일 {exRate.rate_date} · 환산은 표시용 — 정렬·백분위·변동률은 원본 KRW/kg 기준
+                  KITA 원본 단위: USD/kg · 적용 환율 USD/KRW {exRate.usd_krw.toLocaleString("ko-KR")} · 환율 기준일 {exRate.rate_date} · KRW 환산은 표시용 — 정렬·백분위·변동률은 원본 USD/kg 기준
                 </span>
               ) : (
-                <span className="text-[var(--color-status-caution)]">환율 데이터 없음 — USD 환산 불가</span>
+                <span className="text-[var(--color-status-caution)]">환율 데이터 없음 — KRW 환산 불가</span>
               )
             }
           />
