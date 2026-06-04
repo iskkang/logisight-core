@@ -6,9 +6,20 @@ import { Navigation } from "@/components/site/Navigation";
 import { IndexBar } from "@/components/site/IndexBar";
 import { Footer } from "@/components/site/Footer";
 
+// Minimal shell without IndexBar — safe to use outside QueryClientProvider
+function MinimalShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-screen flex-col" style={{ background: "var(--color-surface)" }}>
+      <Navigation />
+      <main className="flex-1">{children}</main>
+      <Footer />
+    </div>
+  );
+}
+
 function NotFoundComponent() {
   return (
-    <SiteShell>
+    <MinimalShell>
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="max-w-md text-center">
           <h1 className="text-6xl font-bold text-foreground">404</h1>
@@ -22,7 +33,7 @@ function NotFoundComponent() {
           </Link>
         </div>
       </div>
-    </SiteShell>
+    </MinimalShell>
   );
 }
 
@@ -31,7 +42,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
 
   return (
-    <SiteShell>
+    <MinimalShell>
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="max-w-md text-center">
           <h1 className="text-lg font-semibold">페이지를 불러오지 못했습니다</h1>
@@ -55,7 +66,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           </div>
         </div>
       </div>
-    </SiteShell>
+    </MinimalShell>
   );
 }
 
