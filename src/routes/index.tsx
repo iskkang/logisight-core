@@ -515,7 +515,7 @@ function LanesSidebar() {
         </ul>
       )}
       <p className="mt-3 text-[10px] text-[var(--color-ink-muted)]">
-        출처: Drewry · {new Date().toISOString().slice(0, 10)}
+        출처: Drewry · <span suppressHydrationWarning>{new Date().toISOString().slice(0, 10)}</span>
       </p>
     </SidebarCard>
   );

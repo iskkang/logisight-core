@@ -83,7 +83,7 @@ function NewsPage() {
           <p className="mx-auto mt-2 max-w-2xl text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
             해상·항공·철도·물류·무역. 글로벌 공급망관련 뉴스
           </p>
-          <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
+          <p suppressHydrationWarning className="mt-3 text-[11px] uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
             {new Date().toLocaleDateString("ko-KR", {
               year: "numeric",
               month: "long",

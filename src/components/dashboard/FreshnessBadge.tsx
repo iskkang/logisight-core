@@ -23,7 +23,8 @@ export function FreshnessBadge({ asOf, expectedDays = 7 }: Props) {
   const color = stale ? "bg-status-caution" : "bg-status-normal";
 
   return (
-    <span className="inline-flex items-center gap-1 rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+    // suppressHydrationWarning: Date.now() may differ by milliseconds between SSR and hydration
+    <span suppressHydrationWarning className="inline-flex items-center gap-1 rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground">
       <span className={["h-1.5 w-1.5 rounded-full flex-shrink-0", color].join(" ")} />
       기준 {asOf}
     </span>

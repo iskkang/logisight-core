@@ -160,7 +160,7 @@ function PolicyPage() {
         if (!r.effective_date) return <span className="text-muted-foreground">—</span>;
         const d = daysUntil(r.effective_date);
         return (
-          <div className="tabular-nums">
+          <div suppressHydrationWarning className="tabular-nums">
             <span>{r.effective_date}</span>
             {d >= 0 && d <= 90 && (
               <span
