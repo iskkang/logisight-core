@@ -4,20 +4,20 @@
  * 환경 변수:
  *   KOREAEXIM_API_KEY  - 수출입은행 Encoding 키 (그대로 사용, encodeURIComponent 금지)
  *   SUPABASE_URL       - Supabase 프로젝트 URL
- *   SUPABASE_SERVICE_KEY - service_role 키
+ *   SUPABASE_SERVICE_ROLE_KEY - service_role 키
  */
 import { createClient } from "@supabase/supabase-js";
 
 const API_KEY = process.env.KOREAEXIM_API_KEY;
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error("Required env vars missing: KOREAEXIM_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY");
+if (!API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error("Required env vars missing: KOREAEXIM_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY");
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 function todayKst() {
   const now = new Date();

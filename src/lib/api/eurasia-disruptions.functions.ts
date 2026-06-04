@@ -36,7 +36,7 @@ export const upsertEurasiaDisruption = createServerFn({ method: "POST" })
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(
       process.env["SUPABASE_URL"]!,
-      process.env["SUPABASE_SERVICE_KEY"]!,
+      process.env["SUPABASE_SERVICE_ROLE_KEY"]!,
     );
     const { error } = await supabase
       .from("eurasia_disruptions")
@@ -51,7 +51,7 @@ export const resolveEurasiaDisruption = createServerFn({ method: "POST" })
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(
       process.env["SUPABASE_URL"]!,
-      process.env["SUPABASE_SERVICE_KEY"]!,
+      process.env["SUPABASE_SERVICE_ROLE_KEY"]!,
     );
     const { error } = await supabase
       .from("eurasia_disruptions")

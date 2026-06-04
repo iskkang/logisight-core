@@ -113,7 +113,7 @@ export const getAlertCandidates = createServerFn({ method: "GET" }).handler(
     }
 
     // Upsert today's snapshots (fire-and-forget)
-    const serviceKey = process.env["SUPABASE_SERVICE_KEY"];
+    const serviceKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
     if (serviceKey && candidates.length > 0) {
       const { createClient } = await import("@supabase/supabase-js");
       const svc = createClient(process.env["SUPABASE_URL"]!, serviceKey);
