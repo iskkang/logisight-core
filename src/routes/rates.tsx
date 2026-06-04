@@ -103,6 +103,8 @@ const RANGES = [
 ] as const;
 type RangeId = (typeof RANGES)[number]["id"];
 
+const INDICES_START_DATE = "2024-01-01";
+
 function RatesPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 lg:px-6 lg:py-14">
@@ -142,11 +144,16 @@ function IndicesSection() {
   const [range, setRange] = useState<RangeId>("all");
 
   const filtered = useMemo(() => {
-    if (range === "all") return rows;
+    const rowsSinceStartDate = rows.filter(
+      (r) => r.week_date >= INDICES_START_DATE,
+    );
+    if (range === "all") return rowsSinceStartDate;
     const days = RANGES.find((r) => r.id === range)?.days ?? 0;
-    if (!days) return rows;
+    if (!days) return rowsSinceStartDate;
     const cutoff = Date.now() - days * 86400000;
-    return rows.filter((r) => new Date(r.week_date).getTime() >= cutoff);
+    return rowsSinceStartDate.filter(
+      (r) => new Date(r.week_date).getTime() >= cutoff,
+    );
   }, [rows, range]);
 
   // pivot to chart data: [{ week_date, SCFI, WCI, ... }]
