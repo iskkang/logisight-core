@@ -255,6 +255,87 @@ export type Database = {
           },
         ]
       }
+      kita_air_rates: {
+        Row: {
+          id: number
+          route_code: string           // e.g. 'ICN-DXB'
+          origin_code: string          // e.g. 'KRICN'
+          dest_code: string
+          dest_name_ko: string | null
+          kg100: number | null         // KRW/kg for ≤100 kg
+          kg300: number | null         // KRW/kg for ≤300 kg
+          kg500: number | null         // KRW/kg for ≤500 kg
+          week_date: string            // ISO date (Monday)
+          source: string
+          fetched_at: string
+        }
+        Insert: {
+          id?: number
+          route_code: string
+          origin_code: string
+          dest_code: string
+          dest_name_ko?: string | null
+          kg100?: number | null
+          kg300?: number | null
+          kg500?: number | null
+          week_date: string
+          source?: string
+          fetched_at?: string
+        }
+        Update: {
+          id?: number
+          route_code?: string
+          origin_code?: string
+          dest_code?: string
+          dest_name_ko?: string | null
+          kg100?: number | null
+          kg300?: number | null
+          kg500?: number | null
+          week_date?: string
+          source?: string
+          fetched_at?: string
+        }
+        Relationships: []
+      }
+      kita_sea_rates: {
+        Row: {
+          id: number
+          route_code: string           // e.g. 'KRPUS-USLAX'
+          origin_code: string          // e.g. 'KRPUS'
+          dest_code: string
+          dest_name_ko: string | null
+          teu: number | null           // USD/TEU
+          feu: number | null           // USD/FEU
+          week_date: string
+          source: string
+          fetched_at: string
+        }
+        Insert: {
+          id?: number
+          route_code: string
+          origin_code: string
+          dest_code: string
+          dest_name_ko?: string | null
+          teu?: number | null
+          feu?: number | null
+          week_date: string
+          source?: string
+          fetched_at?: string
+        }
+        Update: {
+          id?: number
+          route_code?: string
+          origin_code?: string
+          dest_code?: string
+          dest_name_ko?: string | null
+          teu?: number | null
+          feu?: number | null
+          week_date?: string
+          source?: string
+          fetched_at?: string
+        }
+        Relationships: []
+      }
       freight_indices: {
         Row: {
           change_pct: number | null

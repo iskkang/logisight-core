@@ -26,7 +26,8 @@
 |---|---|---|---|
 | `freight_indices` | SCFI·KCCI·CCFI·WCI·BDI | ✅ 있음 | SCFI/KCCI/CCFI/FBX confirmed. WCI/BDI may exist but not in code constants |
 | `freight_rates` | Ocean rates (USD/FEU) | ✅ 있음 | Sea-only; no `mode` column, no KRW/kg |
-| `air_freight_rates` (NEW) | Air rates (KRW/kg) | ❌ 없음 | Create new — `freight_rates` is incompatible (container-type, USD-only) |
+| `kita_air_rates` | Air rates (KRW/kg) | ✅ 있음 | **CORRECTION** — populated by backend `kita-fare-weekly.yml`. Columns: kg100/kg300/kg500 (KRW/kg weight breaks). `air_freight_rates` migration NOT needed. |
+| `kita_sea_rates` | KITA sea rates (USD) | ✅ 있음 | **CORRECTION** — same pipeline. Columns: teu/feu (USD). Not in logisight-core types.ts yet — add manually. |
 | `bunker_prices` | VLSFO | ✅ 있음 | `grade`, `price_usd`, `obs_date` |
 | `exchange_rates` (NEW) | Daily USD/KRW | ❌ 없음 | Migration required |
 | `lanes` | transit_min/max, border_points | ✅ 있음 | |
@@ -43,7 +44,8 @@
 ### Data Availability Decisions
 - **SCFI/KCCI/CCFI/FBX**: Present in `freight_indices` ✓
 - **WCI/BDI**: Unknown — render as "데이터 수집 중" until confirmed
-- **KITA air rates (KRW/kg)**: Not present — gate as "데이터 수집 중"; admin CSV upload as fallback
+- **KITA air rates (KRW/kg)**: ✅ Present in `kita_air_rates` (kg100/kg300/kg500 columns). Auto-collected by `kita-fare-weekly.yml` in backend repo.
+- **KITA sea rates (USD)**: ✅ Present in `kita_sea_rates` (teu/feu columns). Same pipeline. Types not yet in logisight-core types.ts.
 - **Bunker/VLSFO**: Present in `bunker_prices` ✓
 - **Exchange rates**: Not present — create table + GitHub Actions workflow
 - **Trade stats (item-level)**: Table exists; gate on `stat_type='item'` data at runtime
@@ -53,12 +55,13 @@
 ## Architecture Decisions
 
 ### 1. New Tables (Migrations)
-Four new migrations in order:
+Four new migrations in order (~~air_freight_rates~~ removed — `kita_air_rates` already exists):
 1. `exchange_rates` — daily USD/KRW
-2. `air_freight_rates` — KITA air rates, KRW/kg native
-3. `eurasia_disruptions` — admin-entered corridor disruptions
-4. `policies` — full policy intelligence
-5. `alert_snapshots` — dashboard alert state tracking
+2. `eurasia_disruptions` — admin-entered corridor disruptions
+3. `policies` — full policy intelligence
+4. `alert_snapshots` — dashboard alert state tracking
+
+Also required: add `kita_air_rates` and `kita_sea_rates` type definitions to `src/integrations/supabase/types.ts` (tables exist in DB, not yet typed in frontend).
 
 ### 2. Navigation Restructure
 Split top nav into two groups:
@@ -107,7 +110,7 @@ Separate from demand heatmap blue-density scale.
 
 | Phase | Route | Content | Key Deliverables |
 |---|---|---|---|
-| 0 | — | Common shell + components + migrations | DashboardShell, 13 components, useGlobalFilters, semantic tokens, 5 migrations |
+| 0 | — | Common shell + components + migrations | DashboardShell, 13 components, useGlobalFilters, semantic tokens, 4 migrations + kita types |
 | 1 | `/rates` | Rates Intelligence rebuild | Mode-split table, KRW/kg air group, percentile calc, exchange_rates workflow |
 | 2 | `/eurasia` | Eurasia Control Tower rebuild | Corridor board, SVG concept map, lane drawer, admin disruption CRUD |
 | 3 | `/dashboard` | Control Tower (종합) new | Alert snapshots, watchlist, top-3 rates, DataQualityBar |
@@ -146,7 +149,7 @@ git push
 | `monthly-trade-stats.yml` | (existing pattern) | 관세청 | `trade_statistics` |
 | `monthly-freight-rates.yml` | (existing pattern) | 해양수산부 | `freight_rates` |
 
-KITA air rates: public API investigation required before automation. Fallback: `/admin` CSV upload.
+KITA rates: already automated via `kita-fare-weekly.yml` in backend repo. No new workflow needed for KITA.
 
 ---
 
@@ -155,7 +158,7 @@ KITA air rates: public API investigation required before automation. Fallback: `
 | Item | Status | Unblock Condition |
 |---|---|---|
 | WCI/BDI data in DB | Unknown | Query `freight_indices` for these codes |
-| KITA air freight automation | Not started | Investigate data.kita.or.kr API docs |
+| KITA air/sea automation | ✅ Resolved | `kita-fare-weekly.yml` in backend repo already running |
 | `trade_statistics` 'item' stat_type | Unconfirmed | Runtime check at Phase 4 |
 | MTL Link `total_tt_days` | Deferred | Separate project — not in scope |
 | Dark mode UI toggle | Not implemented | Add theme toggle to Navigation |
