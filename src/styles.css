@@ -79,6 +79,18 @@
   --color-line: var(--line);
   --color-surface: var(--surface);
 
+  /* Status semantic tokens */
+  --color-status-normal: var(--status-normal);
+  --color-status-observe: var(--status-observe);
+  --color-status-caution: var(--status-caution);
+  --color-status-alert: var(--status-alert);
+
+  /* Demand heatmap tokens */
+  --color-demand-0: var(--demand-0);
+  --color-demand-1: var(--demand-1);
+  --color-demand-2: var(--demand-2);
+  --color-demand-3: var(--demand-3);
+
   /* Category tokens (bg / fg) */
   --color-cat-sea-bg: var(--cat-sea-bg);
   --color-cat-sea-fg: var(--cat-sea-fg);
@@ -113,6 +125,18 @@
   --ink: oklch(0.236 0.04 257);         /* #1E293B text */
   --ink-muted: oklch(0.45 0.03 257);    /* darker muted for WCAG AA contrast */
   --line: oklch(0.91 0.014 255);        /* #E2E8F0 border */
+
+  /* Status semantic */
+  --status-normal: oklch(0.62 0.16 152);    /* green */
+  --status-observe: oklch(0.58 0.13 248);   /* blue */
+  --status-caution: oklch(0.78 0.16 75);    /* amber */
+  --status-alert: oklch(0.703 0.18 22);     /* red */
+
+  /* Demand heatmap */
+  --demand-0: oklch(0.96 0.007 247);        /* neutral */
+  --demand-1: oklch(0.93 0.06 230);         /* low */
+  --demand-2: oklch(0.778 0.142 230);       /* medium */
+  --demand-3: oklch(0.46 0.13 65);          /* high */
 
   /* Category palette */
   --cat-sea-bg: oklch(0.965 0.018 255);   /* #EFF6FF */
@@ -194,6 +218,27 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+
+  /* Dark brand overrides */
+  --navy-900: oklch(0.18 0.05 258);
+  --navy-800: oklch(0.22 0.06 258);
+  --navy-600: oklch(0.55 0.12 256);
+  --surface: oklch(0.15 0.03 258);
+  --ink: oklch(0.97 0.006 247);
+  --ink-muted: oklch(0.72 0.025 257);
+  --line: oklch(0.28 0.04 258);
+
+  /* Status semantic (dark) */
+  --status-normal: oklch(0.72 0.16 152);
+  --status-observe: oklch(0.68 0.14 248);
+  --status-caution: oklch(0.82 0.16 75);
+  --status-alert: oklch(0.75 0.18 22);
+
+  /* Demand heatmap (dark) */
+  --demand-0: oklch(0.279 0.041 260.031);
+  --demand-1: oklch(0.35 0.08 230);
+  --demand-2: oklch(0.50 0.12 230);
+  --demand-3: oklch(0.56 0.13 65);
 }
 
 @layer base {

@@ -942,6 +942,179 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_snapshots: {
+        Row: {
+          id: string
+          snapshot_date: string
+          source_table: string
+          source_id: string
+          severity: 'high' | 'medium' | 'low' | 'info'
+          category: string
+          title_ko: string
+          detail_ko: string | null
+          resolved: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          snapshot_date: string
+          source_table: string
+          source_id: string
+          severity: 'high' | 'medium' | 'low' | 'info'
+          category: string
+          title_ko: string
+          detail_ko?: string | null
+          resolved?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          snapshot_date?: string
+          source_table?: string
+          source_id?: string
+          severity?: 'high' | 'medium' | 'low' | 'info'
+          category?: string
+          title_ko?: string
+          detail_ko?: string | null
+          resolved?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      eurasia_disruptions: {
+        Row: {
+          id: string
+          lane_id: string | null
+          segment: string
+          title: string
+          severity: 'high' | 'medium' | 'low'
+          delay_contribution_days: number | null
+          status: 'active' | 'resolved'
+          started_at: string | null
+          resolved_at: string | null
+          source: string | null
+          confidence: 'high' | 'medium' | 'low' | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          lane_id?: string | null
+          segment: string
+          title: string
+          severity: 'high' | 'medium' | 'low'
+          delay_contribution_days?: number | null
+          status?: 'active' | 'resolved'
+          started_at?: string | null
+          resolved_at?: string | null
+          source?: string | null
+          confidence?: 'high' | 'medium' | 'low' | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          lane_id?: string | null
+          segment?: string
+          title?: string
+          severity?: 'high' | 'medium' | 'low'
+          delay_contribution_days?: number | null
+          status?: 'active' | 'resolved'
+          started_at?: string | null
+          resolved_at?: string | null
+          source?: string | null
+          confidence?: 'high' | 'medium' | 'low' | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eurasia_disruptions_lane_id_fkey"
+            columns: ["lane_id"]
+            isOneToOne: false
+            referencedRelation: "lanes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exchange_rates: {
+        Row: {
+          rate_date: string
+          usd_krw: number
+          source: string
+          fetched_at: string
+        }
+        Insert: {
+          rate_date: string
+          usd_krw: number
+          source?: string
+          fetched_at?: string
+        }
+        Update: {
+          rate_date?: string
+          usd_krw?: number
+          source?: string
+          fetched_at?: string
+        }
+        Relationships: []
+      }
+      policies: {
+        Row: {
+          id: string
+          title_ko: string
+          title_en: string | null
+          country_code: string | null
+          region: string | null
+          policy_type: string
+          effective_date: string | null
+          expiry_date: string | null
+          severity: 'high' | 'medium' | 'low' | 'info'
+          status: 'active' | 'expired' | 'draft'
+          summary_ko: string | null
+          summary_en: string | null
+          affected_hs_chapters: string[] | null
+          source_url: string | null
+          last_verified_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title_ko: string
+          title_en?: string | null
+          country_code?: string | null
+          region?: string | null
+          policy_type: string
+          effective_date?: string | null
+          expiry_date?: string | null
+          severity?: 'high' | 'medium' | 'low' | 'info'
+          status?: 'active' | 'expired' | 'draft'
+          summary_ko?: string | null
+          summary_en?: string | null
+          affected_hs_chapters?: string[] | null
+          source_url?: string | null
+          last_verified_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title_ko?: string
+          title_en?: string | null
+          country_code?: string | null
+          region?: string | null
+          policy_type?: string
+          effective_date?: string | null
+          expiry_date?: string | null
+          severity?: 'high' | 'medium' | 'low' | 'info'
+          status?: 'active' | 'expired' | 'draft'
+          summary_ko?: string | null
+          summary_en?: string | null
+          affected_hs_chapters?: string[] | null
+          source_url?: string | null
+          last_verified_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       industry_chapter_stats: {

@@ -63,3 +63,31 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
+
+## 5. Logisight Hard Constraints (작업 지시문 v1.0)
+
+These override any default behavior. Violations are deployment blockers.
+
+**Data safety**
+- `shipment_legs` 원본 노출 금지 — 화면·API·로그 전부. 집계(delay_index_weekly) 표시만 허용.
+- 더미·임의 수치로 실데이터 행세 금지 — 데이터 없으면 "데이터 수집 중" 표시.
+
+**Unit & display rules**
+- 항공 운임 USD 단독 표기 금지 — 표기 4요소 필수: `USD/kg값 + KRW환산 + 적용환율 + 환율기준일`.
+- `kita_air_rates`의 `kg100/300/500`은 USD/kg 원본 (KITA 발표 원본, 변환값 아님). 정렬·백분위·MoM은 USD 기준.
+- `chg100/300/500`, `teu_chg/feu_chg`는 MoM 변동률(%). `±X%` 형식으로 표시.
+- Ocean(해상)과 Air(항공)는 절대 단일 정렬 테이블에 혼합 금지 — mode-group 분리 필수.
+
+**Methodology constraints**
+- SCFI 선행·후행 표시 금지 (방법론 미확정). 상관/정합/추정 표현만 허용.
+- 인과 단정 문구 금지 (`~때문에` 불가 → `~와 정합`, `~추정`, `~상관` 표현 사용).
+
+**Infrastructure**
+- `data.go.kr` 계열 API 키: Encoding 키 그대로 사용, `encodeURIComponent` 추가 금지.
+- GitHub Actions 워크플로 파일 병합 금지 — 책임별 1파일 유지.
+
+**Scope**
+- 이 작업 지시문 범위 밖 리팩터링·라이브러리 교체·페이지 삭제 금지.
+- 기존 `/news`, `/article`, `/industries` 기능 회귀 금지.

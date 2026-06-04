@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TradeRouteImport } from './routes/trade'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RatesRouteImport } from './routes/rates'
+import { Route as PolicyRouteImport } from './routes/policy'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as IndustriesRouteImport } from './routes/industries'
 import { Route as EurasiaRouteImport } from './routes/eurasia'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ArticleSlugRouteImport } from './routes/article.$slug'
 import { Route as AdminRoutesRouteImport } from './routes/admin.routes'
@@ -35,6 +37,11 @@ const RatesRoute = RatesRouteImport.update({
   path: '/rates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PolicyRoute = PolicyRouteImport.update({
+  id: '/policy',
+  path: '/policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NewsRoute = NewsRouteImport.update({
   id: '/news',
   path: '/news',
@@ -48,6 +55,11 @@ const IndustriesRoute = IndustriesRouteImport.update({
 const EurasiaRoute = EurasiaRouteImport.update({
   id: '/eurasia',
   path: '/eurasia',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -73,9 +85,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
+  '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
@@ -85,9 +99,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
+  '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
@@ -98,9 +114,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
+  '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
@@ -112,9 +130,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/dashboard'
     | '/eurasia'
     | '/industries'
     | '/news'
+    | '/policy'
     | '/rates'
     | '/sitemap.xml'
     | '/trade'
@@ -124,9 +144,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/dashboard'
     | '/eurasia'
     | '/industries'
     | '/news'
+    | '/policy'
     | '/rates'
     | '/sitemap.xml'
     | '/trade'
@@ -136,9 +158,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/dashboard'
     | '/eurasia'
     | '/industries'
     | '/news'
+    | '/policy'
     | '/rates'
     | '/sitemap.xml'
     | '/trade'
@@ -149,9 +173,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRoute
   EurasiaRoute: typeof EurasiaRoute
   IndustriesRoute: typeof IndustriesRoute
   NewsRoute: typeof NewsRoute
+  PolicyRoute: typeof PolicyRoute
   RatesRoute: typeof RatesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TradeRoute: typeof TradeRoute
@@ -183,6 +209,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/policy': {
+      id: '/policy'
+      path: '/policy'
+      fullPath: '/policy'
+      preLoaderRoute: typeof PolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/news': {
       id: '/news'
       path: '/news'
@@ -202,6 +235,13 @@ declare module '@tanstack/react-router' {
       path: '/eurasia'
       fullPath: '/eurasia'
       preLoaderRoute: typeof EurasiaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -237,9 +277,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRoute,
   EurasiaRoute: EurasiaRoute,
   IndustriesRoute: IndustriesRoute,
   NewsRoute: NewsRoute,
+  PolicyRoute: PolicyRoute,
   RatesRoute: RatesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TradeRoute: TradeRoute,

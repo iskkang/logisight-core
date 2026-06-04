@@ -5,6 +5,8 @@ import {
   getRateFilterOptions,
   getFreightRates,
   getBunkerPrices,
+  getKitaAirRates,
+  getKitaSeaRates,
 } from "./rates.functions";
 
 export type FreightIndexHistoryRow = {
@@ -89,6 +91,79 @@ export const bunkerPricesQueryOptions = () =>
     queryKey: ["bunker_prices", "latest"],
     queryFn: () => getBunkerPrices(),
     staleTime: 10 * 60 * 1000,
+  });
+
+// ⚠️ kita_air_rates: kg100/300/500 unit is USD/kg (KITA publishes USD directly)
+export type KitaAirRateRow = {
+  origin: string;
+  dest: string;
+  region: string | null;
+  year_mon: string;
+  kg100: number | null;
+  kg300: number | null;
+  kg500: number | null;
+  chg100: number | null; // MoM % change for kg100
+  chg300: number | null;
+  chg500: number | null;
+};
+
+export type KitaSeaRateRow = {
+  origin: string;
+  dest: string;
+  region: string | null;
+  year_mon: string;
+  teu: number | null;
+  feu: number | null;
+  teu_chg: number | null; // MoM % change
+  feu_chg: number | null;
+};
+
+export type KitaPercentileResult = {
+  pct52w: number;
+  normalLow: number;
+  normalHigh: number;
+  asOf: string;
+};
+
+// Returns the latest record per origin+dest pair
+export function latestByRoute<T extends { origin: string; dest: string; year_mon: string }>(
+  rows: T[],
+): T[] {
+  const map = new Map<string, T>();
+  for (const r of rows) {
+    const key = `${r.origin}__${r.dest}`;
+    const existing = map.get(key);
+    if (!existing || r.year_mon > existing.year_mon) map.set(key, r);
+  }
+  return [...map.values()];
+}
+
+// Compute MoM change from a series (uses YYYYMM format)
+export function computeMoM(
+  series: { year_mon: string; value: number | null }[],
+): number | null {
+  const sorted = [...series]
+    .filter((p) => p.value !== null)
+    .sort((a, b) => a.year_mon.localeCompare(b.year_mon));
+  if (sorted.length < 2) return null;
+  const latest = sorted[sorted.length - 1];
+  const prev = sorted[sorted.length - 2];
+  if (latest.value === null || prev.value === null || prev.value === 0) return null;
+  return ((latest.value - prev.value) / prev.value) * 100;
+}
+
+export const kitaAirRatesQueryOptions = () =>
+  queryOptions({
+    queryKey: ["kita_air_rates"],
+    queryFn: () => getKitaAirRates(),
+    staleTime: 60 * 60 * 1000,
+  });
+
+export const kitaSeaRatesQueryOptions = () =>
+  queryOptions({
+    queryKey: ["kita_sea_rates"],
+    queryFn: () => getKitaSeaRates(),
+    staleTime: 60 * 60 * 1000,
   });
 
 export function formatNumber(v: number | null | undefined, digits = 2): string {

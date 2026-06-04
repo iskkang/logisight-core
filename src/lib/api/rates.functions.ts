@@ -7,6 +7,9 @@ import type {
   FreightRateRow,
   BunkerPriceRow,
   RateFilterOptions,
+  KitaAirRateRow,
+  KitaSeaRateRow,
+  KitaPercentileResult,
 } from "./rates";
 
 const CODES = ["SCFI", "FBX", "KCCI", "CCFI"] as const;
@@ -72,6 +75,59 @@ export const getFreightRates = createServerFn({ method: "GET" })
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return (rows ?? []) as FreightRateRow[];
+  });
+
+export const getKitaAirRates = createServerFn({ method: "GET" }).handler(
+  async (): Promise<KitaAirRateRow[]> => {
+    const { data, error } = await supabasePublicServer
+      .from("kita_air_rates")
+      .select("origin,dest,region,year_mon,kg100,kg300,kg500,chg100,chg300,chg500")
+      .order("year_mon", { ascending: false })
+      .limit(2000);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as KitaAirRateRow[];
+  },
+);
+
+export const getKitaSeaRates = createServerFn({ method: "GET" }).handler(
+  async (): Promise<KitaSeaRateRow[]> => {
+    const { data, error } = await supabasePublicServer
+      .from("kita_sea_rates")
+      .select("origin,dest,region,year_mon,teu,feu,teu_chg,feu_chg")
+      .order("year_mon", { ascending: false })
+      .limit(2000);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as KitaSeaRateRow[];
+  },
+);
+
+// 52-week percentile and normal range (mean ±1σ) — computed server-side, never on missing data
+export const getKitaAirPercentile = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ origin: z.string(), dest: z.string(), tier: z.enum(["kg100", "kg300", "kg500"]) }))
+  .handler(async ({ data }): Promise<KitaPercentileResult | null> => {
+    const { data: rows, error } = await supabasePublicServer
+      .from("kita_air_rates")
+      .select("year_mon,kg100,kg300,kg500")
+      .eq("origin", data.origin)
+      .eq("dest", data.dest)
+      .order("year_mon", { ascending: true })
+      .limit(60);
+    if (error) throw new Error(error.message);
+    if (!rows || rows.length < 4) return null;
+
+    const values = rows
+      .map((r) => (r[data.tier] as number | null))
+      .filter((v): v is number => v !== null);
+    if (values.length < 4) return null;
+
+    const latest = values[values.length - 1];
+    const mean = values.reduce((s, v) => s + v, 0) / values.length;
+    const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length;
+    const sigma = Math.sqrt(variance);
+    const pct = Math.round((values.filter((v) => v <= latest).length / values.length) * 100);
+    const asOf = rows[rows.length - 1].year_mon;
+
+    return { pct52w: pct, normalLow: mean - sigma, normalHigh: mean + sigma, asOf };
   });
 
 export const getBunkerPrices = createServerFn({ method: "GET" }).handler(
