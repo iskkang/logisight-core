@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { NewsItem } from "./news";
+import { normalizeNewsImage } from "./news-image";
 
 const SELECT =
   "id,slug,title,summary,url,source,category,image_url,image_source,image_credit,published_at,lang,tags,is_hero,agent_type";
@@ -33,5 +34,5 @@ export const getLatestNews = createServerFn({ method: "GET" })
 
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return (rows ?? []) as NewsItem[];
+    return ((rows ?? []) as NewsItem[]).map(normalizeNewsImage);
   });

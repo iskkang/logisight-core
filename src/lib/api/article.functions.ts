@@ -5,6 +5,7 @@ import { z } from "zod";
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { Article } from "./article";
 import type { NewsItem } from "./news";
+import { normalizeNewsImage } from "./news-image";
 
 const SELECT =
   "id,slug,title,summary,content,url,source,category,image_url,image_source,image_credit,published_at,lang,tags,is_hero,agent_type";
@@ -19,7 +20,7 @@ export const getArticleBySlug = createServerFn({ method: "GET" })
       .eq("slug", data.slug)
       .maybeSingle();
     if (bySlug.error) throw new Error(bySlug.error.message);
-    if (bySlug.data) return bySlug.data as Article;
+    if (bySlug.data) return normalizeNewsImage(bySlug.data as Article);
 
     // Fallback: numeric id (for legacy rows without slug)
     if (/^\d+$/.test(data.slug)) {
@@ -30,7 +31,7 @@ export const getArticleBySlug = createServerFn({ method: "GET" })
         .eq("id", id)
         .maybeSingle();
       if (byId.error) throw new Error(byId.error.message);
-      if (byId.data) return byId.data as Article;
+      if (byId.data) return normalizeNewsImage(byId.data as Article);
     }
 
     throw notFound();
@@ -54,5 +55,5 @@ export const getRelatedArticles = createServerFn({ method: "GET" })
       .order("published_at", { ascending: false, nullsFirst: false })
       .limit(3);
     if (error) throw new Error(error.message);
-    return (rows ?? []) as NewsItem[];
+    return ((rows ?? []) as NewsItem[]).map(normalizeNewsImage);
   });
