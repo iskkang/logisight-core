@@ -43,5 +43,5 @@ export function sortNyfiLanes(lanes: NyfiLane[]): NyfiLane[] {
 
 export function formatNyfiValue(v: number | null | undefined): string {
   if (v == null) return "—";
-  return `$${v.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  return v.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
