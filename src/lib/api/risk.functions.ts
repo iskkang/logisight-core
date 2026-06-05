@@ -21,12 +21,16 @@ const GULF_STATS_URL = "https://www.shipfinder.com/Special/ShipsInPersianGulfSta
 const HORMUZ_NEWS_URL = "https://www.shipfinder.com/Special/GetHormuzNewsRecent?skip=0&limit=6";
 const MACRO_INDEX_URL = "https://www.shipfinder.com/Special/GetMacroIndexLatest";
 const CHOKEPOINTS = ["Suez", "Panama", "Cape", "Malacca", "Hormuz"] as const;
-const REQUEST_HEADERS = {
+const ECONDB_HEADERS = {
   accept: "application/json, text/plain, */*",
   "accept-language": "en-US,en;q=0.9,ko;q=0.8",
   referer: "https://www.econdb.com/",
   "user-agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+};
+const SHIPFINDER_HEADERS = {
+  accept: "application/json, text/plain, */*",
+  "user-agent": "Mozilla/5.0",
 };
 
 type JsonObject = Record<string, unknown>;
@@ -40,7 +44,7 @@ async function fetchJson<T>(url: string, timeoutMs = 8000): Promise<FetchResult<
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
-      headers: REQUEST_HEADERS,
+      headers: url.includes("shipfinder.com") ? SHIPFINDER_HEADERS : ECONDB_HEADERS,
       signal: controller.signal,
     });
     if (!res.ok) {
