@@ -1,0 +1,14 @@
+services:
+  - type: cron
+    name: logisight-risk-snapshot-collector
+    runtime: node
+    plan: starter
+    region: singapore
+    schedule: "10 */6 * * *"
+    buildCommand: npm ci
+    startCommand: npm run collect:risk-snapshot
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
