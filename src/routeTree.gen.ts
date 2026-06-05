@@ -20,6 +20,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ArticleSlugRouteImport } from './routes/article.$slug'
 import { Route as AdminRoutesRouteImport } from './routes/admin.routes'
+import { Route as AdminPoliciesRouteImport } from './routes/admin.policies'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 
 const TradeRoute = TradeRouteImport.update({
@@ -77,6 +78,11 @@ const AdminRoutesRoute = AdminRoutesRouteImport.update({
   path: '/admin/routes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPoliciesRoute = AdminPoliciesRouteImport.update({
+  id: '/admin/policies',
+  path: '/admin/policies',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/admin/login',
   path: '/admin/login',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
 }
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
 }
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
 }
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/trade'
     | '/admin/login'
+    | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/trade'
     | '/admin/login'
+    | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
   id:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/trade'
     | '/admin/login'
+    | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
   fileRoutesById: FileRoutesById
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TradeRoute: typeof TradeRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminPoliciesRoute: typeof AdminPoliciesRoute
   AdminRoutesRoute: typeof AdminRoutesRoute
   ArticleSlugRoute: typeof ArticleSlugRoute
 }
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRoutesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/policies': {
+      id: '/admin/policies'
+      path: '/admin/policies'
+      fullPath: '/admin/policies'
+      preLoaderRoute: typeof AdminPoliciesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/login': {
       id: '/admin/login'
       path: '/admin/login'
@@ -286,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TradeRoute: TradeRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminPoliciesRoute: AdminPoliciesRoute,
   AdminRoutesRoute: AdminRoutesRoute,
   ArticleSlugRoute: ArticleSlugRoute,
 }
