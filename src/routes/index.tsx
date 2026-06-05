@@ -70,28 +70,39 @@ export const Route = createFileRoute("/")({
 
 /* -------------------- Hero world-map backdrop -------------------- */
 function HeroMapBackdrop() {
+  const mask = {
+    WebkitMaskImage: "url('/world-map.svg')",
+    maskImage: "url('/world-map.svg')",
+    WebkitMaskRepeat: "no-repeat",
+    maskRepeat: "no-repeat",
+    WebkitMaskPosition: "center",
+    maskPosition: "center",
+    WebkitMaskSize: "cover",
+    maskSize: "cover",
+  } as const;
+
   return (
-    <svg
-      aria-hidden
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox="0 0 1200 500"
-      preserveAspectRatio="xMidYMid slice"
-    >
-      <defs>
-        <pattern id="heroDots" width="20" height="20" patternUnits="userSpaceOnUse">
-          <circle cx="2" cy="2" r="1.2" fill="var(--color-cyan)" fillOpacity="0.18" />
-        </pattern>
-        <radialGradient id="heroGlow" cx="64%" cy="40%" r="58%">
-          <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.16" />
-          <stop offset="100%" stopColor="#38bdf8" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      <rect width="1200" height="500" fill="url(#heroDots)" />
-      <rect width="1200" height="500" fill="url(#heroGlow)" />
-      {[100, 180, 260, 340, 420].map((y) => (
-        <line key={y} x1="0" y1={y} x2="1200" y2={y} stroke="#ffffff" strokeOpacity="0.04" />
-      ))}
-    </svg>
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* soft glow for depth */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(60% 65% at 64% 38%, rgba(56,189,248,0.16), transparent 70%)",
+        }}
+      />
+      {/* dotted continents: a dot pattern clipped to the world-map silhouette */}
+      <div
+        className="absolute inset-0"
+        style={{
+          ...mask,
+          backgroundImage:
+            "radial-gradient(circle, rgba(125,211,252,0.6) 1px, transparent 1.6px)",
+          backgroundSize: "13px 13px",
+          opacity: 0.6,
+        }}
+      />
+    </div>
   );
 }
 
