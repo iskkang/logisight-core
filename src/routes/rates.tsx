@@ -14,6 +14,7 @@ import { SignalCard } from "@/components/dashboard/SignalCard";
 import { IntelTable, type ColDef } from "@/components/dashboard/IntelTable";
 import { DetailDrawer } from "@/components/dashboard/DetailDrawer";
 import { IntelligenceBrief } from "@/components/dashboard/IntelligenceBrief";
+import { RatesBrief } from "@/components/dashboard/RatesBrief";
 import { DataQualityBar } from "@/components/dashboard/DataQualityBar";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { ConfidenceBadge } from "@/components/dashboard/ConfidenceBadge";
@@ -473,6 +474,12 @@ function RatesPage() {
       <GlobalContextBar filters={filters} onChange={setFilters} />
 
       <StatusStrip items={statusItems} />
+
+      {/* 운임 인텔리전스 브리프 — 시그널 종합 헤드라인 */}
+      <RatesBrief
+        signals={[oceanSignal, globalSignal, airModalSignal]}
+        asOf={kcciStat?.latest_date?.slice(0, 10) ?? null}
+      />
 
       {/* Signal cards */}
       <section>
