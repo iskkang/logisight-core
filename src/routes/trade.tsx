@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { ArrowRight } from "lucide-react";
 
 import { resolveFilters, useGlobalFilters, type GlobalFilters } from "@/hooks/useGlobalFilters";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
@@ -373,6 +374,21 @@ function TradePage() {
         state: sufficientCount === 0 ? "caution" : "normal",
       },
       {
+        label: "무역량-운임 괴리",
+        value:
+          topItem?.exportYoY != null && kcciStat?.change_pct != null
+            ? Math.sign(topItem.exportYoY) === Math.sign(kcciStat.change_pct)
+              ? "정합 (동행)"
+              : "괴리 (엇갈림)"
+            : "—",
+        state:
+          topItem?.exportYoY != null && kcciStat?.change_pct != null
+            ? Math.sign(topItem.exportYoY) === Math.sign(kcciStat.change_pct)
+              ? "normal"
+              : "caution"
+            : "normal",
+      },
+      {
         label: "무역 데이터 기준",
         value: latestItemPeriod
           ? `${latestItemPeriod.slice(0, 4)}-${latestItemPeriod.slice(4, 6)}`
@@ -385,7 +401,7 @@ function TradePage() {
               : "observe",
       },
     ],
-    [topItem, heatCountries, sufficientCount, itemStats, latestItemPeriod, delayDays, tradeItems],
+    [topItem, heatCountries, sufficientCount, itemStats, latestItemPeriod, delayDays, tradeItems, kcciStat],
   );
 
   // Item table columns
@@ -635,51 +651,69 @@ function TradePage() {
       {itemStats.length > 0 && kcciStat?.latest_value !== null && topItem?.sufficient && (
         <section>
           <div className="mb-2 flex items-center gap-2">
-            <h2 className="text-[13px] font-semibold">무역-운임 정합 신호</h2>
+            <h2 className="text-[13px] font-semibold">무역→운임 연결 흐름</h2>
             <span className="rounded bg-status-caution/10 px-1.5 py-0.5 text-[11px] text-status-caution">
               기준 시점 불일치: 무역 {latestItemPeriod?.slice(0, 4)}.{latestItemPeriod?.slice(4, 6)}{" "}
               vs 운임 {kcciStat?.latest_date?.slice(0, 7)}
             </span>
           </div>
-          <div className="grid gap-3 lg:grid-cols-4">
-            <div className="rounded-lg border border-border bg-card p-3">
-              <p className="text-[11px] text-muted-foreground mb-1">
-                무역 신호 ({latestItemPeriod?.slice(0, 4)}.{latestItemPeriod?.slice(4, 6)})
-              </p>
-              <p className="text-sm font-semibold">{topItem.hs_name} 수출</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                YoY {fmtPct(topItem.exportYoY)}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-3">
-              <p className="text-[11px] text-muted-foreground mb-1">
-                운임 신호 ({kcciStat?.latest_date?.slice(0, 10)})
-              </p>
-              <p className="text-sm font-semibold">
-                KCCI {kcciStat?.latest_value?.toLocaleString()}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                WoW {fmtPct(kcciStat?.change_pct ?? null)}
-              </p>
-            </div>
-            <div className="lg:col-span-2 rounded-lg border border-border bg-muted/30 p-3">
-              <p className="text-[11px] text-muted-foreground mb-1">정합성 판단</p>
-              {topItem.exportYoY !== null && kcciStat?.change_pct !== null ? (
-                <>
+          {(() => {
+            const tExp = topItem.exportYoY;
+            const kChg = kcciStat?.change_pct ?? null;
+            const aligned =
+              tExp != null && kChg != null ? Math.sign(tExp) === Math.sign(kChg) : null;
+            const seaText =
+              aligned == null
+                ? "데이터 수집 중"
+                : aligned
+                  ? "무역·운임 동행 — 적재율 상승 압력 추정"
+                  : "무역·운임 엇갈림 — 적재율 영향 불확실";
+            const recoText =
+              aligned == null
+                ? "데이터 보완 필요"
+                : aligned
+                  ? (tExp ?? 0) >= 0
+                    ? "조기 부킹·운임 재확인 검토"
+                    : "물량·운임 동반 둔화 — 계약 조건 점검"
+                  : "추이 관찰 후 결정";
+            const arrow = (
+              <ArrowRight className="hidden h-4 w-4 shrink-0 self-center text-muted-foreground sm:block" />
+            );
+            return (
+              <div className="flex flex-wrap items-stretch gap-2">
+                <div className="min-w-[150px] flex-1 rounded-lg border border-border bg-card p-3">
+                  <p className="mb-1 text-[11px] text-muted-foreground">
+                    무역 신호 ({latestItemPeriod?.slice(0, 4)}.{latestItemPeriod?.slice(4, 6)})
+                  </p>
+                  <p className="text-sm font-semibold">{topItem.hs_name} 수출</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">YoY {fmtPct(tExp)}</p>
+                </div>
+                {arrow}
+                <div className="min-w-[150px] flex-1 rounded-lg border border-border bg-card p-3">
+                  <p className="mb-1 text-[11px] text-muted-foreground">
+                    운임 신호 ({kcciStat?.latest_date?.slice(0, 10)})
+                  </p>
                   <p className="text-sm font-semibold">
-                    {Math.sign(topItem.exportYoY ?? 0) === Math.sign(kcciStat.change_pct ?? 0)
-                      ? "방향 일치 — 상관 신호 (인과 미확정)"
-                      : "방향 비일치 — 추가 관찰 필요"}
+                    KCCI {kcciStat?.latest_value?.toLocaleString()}
                   </p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    시점 차 주의 · 인과 미확정
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">데이터 수집 중</p>
-              )}
-            </div>
-          </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">WoW {fmtPct(kChg)}</p>
+                </div>
+                {arrow}
+                <div className="min-w-[150px] flex-1 rounded-lg border border-border bg-card p-3">
+                  <p className="mb-1 text-[11px] text-muted-foreground">해상 추정</p>
+                  <p className="text-sm font-semibold leading-snug">{seaText}</p>
+                </div>
+                {arrow}
+                <div className="min-w-[150px] flex-1 rounded-lg border border-status-observe/30 bg-status-observe/10 p-3">
+                  <p className="mb-1 text-[11px] font-medium text-status-observe">권장</p>
+                  <p className="text-sm font-semibold leading-snug text-foreground">{recoText}</p>
+                </div>
+              </div>
+            );
+          })()}
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            무역량·운임 방향 비교(상관)만 표시 · 인과 단정·선행/후행 판정 없음 · 시점 차 주의
+          </p>
         </section>
       )}
 
