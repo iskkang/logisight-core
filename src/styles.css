@@ -69,6 +69,7 @@
   --color-navy-900: var(--navy-900);
   --color-navy-800: var(--navy-800);
   --color-navy-600: var(--navy-600);
+  --color-heading: var(--heading);
   --color-cyan: var(--cyan);
   --color-cyan-soft: var(--cyan-soft);
   --color-success: var(--success);
@@ -121,10 +122,11 @@
   --danger: oklch(0.703 0.18 22);       /* #F87171 */
   --warning: oklch(0.78 0.16 75);       /* amber-500 */
 
-  --surface: oklch(0.968 0.012 247);    /* #F1F5F9 page bg */
+  --surface: oklch(0.955 0.016 252);    /* deeper, navy-tinted page bg so white cards pop */
   --ink: oklch(0.236 0.04 257);         /* #1E293B text */
   --ink-muted: oklch(0.45 0.03 257);    /* darker muted for WCAG AA contrast */
-  --line: oklch(0.91 0.014 255);        /* #E2E8F0 border */
+  --line: oklch(0.885 0.022 252);       /* navy-tinted, crisper border */
+  --heading: var(--navy-600);           /* brand navy headings (light) */
 
   /* Status semantic */
   --status-normal: oklch(0.62 0.16 152);    /* green */
@@ -159,9 +161,9 @@
   --popover-foreground: var(--ink);
   --primary: var(--navy-600);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.98 0.007 247);
+  --secondary: oklch(0.955 0.016 252);
   --secondary-foreground: var(--navy-900);
-  --muted: oklch(0.96 0.007 247);
+  --muted: oklch(0.945 0.018 252);
   --muted-foreground: var(--ink-muted);
   --accent: var(--cyan);
   --accent-foreground: var(--navy-900);
@@ -223,6 +225,7 @@
   --navy-900: oklch(0.18 0.05 258);
   --navy-800: oklch(0.22 0.06 258);
   --navy-600: oklch(0.55 0.12 256);
+  --heading: var(--foreground);         /* keep near-white headings (dark unchanged) */
   --surface: oklch(0.15 0.03 258);
   --ink: oklch(0.97 0.006 247);
   --ink-muted: oklch(0.72 0.025 257);
