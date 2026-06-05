@@ -19,10 +19,20 @@ import {
   latestBriefingQueryOptions,
   formatBriefingDate,
 } from "@/lib/api/briefing";
-import { freightRatesQueryOptions, formatNumber } from "@/lib/api/rates";
-import { eurasiaLanesQueryOptions, eurasiaDelaysQueryOptions } from "@/lib/api/eurasia";
-import { tradeProvisionalQueryOptions } from "@/lib/api/trade";
-import { HomeExportWidget } from "@/components/trade/HomeExportWidget";
+import {
+  freightIndicesHistoryQueryOptions,
+  indexStatsQueryOptions,
+  kitaAirRatesQueryOptions,
+  latestByRoute,
+  computeMoM,
+} from "@/lib/api/rates";
+import {
+  computeOceanPressureSignal,
+  computeGlobalMomentumSignal,
+  computeAirModalShiftSignal,
+  type FreightIndexPoint,
+} from "@/server/signals";
+import { RatesBrief } from "@/components/dashboard/RatesBrief";
 import { NewsletterForm } from "@/components/site/NewsletterForm";
 import { useState } from "react";
 
@@ -34,10 +44,9 @@ export const Route = createFileRoute("/")({
       latestNewsQueryOptions({ lang: "ko", limit: 8 }),
     );
     context.queryClient.ensureQueryData(latestBriefingQueryOptions());
-    context.queryClient.ensureQueryData(freightRatesQueryOptions({}));
-    context.queryClient.ensureQueryData(eurasiaLanesQueryOptions());
-    context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
-    context.queryClient.ensureQueryData(tradeProvisionalQueryOptions());
+    context.queryClient.ensureQueryData(freightIndicesHistoryQueryOptions());
+    context.queryClient.ensureQueryData(indexStatsQueryOptions());
+    context.queryClient.ensureQueryData(kitaAirRatesQueryOptions());
   },
   head: () => ({
     meta: [
@@ -58,6 +67,33 @@ export const Route = createFileRoute("/")({
   }),
   component: Index,
 });
+
+/* -------------------- Hero world-map backdrop -------------------- */
+function HeroMapBackdrop() {
+  return (
+    <svg
+      aria-hidden
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      viewBox="0 0 1200 500"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <defs>
+        <pattern id="heroDots" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="2" cy="2" r="1.2" fill="var(--color-cyan)" fillOpacity="0.18" />
+        </pattern>
+        <radialGradient id="heroGlow" cx="64%" cy="40%" r="58%">
+          <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.16" />
+          <stop offset="100%" stopColor="#38bdf8" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="1200" height="500" fill="url(#heroDots)" />
+      <rect width="1200" height="500" fill="url(#heroGlow)" />
+      {[100, 180, 260, 340, 420].map((y) => (
+        <line key={y} x1="0" y1={y} x2="1200" y2={y} stroke="#ffffff" strokeOpacity="0.04" />
+      ))}
+    </svg>
+  );
+}
 
 function HeroCard({ code, sub, label }: { code: string; sub: string; label?: string }) {
   const isNyfi = code.startsWith("NYFI:");
@@ -111,7 +147,8 @@ function Index() {
           "linear-gradient(135deg, var(--color-navy-900) 0%, var(--color-navy-800) 100%)",
       }}
     >
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 lg:grid-cols-5 lg:gap-12 lg:px-6 lg:py-20">
+      <HeroMapBackdrop />
+      <div className="relative z-10 mx-auto grid max-w-7xl gap-10 px-4 py-16 lg:grid-cols-5 lg:gap-12 lg:px-6 lg:py-20">
         <div className="lg:col-span-3">
           <p
             className="text-xs font-semibold uppercase tracking-[0.18em]"
@@ -157,29 +194,15 @@ function Index() {
         </div>
       </div>
 
-      <div className="border-t border-white/10 bg-black/20">
+      <div className="relative z-10 border-t border-white/10 bg-black/20">
         <div className="mx-auto max-w-7xl px-4 py-3 text-[11px] text-white/55 lg:px-6">
           출처: 공공데이터(PORT-MIS · 관세청 · 해양수산부) 기반 · 매주 업데이트
         </div>
       </div>
     </section>
-    <TradeWidgetBand />
     <DashboardSection />
     <IndustryInsightsSection />
     </>
-  );
-}
-
-function TradeWidgetBand() {
-  const { data } = useSuspenseQuery(tradeProvisionalQueryOptions());
-  return (
-    <section className="border-t border-[var(--color-line)] bg-[var(--color-card)]">
-      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <HomeExportWidget rows={data} />
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -191,11 +214,10 @@ function DashboardSection() {
     >
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 lg:grid-cols-3 lg:px-6 lg:py-14">
         <div className="lg:col-span-2">
-          <WeeklyBriefingBlock />
+          <HomeRatesBrief />
         </div>
         <aside className="flex flex-col gap-6">
-          <LanesSidebar />
-          <EurasiaSidebar />
+          <WeeklyBriefingBlock />
         </aside>
         <div className="lg:col-span-2">
           <NewsBlock />
@@ -209,7 +231,64 @@ function DashboardSection() {
   );
 }
 
-/* -------------------- Weekly Briefing -------------------- */
+/* -------------------- Rates Intelligence Brief (from /rates) -------------------- */
+function HomeRatesBrief() {
+  const { data: history } = useSuspenseQuery(freightIndicesHistoryQueryOptions());
+  const { data: stats } = useSuspenseQuery(indexStatsQueryOptions());
+  const { data: airRates } = useSuspenseQuery(kitaAirRatesQueryOptions());
+
+  const byCode = new Map<string, FreightIndexPoint[]>();
+  for (const r of history) {
+    const arr = byCode.get(r.index_code) ?? [];
+    arr.push({ week_date: r.week_date, value: r.value, change_pct: r.change_pct });
+    byCode.set(r.index_code, arr);
+  }
+  const kcciSeries = byCode.get("KCCI") ?? [];
+  const scfiSeries = byCode.get("SCFI") ?? [];
+  const wciSeries = byCode.get("WCI") ?? [];
+  const kcciStat = stats.find((s) => s.index_code === "KCCI") ?? null;
+
+  const oceanSignal = computeOceanPressureSignal(kcciSeries);
+  const globalSignal = computeGlobalMomentumSignal(scfiSeries, wciSeries);
+
+  const latestAir = latestByRoute(airRates);
+  const airModalData =
+    latestAir
+      .map((r) => {
+        const series = airRates
+          .filter((a) => a.origin === r.origin && a.dest === r.dest)
+          .map((a) => ({ year_mon: a.year_mon, value: a.kg300 }));
+        const mom = r.chg300 ?? computeMoM(series);
+        return { r, mom };
+      })
+      .filter((c) => c.mom !== null)
+      .sort((a, b) => Math.abs(b.mom!) - Math.abs(a.mom!))
+      .at(0) ?? null;
+
+  const airModalSignal = computeAirModalShiftSignal(
+    airModalData?.mom ?? null,
+    airModalData ? `인천→${airModalData.r.dest}` : "인천발",
+    kcciStat?.pct_52w ?? null,
+    airModalData?.r.year_mon ?? null,
+  );
+
+  return (
+    <div>
+      <RatesBrief
+        signals={[oceanSignal, globalSignal, airModalSignal]}
+        asOf={kcciStat?.latest_date?.slice(0, 10) ?? null}
+      />
+      <Link
+        to="/rates"
+        className="mt-3 inline-block text-xs font-semibold text-[var(--color-navy-600)]"
+      >
+        운임 대시보드 전체 보기 →
+      </Link>
+    </div>
+  );
+}
+
+/* -------------------- Weekly Briefing (vertical) -------------------- */
 function WeeklyBriefingBlock() {
   const { data } = useSuspenseQuery(latestBriefingQueryOptions());
   const briefing = data?.briefing ?? null;
@@ -252,7 +331,7 @@ function WeeklyBriefingBlock() {
         </div>
       ) : (
         <>
-          <ul className="mt-5 grid gap-3 md:grid-cols-3">
+          <ul className="mt-5 grid gap-3">
             {(["shipping", "corp", "brief"] as const).map((cat) => {
               const item =
                 points.find((p) => p.agent_type === cat) ??
@@ -426,164 +505,7 @@ function SmallNewsCard({ item }: { item: NewsItem }) {
   );
 }
 
-/* -------------------- Sidebar widgets -------------------- */
-function SidebarCard({
-  title,
-  badge,
-  children,
-  href,
-  hrefLabel,
-  tone = "light",
-}: {
-  title: string;
-  badge?: React.ReactNode;
-  children: React.ReactNode;
-  href?: string;
-  hrefLabel?: string;
-  tone?: "light" | "dark";
-}) {
-  const dark = tone === "dark";
-  return (
-    <section
-      className={`rounded-lg border p-4 shadow-sm ${
-        dark
-          ? "border-white/10 text-white"
-          : "border-[var(--color-line)] bg-[var(--color-card)]"
-      }`}
-      style={dark ? { background: "var(--color-navy-900)" } : undefined}
-    >
-      <div className="flex items-center justify-between">
-        <h3
-          className={`text-sm font-bold ${dark ? "text-white" : "text-[var(--color-ink)]"}`}
-        >
-          {title}
-        </h3>
-        {badge}
-      </div>
-      <div className="mt-3">{children}</div>
-      {href && (
-        <a
-          href={href}
-          className={`mt-3 inline-block text-xs font-semibold ${
-            dark ? "text-[var(--color-cyan)]" : "text-[var(--color-navy-600)]"
-          }`}
-        >
-          {hrefLabel ?? "자세히 보기 →"}
-        </a>
-      )}
-    </section>
-  );
-}
-
-function LanesSidebar() {
-  const { data } = useSuspenseQuery(freightRatesQueryOptions({}));
-  const rows = (data ?? []).slice(0, 4);
-  return (
-    <SidebarCard title="한국발 주요 노선">
-      {rows.length === 0 ? (
-        <p className="text-xs text-[var(--color-ink-muted)]">수집 예정</p>
-      ) : (
-        <ul className="space-y-2">
-          {rows.map((r) => {
-            const change = r.weekly_change_pct;
-            const up = (change ?? 0) >= 0;
-            return (
-              <li
-                key={r.id}
-                className="flex items-center justify-between gap-2 text-xs"
-              >
-                <span className="truncate text-[var(--color-ink)]">
-                  {r.pol_name ?? r.pol_code} → {r.pod_name ?? r.pod_code}
-                </span>
-                <span className="flex items-center gap-2 tabular-nums">
-                  <span className="font-semibold text-[var(--color-ink)]">
-                    ${formatNumber(r.rate_usd, 0)}
-                  </span>
-                  {change != null && (
-                    <span
-                      className={`text-[10px] font-semibold ${
-                        up ? "text-emerald-600" : "text-rose-600"
-                      }`}
-                    >
-                      {up ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
-                    </span>
-                  )}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      <p className="mt-3 text-[10px] text-[var(--color-ink-muted)]">
-        출처: Drewry · <span suppressHydrationWarning>{new Date().toISOString().slice(0, 10)}</span>
-      </p>
-    </SidebarCard>
-  );
-}
-
-function EurasiaSidebar() {
-  const { data: lanes } = useSuspenseQuery(eurasiaLanesQueryOptions());
-  const { data: delays } = useSuspenseQuery(eurasiaDelaysQueryOptions());
-  const top = (lanes ?? []).slice(0, 4);
-  const latestOtp = (laneId: string) => {
-    const rows = (delays ?? []).filter((d) => d.lane_id === laneId);
-    rows.sort((a, b) => (a.week_iso < b.week_iso ? 1 : -1));
-    return rows[0]?.otp_pct ?? rows[0]?.on_time_rate ?? null;
-  };
-  return (
-    <section
-      className="rounded-lg border border-white/10 p-4 text-white shadow-sm"
-      style={{ background: "var(--color-navy-900)" }}
-    >
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-white">유라시아 코리도어</h3>
-        <span
-          className="rounded-sm px-1.5 py-0.5 text-[10px] font-bold"
-          style={{ background: "var(--color-cyan)", color: "var(--color-navy-900)" }}
-        >
-          LOGISIGHT 전용
-        </span>
-      </div>
-      <ul className="mt-3 space-y-2 text-xs">
-        {top.length === 0 && (
-          <li className="text-white/60">수집 예정</li>
-        )}
-        {top.map((l) => {
-          const otp = latestOtp(l.id);
-          const name = l.name_ko ?? l.name_en ?? l.id;
-          return (
-            <li key={l.id} className="flex items-center justify-between gap-2">
-              <span className="truncate text-white/90">{name}</span>
-              <span className="flex items-center gap-2 tabular-nums">
-                {l.transit_max != null && (
-                  <span className="text-white/80">{l.transit_max}일</span>
-                )}
-                {otp != null && (
-                  <span
-                    className="rounded-sm px-1.5 py-0.5 text-[10px] font-semibold"
-                    style={{
-                      background: "rgba(56,189,248,0.18)",
-                      color: "var(--color-cyan)",
-                    }}
-                  >
-                    OTP {Math.round(otp)}%
-                  </span>
-                )}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-      <Link
-        to="/eurasia"
-        className="mt-3 inline-block text-xs font-semibold text-[var(--color-cyan)]"
-      >
-        전체 보기 →
-      </Link>
-    </section>
-  );
-}
-
+/* -------------------- Newsletter sidebar -------------------- */
 function NewsletterSidebar() {
   return (
     <section

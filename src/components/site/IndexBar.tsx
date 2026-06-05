@@ -2,7 +2,6 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   freightIndicesQueryOptions,
-  formatWeekLabel,
   indexDisplayLabel,
   formatIndexDisplayValue,
 } from "@/lib/api/freight-indices";
@@ -39,13 +38,7 @@ function TickerItem({ it }: { it: Item }) {
   );
 }
 
-export function IndexBar({
-  items,
-  updatedLabel,
-}: {
-  items?: Item[];
-  updatedLabel?: string;
-}) {
+export function IndexBar({ items }: { items?: Item[] }) {
   const { data, isLoading } = useQuery(freightIndicesQueryOptions());
   const { data: nyfi } = useQuery(nyfiQueryOptions());
 
@@ -65,14 +58,6 @@ export function IndexBar({
 
   const resolved: Item[] = items ?? [...supabaseItems, ...nyfiItems];
 
-  const latestWeek = [
-    ...(data ?? []).map((r) => r.week_date),
-    ...((nyfi ?? []).map((l) => l.weekDate)),
-  ]
-    .filter(Boolean)
-    .sort()
-    .reverse()[0];
-
   const track = resolved.map((it, i) => <TickerItem key={it.code + "-" + i} it={it} />);
 
   return (
@@ -86,13 +71,6 @@ export function IndexBar({
           {track}
         </ul>
       </div>
-      {resolved.length > 0 && (
-        <div className="border-t border-dashed text-center" style={{ borderColor: "var(--color-line)" }}>
-          <span className="inline-block px-3 py-1 text-[10px] text-[var(--color-ink-muted)]">
-            {updatedLabel ?? formatWeekLabel(latestWeek)}
-          </span>
-        </div>
-      )}
     </div>
   );
 }
