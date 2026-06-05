@@ -57,10 +57,140 @@ function daysUntil(dateStr: string): number {
   return Math.round((new Date(dateStr).getTime() - Date.now()) / 86400000);
 }
 
+const SEV_RANK: Record<string, number> = { high: 4, medium: 3, low: 2, info: 1 };
+
+// First 2 digits = HS chapter
+function chapterPrefix(s: string): string {
+  return s.replace(/\D/g, "").slice(0, 2);
+}
+
+function parseChapters(input: string): Set<string> {
+  const set = new Set<string>();
+  for (const tok of input.split(/[,\s]+/)) {
+    const p = chapterPrefix(tok);
+    if (p) set.add(p);
+  }
+  return set;
+}
+
+// --- Reusable checklist (built from real policy rows) ---
+function PolicyChecklist({
+  items,
+  checkedIds,
+  onToggle,
+  onSelect,
+  emptyText = "해당 항목 없음",
+}: {
+  items: PolicyRow[];
+  checkedIds: Set<string>;
+  onToggle: (id: string) => void;
+  onSelect: (p: PolicyRow) => void;
+  emptyText?: string;
+}) {
+  if (items.length === 0) {
+    return <p className="text-xs text-muted-foreground">{emptyText}</p>;
+  }
+  return (
+    <ul className="space-y-1.5">
+      {items.map((p) => {
+        const d = p.effective_date ? daysUntil(p.effective_date) : null;
+        const checked = checkedIds.has(p.id);
+        return (
+          <li
+            key={p.id}
+            className="flex items-start gap-2.5 rounded-md border border-border bg-card px-3 py-2"
+          >
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={checked}
+              aria-label={`${p.title_ko} 점검 완료 표시`}
+              onClick={() => onToggle(p.id)}
+              className={[
+                "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] leading-none",
+                checked
+                  ? "border-[var(--color-cyan)] bg-[var(--color-cyan)]/15 text-[var(--color-cyan)]"
+                  : "border-border text-transparent",
+              ].join(" ")}
+            >
+              ✓
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onSelect(p)}
+                  className={[
+                    "text-left text-sm font-medium hover:underline",
+                    checked ? "text-muted-foreground line-through" : "text-foreground",
+                  ].join(" ")}
+                >
+                  {p.title_ko}
+                </button>
+                <SevBadge sev={p.severity} />
+                {d !== null && d >= 0 && (
+                  <span
+                    suppressHydrationWarning
+                    className={[
+                      "rounded px-1 py-0.5 text-[10px] font-medium tabular-nums",
+                      d <= 30
+                        ? "bg-status-alert/10 text-status-alert"
+                        : "bg-status-caution/10 text-status-caution",
+                    ].join(" ")}
+                  >
+                    D−{d}
+                  </span>
+                )}
+                {!p.last_verified_at && (
+                  <span className="rounded bg-status-caution/10 px-1 py-0.5 text-[10px] text-status-caution">
+                    검증 전
+                  </span>
+                )}
+              </div>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                <span>
+                  {[p.region, p.country_code].filter(Boolean).join(" · ") || p.policy_type}
+                </span>
+                {p.effective_date && <span>시행 {p.effective_date}</span>}
+                {p.affected_hs_chapters && p.affected_hs_chapters.length > 0 && (
+                  <span>HS {p.affected_hs_chapters.slice(0, 4).join(", ")}</span>
+                )}
+                {p.source_url && (
+                  <a
+                    href={p.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline"
+                  >
+                    출처↗
+                  </a>
+                )}
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 // --- Policy page ---
 function PolicyPage() {
   const { data: policies } = useSuspenseQuery(policiesQueryOptions());
   const [selected, setSelected] = useState<PolicyRow | null>(null);
+
+  // Checklist + cargo impact analysis state
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const toggleChecked = (id: string) =>
+    setCheckedIds((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const [showImpact, setShowImpact] = useState(false);
+  const [hsInput, setHsInput] = useState("");
+  const [regionInput, setRegionInput] = useState("");
 
   const today = new Date();
   const horizon = new Date(today.getTime() + 180 * 86400000);
@@ -114,6 +244,40 @@ function PolicyPage() {
       state: unverified === 0 ? "normal" : "caution",
     },
   ], [policies, upcoming30, highCount, unverified]);
+
+  // 시행 준비 체크리스트 — 향후 90일 시행 예정 정책 (실데이터)
+  const imminentPolicies = useMemo(
+    () =>
+      policies
+        .filter((p) => {
+          if (!p.effective_date) return false;
+          const d = daysUntil(p.effective_date);
+          return d >= 0 && d <= 90;
+        })
+        .sort((a, b) => a.effective_date!.localeCompare(b.effective_date!)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [policies],
+  );
+
+  // 내 화물 영향 분석 — HS 챕터·지역으로 DB 정책 필터
+  const impactChapters = useMemo(() => parseChapters(hsInput), [hsInput]);
+  const regionQuery = regionInput.trim().toLowerCase();
+  const impactMatches = useMemo(() => {
+    if (impactChapters.size === 0 && !regionQuery) return null;
+    return policies
+      .filter((p) => {
+        const hsOk =
+          impactChapters.size === 0 ||
+          (p.affected_hs_chapters ?? []).some((c) => impactChapters.has(chapterPrefix(c)));
+        const regionOk =
+          !regionQuery ||
+          [p.region, p.country_code]
+            .filter((x): x is string => Boolean(x))
+            .some((x) => x.toLowerCase().includes(regionQuery));
+        return hsOk && regionOk;
+      })
+      .sort((a, b) => (SEV_RANK[b.severity] ?? 0) - (SEV_RANK[a.severity] ?? 0));
+  }, [policies, impactChapters, regionQuery]);
 
   // Exposure matrix columns
   const COLS: ColDef<PolicyRow>[] = [
@@ -184,8 +348,76 @@ function PolicyPage() {
   ];
 
   return (
-    <DashboardShell title="정책·리스크" subtitle="물류 정책 시행 타임라인 및 영향 매트릭스">
+    <DashboardShell
+      title="정책·리스크"
+      subtitle="물류 정책 시행 타임라인 및 영향 매트릭스"
+      toolbar={
+        <button
+          type="button"
+          onClick={() => setShowImpact((v) => !v)}
+          className={[
+            "rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+            showImpact
+              ? "border-[var(--color-cyan)] bg-[var(--color-cyan)]/10 text-foreground"
+              : "border-border text-muted-foreground hover:bg-muted",
+          ].join(" ")}
+        >
+          {showImpact ? "분석 닫기" : "내 화물 영향 분석"}
+        </button>
+      }
+    >
       <StatusStrip items={statusItems} />
+
+      {/* 내 화물 영향 분석 */}
+      {showImpact && (
+        <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+          <div>
+            <h2 className="text-sm font-semibold">내 화물 영향 분석</h2>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              화물 HS 챕터·지역을 입력하면 현재 DB의 정책 중 영향 항목을 추려 점검 체크리스트를 만듭니다 ·
+              DB 기준, 추정·임의 수치 없음
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-[11px] text-muted-foreground">HS 챕터 (쉼표로 구분)</label>
+              <input
+                value={hsInput}
+                onChange={(e) => setHsInput(e.target.value)}
+                placeholder="예: 84, 85, 87"
+                inputMode="numeric"
+                className="mt-0.5 w-full rounded border border-border bg-background px-2 py-1.5 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] text-muted-foreground">지역·국가 (선택)</label>
+              <input
+                value={regionInput}
+                onChange={(e) => setRegionInput(e.target.value)}
+                placeholder="예: EU, US, CN"
+                className="mt-0.5 w-full rounded border border-border bg-background px-2 py-1.5 text-xs"
+              />
+            </div>
+          </div>
+          {impactMatches === null ? (
+            <p className="text-xs text-muted-foreground">HS 챕터 또는 지역을 입력하세요.</p>
+          ) : impactMatches.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              입력 조건에 해당하는 정책이 없습니다 (현재 DB 기준).
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs font-medium">{impactMatches.length}건 해당 — 점검 체크리스트</p>
+              <PolicyChecklist
+                items={impactMatches}
+                checkedIds={checkedIds}
+                onToggle={toggleChecked}
+                onSelect={setSelected}
+              />
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Timeline — 180일 */}
       <section>
@@ -228,6 +460,35 @@ function PolicyPage() {
             })
           )}
         </div>
+      </section>
+
+      {/* 시행 준비 체크리스트 */}
+      <section>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="text-[13px] font-semibold">
+            시행 준비 체크리스트{" "}
+            <span className="text-[11px] font-normal text-muted-foreground">향후 90일 시행 정책</span>
+          </h2>
+          {checkedIds.size > 0 && (
+            <button
+              type="button"
+              onClick={() => setCheckedIds(new Set())}
+              className="text-[11px] text-muted-foreground hover:underline"
+            >
+              체크 초기화
+            </button>
+          )}
+        </div>
+        <PolicyChecklist
+          items={imminentPolicies}
+          checkedIds={checkedIds}
+          onToggle={toggleChecked}
+          onSelect={setSelected}
+          emptyText="향후 90일 이내 시행 예정 정책 없음"
+        />
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          실제 정책 행에서 생성 · 체크 상태는 저장되지 않는 점검용 보조 기능
+        </p>
       </section>
 
       {/* Exposure matrix */}
