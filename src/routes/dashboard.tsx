@@ -8,7 +8,13 @@ import { FreshnessBadge } from "@/components/dashboard/FreshnessBadge";
 import { DataQualityBar } from "@/components/dashboard/DataQualityBar";
 
 import { alertCandidatesQueryOptions, type AlertCandidate } from "@/lib/api/alerts";
-import { indexStatsQueryOptions, kitaAirRatesQueryOptions, kitaSeaRatesQueryOptions, latestByRoute } from "@/lib/api/rates";
+import {
+  computeMoM,
+  indexStatsQueryOptions,
+  kitaAirRatesQueryOptions,
+  kitaSeaRatesQueryOptions,
+  latestByRoute,
+} from "@/lib/api/rates";
 import { eurasiaDisruptionsActiveQueryOptions } from "@/lib/api/eurasia-disruptions";
 import { latestExchangeRateQueryOptions } from "@/lib/api/exchange-rates";
 import { createLocalWatchlist, type WatchlistItem } from "@/lib/watchlist";
@@ -35,7 +41,12 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 // --- Severity helpers ---
-const SEV_LABEL: Record<string, string> = { high: "경고", medium: "주의", low: "낮음", info: "정보" };
+const SEV_LABEL: Record<string, string> = {
+  high: "경고",
+  medium: "주의",
+  low: "낮음",
+  info: "정보",
+};
 const SEV_COLOR: Record<string, string> = {
   high: "var(--color-status-alert)",
   medium: "var(--color-status-caution)",
@@ -96,32 +107,46 @@ function DashboardPage() {
     setWatchlist(wlStore?.getAll() ?? []);
   }
 
-  // --- Top 3 rising rates (use pre-computed MoM from KITA) ---
+  // --- Top 3 rising rates (compute MoM from KITA source values; chg fields are absolute deltas) ---
   const topRising = useMemo(() => {
     const latestAir = latestByRoute(airRates);
     const latestSea = latestByRoute(seaRates);
 
-    const airItems = latestAir
-      .filter((r) => r.chg300 !== null && r.chg300 > 0)
-      .map((r) => ({
-        label: `${r.origin}→${r.dest} (항공)`,
-        mom: r.chg300!,
-        asOf: r.year_mon,
-        link: "/rates" as const,
-      }));
+    const airItems = latestAir.flatMap((r) => {
+      const series = airRates
+        .filter((a) => a.origin === r.origin && a.dest === r.dest)
+        .map((a) => ({ year_mon: a.year_mon, value: a.kg300 }));
+      const mom = computeMoM(series);
+      return mom !== null && mom > 0
+        ? [
+            {
+              label: `${r.origin}→${r.dest} (항공)`,
+              mom,
+              asOf: r.year_mon,
+              link: "/rates" as const,
+            },
+          ]
+        : [];
+    });
 
-    const seaItems = latestSea
-      .filter((r) => r.feu_chg !== null && r.feu_chg > 0)
-      .map((r) => ({
-        label: `${r.origin}→${r.dest} (해상)`,
-        mom: r.feu_chg!,
-        asOf: r.year_mon,
-        link: "/rates" as const,
-      }));
+    const seaItems = latestSea.flatMap((r) => {
+      const series = seaRates
+        .filter((s) => s.origin === r.origin && s.dest === r.dest)
+        .map((s) => ({ year_mon: s.year_mon, value: s.feu }));
+      const mom = computeMoM(series);
+      return mom !== null && mom > 0
+        ? [
+            {
+              label: `${r.origin}→${r.dest} (해상)`,
+              mom,
+              asOf: r.year_mon,
+              link: "/rates" as const,
+            },
+          ]
+        : [];
+    });
 
-    return [...airItems, ...seaItems]
-      .sort((a, b) => b.mom - a.mom)
-      .slice(0, 3);
+    return [...airItems, ...seaItems].sort((a, b) => b.mom - a.mom).slice(0, 3);
   }, [airRates, seaRates]);
 
   // --- StatusStrip ---
@@ -129,31 +154,43 @@ function DashboardPage() {
   const highAlerts = alerts.filter((a) => a.severity === "high").length;
   const medAlerts = alerts.filter((a) => a.severity === "medium").length;
 
-  const statusItems = useMemo((): StatusItem[] => [
-    {
-      label: "경보",
-      value: highAlerts === 0 && medAlerts === 0 ? "없음" : `${highAlerts}건 경고 / ${medAlerts}건 주의`,
-      state: highAlerts > 0 ? "alert" : medAlerts > 0 ? "caution" : "normal",
-    },
-    {
-      label: "KCCI WoW",
-      value: kcciStat?.change_pct != null
-        ? `${kcciStat.change_pct >= 0 ? "+" : ""}${kcciStat.change_pct.toFixed(1)}%`
-        : "—",
-      state: kcciStat?.change_pct == null ? "normal"
-        : Math.abs(kcciStat.change_pct) >= 5 ? "caution" : "normal",
-    },
-    {
-      label: "유라시아 장애",
-      value: disruptions.length === 0 ? "없음" : `${disruptions.length}건`,
-      state: disruptions.length === 0 ? "normal" : disruptions.length >= 2 ? "caution" : "observe",
-    },
-    {
-      label: "기준일",
-      value: kcciStat?.latest_date?.slice(0, 10) ?? "—",
-      state: "normal",
-    },
-  ], [highAlerts, medAlerts, kcciStat, disruptions]);
+  const statusItems = useMemo(
+    (): StatusItem[] => [
+      {
+        label: "경보",
+        value:
+          highAlerts === 0 && medAlerts === 0
+            ? "없음"
+            : `${highAlerts}건 경고 / ${medAlerts}건 주의`,
+        state: highAlerts > 0 ? "alert" : medAlerts > 0 ? "caution" : "normal",
+      },
+      {
+        label: "KCCI WoW",
+        value:
+          kcciStat?.change_pct != null
+            ? `${kcciStat.change_pct >= 0 ? "+" : ""}${kcciStat.change_pct.toFixed(1)}%`
+            : "—",
+        state:
+          kcciStat?.change_pct == null
+            ? "normal"
+            : Math.abs(kcciStat.change_pct) >= 5
+              ? "caution"
+              : "normal",
+      },
+      {
+        label: "유라시아 장애",
+        value: disruptions.length === 0 ? "없음" : `${disruptions.length}건`,
+        state:
+          disruptions.length === 0 ? "normal" : disruptions.length >= 2 ? "caution" : "observe",
+      },
+      {
+        label: "기준일",
+        value: kcciStat?.latest_date?.slice(0, 10) ?? "—",
+        state: "normal",
+      },
+    ],
+    [highAlerts, medAlerts, kcciStat, disruptions],
+  );
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -270,10 +307,10 @@ function DashboardPage() {
                         s.change_pct == null
                           ? "text-muted-foreground"
                           : s.change_pct > 0
-                          ? "text-status-alert"
-                          : s.change_pct < 0
-                          ? "text-status-normal"
-                          : "text-muted-foreground"
+                            ? "text-status-alert"
+                            : s.change_pct < 0
+                              ? "text-status-normal"
+                              : "text-muted-foreground"
                       }
                     >
                       {s.change_pct != null
@@ -287,8 +324,8 @@ function DashboardPage() {
                           s.pct_52w >= 85
                             ? "bg-status-alert/10 text-status-alert"
                             : s.pct_52w >= 70
-                            ? "bg-status-caution/10 text-status-caution"
-                            : "bg-muted text-muted-foreground",
+                              ? "bg-status-caution/10 text-status-caution"
+                              : "bg-muted text-muted-foreground",
                         ].join(" ")}
                       >
                         {s.pct_52w}%
@@ -348,9 +385,21 @@ function DashboardPage() {
 
       <DataQualityBar
         sources={[
-          { label: "KCCI·SCFI", asOf: kcciStat?.latest_date?.slice(0, 10) ?? null, expectedDays: 7 },
-          { label: "KITA 운임", asOf: latestByRoute(airRates).at(0)?.year_mon ?? null, expectedDays: 35 },
-          { label: "Eurasia 집계", asOf: disruptions.at(0)?.created_at?.slice(0, 10) ?? null, expectedDays: 7 },
+          {
+            label: "KCCI·SCFI",
+            asOf: kcciStat?.latest_date?.slice(0, 10) ?? null,
+            expectedDays: 7,
+          },
+          {
+            label: "KITA 운임",
+            asOf: latestByRoute(airRates).at(0)?.year_mon ?? null,
+            expectedDays: 35,
+          },
+          {
+            label: "Eurasia 집계",
+            asOf: disruptions.at(0)?.created_at?.slice(0, 10) ?? null,
+            expectedDays: 7,
+          },
           { label: "환율", asOf: exRate?.rate_date ?? null, expectedDays: 3 },
         ]}
       />

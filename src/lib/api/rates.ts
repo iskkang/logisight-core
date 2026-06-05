@@ -94,7 +94,7 @@ export const bunkerPricesQueryOptions = () =>
     staleTime: 10 * 60 * 1000,
   });
 
-// ⚠️ kita_air_rates: kg100/300/500 unit is USD/kg (KITA publishes USD directly)
+// KITA air rates: kg100/300/500 are KRW/kg. chg fields are absolute KRW/kg deltas.
 export type KitaAirRateRow = {
   origin: string;
   dest: string;
@@ -103,7 +103,7 @@ export type KitaAirRateRow = {
   kg100: number | null;
   kg300: number | null;
   kg500: number | null;
-  chg100: number | null; // MoM % change for kg100
+  chg100: number | null;
   chg300: number | null;
   chg500: number | null;
 };
@@ -115,7 +115,7 @@ export type KitaSeaRateRow = {
   year_mon: string;
   teu: number | null;
   feu: number | null;
-  teu_chg: number | null; // MoM % change
+  teu_chg: number | null; // absolute USD delta
   feu_chg: number | null;
 };
 
@@ -140,9 +140,7 @@ export function latestByRoute<T extends { origin: string; dest: string; year_mon
 }
 
 // Compute MoM change from a series (uses YYYYMM format)
-export function computeMoM(
-  series: { year_mon: string; value: number | null }[],
-): number | null {
+export function computeMoM(series: { year_mon: string; value: number | null }[]): number | null {
   const sorted = [...series]
     .filter((p) => p.value !== null)
     .sort((a, b) => a.year_mon.localeCompare(b.year_mon));

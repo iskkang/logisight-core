@@ -13,11 +13,8 @@ export function usdToKrw(usd: number, rate: ExchangeRateRow): number {
   return usd * rate.usd_krw;
 }
 
-// Format air freight display: "2.45 USD/kg (₩3,185 · @1,300 · 2025.06.01)"
-export function formatAirFrightDisplay(
-  usdPerKg: number,
-  rate: ExchangeRateRow | null,
-): string {
+// Format an already-USD-denominated air freight value with a KRW reference display.
+export function formatAirFrightDisplay(usdPerKg: number, rate: ExchangeRateRow | null): string {
   const usdStr = `${usdPerKg.toFixed(2)} USD/kg`;
   if (!rate) return usdStr;
   const krw = Math.round(usdPerKg * rate.usd_krw);

@@ -16,10 +16,10 @@ export const Route = createFileRoute("/policy")({
   },
   head: () => ({
     meta: [
-      { title: "정책·리스크 — Logisight" },
+      { title: "리스크 인텔리전스 — Logisight" },
       {
         name: "description",
-        content: "물류 정책 시행 타임라인, 영향 매트릭스, 출처·검증 현황.",
+        content: "해상 병목, 항만 혼잡, 규제 이벤트 리스크 모니터.",
       },
     ],
   }),
@@ -58,6 +58,80 @@ function daysUntil(dateStr: string): number {
 }
 
 const SEV_RANK: Record<string, number> = { high: 4, medium: 3, low: 2, info: 1 };
+
+const RISK_SOURCES = [
+  {
+    group: "Hormuz·Persian Gulf",
+    note: "선박 체류, 호르무즈 통항, 최근 뉴스, 매크로 지표",
+    links: [
+      [
+        "Persian Gulf ships",
+        "https://www.shipfinder.com/Special/ShipsInPersianGulfDetail?date=2026-06-04",
+      ],
+      [
+        "Hormuz crossings",
+        "https://www.shipfinder.com/Special/CrossStraitOfHormuzDetail?date=2026-06-04",
+      ],
+      [
+        "Hormuz recent news",
+        "https://www.shipfinder.com/Special/GetHormuzNewsRecent?skip=0&limit=50",
+      ],
+      ["Hormuz AI judge", "https://www.shipfinder.com/Special/CallAiToJudge"],
+      ["Persian Gulf stats", "https://www.shipfinder.com/Special/ShipsInPersianGulfStats"],
+      ["Macro index", "https://www.shipfinder.com/Special/GetMacroIndexLatest"],
+    ],
+  },
+  {
+    group: "Top Ports",
+    note: "전세계 항만 Top 20, dwell time, congestion, delay, turnaround",
+    links: [
+      [
+        "EconDB ports top 20",
+        "https://www.econdb.com/maritime/search/ports/?page_size=20&page=1&s=&fl=rank%2Cname%2Clocode%2Clast_import_teu%2Clast_export_teu%2Cimport_dwell_time%2Cexport_dwell_time%2Cts_dwell_time%2Cschedule%2Ctransshipments%2Creefer%2Cport_congestion%2Cdelay_percent%2Cregion%2Cvessels_berthed%2Cturnaround%2Clast_export_teu_mom%2Clast_import_teu_mom%2Cglobal_trade%2Ccountry%2Cid%2Crank",
+      ],
+    ],
+  },
+  {
+    group: "Chokepoints",
+    note: "Suez, Panama, Cape, Malacca, Hormuz 최신 통항과 TEU 방향별 흐름",
+    links: [
+      [
+        "Suez data",
+        "https://www.econdb.com/widgets/chokepoint-pass/data/?unit=teu&group_by=direction&chokepoint_name=Suez",
+      ],
+      ["Suez latest", "https://www.econdb.com/maritime/latest_crossings/?chokepoint_name=Suez"],
+      [
+        "Panama data",
+        "https://www.econdb.com/widgets/chokepoint-pass/data/?unit=teu&group_by=direction&chokepoint_name=Panama",
+      ],
+      ["Panama latest", "https://www.econdb.com/maritime/latest_crossings/?chokepoint_name=Panama"],
+      [
+        "Cape data",
+        "https://www.econdb.com/widgets/chokepoint-pass/data/?unit=teu&group_by=direction&chokepoint_name=Cape",
+      ],
+      [
+        "Malacca data",
+        "https://www.econdb.com/widgets/chokepoint-pass/data/?unit=teu&group_by=direction&chokepoint_name=Malacca",
+      ],
+      [
+        "Hormuz data",
+        "https://www.econdb.com/widgets/chokepoint-pass/data/?unit=teu&group_by=direction&chokepoint_name=Hormuz",
+      ],
+    ],
+  },
+  {
+    group: "Trade·Freight Macro",
+    note: "Global exports, SCFI, global TEU liftings",
+    links: [
+      [
+        "Global exports TEU",
+        "https://www.econdb.com/widgets/global-trade/data/?type=export&net=0&transform=0&freq=month",
+      ],
+      ["SCFI", "https://www.econdb.com/widgets/shanghai-containerized-index/data/"],
+      ["Global TEU liftings", "https://www.econdb.com/widgets/global-seasonal/data/"],
+    ],
+  },
+] as const;
 
 // First 2 digits = HS chapter
 function chapterPrefix(s: string): string {
@@ -151,7 +225,7 @@ function PolicyChecklist({
                 <span>
                   {[p.region, p.country_code].filter(Boolean).join(" · ") || p.policy_type}
                 </span>
-                {p.effective_date && <span>시행 {p.effective_date}</span>}
+                {p.effective_date && <span>발효 {p.effective_date}</span>}
                 {p.affected_hs_chapters && p.affected_hs_chapters.length > 0 && (
                   <span>HS {p.affected_hs_chapters.slice(0, 4).join(", ")}</span>
                 )}
@@ -222,30 +296,33 @@ function PolicyPage() {
     return d >= 0 && d <= 30;
   }).length;
 
-  const statusItems = useMemo((): StatusItem[] => [
-    {
-      label: "전체",
-      value: `${policies.length}건`,
-      state: "normal",
-    },
-    {
-      label: "30일 이내 시행",
-      value: upcoming30 === 0 ? "없음" : `${upcoming30}건`,
-      state: upcoming30 === 0 ? "normal" : upcoming30 >= 2 ? "alert" : "caution",
-    },
-    {
-      label: "높음 심각도",
-      value: highCount === 0 ? "없음" : `${highCount}건`,
-      state: highCount === 0 ? "normal" : "alert",
-    },
-    {
-      label: "검증 전",
-      value: unverified === 0 ? "없음" : `${unverified}건`,
-      state: unverified === 0 ? "normal" : "caution",
-    },
-  ], [policies, upcoming30, highCount, unverified]);
+  const statusItems = useMemo(
+    (): StatusItem[] => [
+      {
+        label: "전체",
+        value: `${policies.length}건`,
+        state: "normal",
+      },
+      {
+        label: "30일 이내 예정",
+        value: upcoming30 === 0 ? "없음" : `${upcoming30}건`,
+        state: upcoming30 === 0 ? "normal" : upcoming30 >= 2 ? "alert" : "caution",
+      },
+      {
+        label: "높음 심각도",
+        value: highCount === 0 ? "없음" : `${highCount}건`,
+        state: highCount === 0 ? "normal" : "alert",
+      },
+      {
+        label: "검증 전",
+        value: unverified === 0 ? "없음" : `${unverified}건`,
+        state: unverified === 0 ? "normal" : "caution",
+      },
+    ],
+    [policies, upcoming30, highCount, unverified],
+  );
 
-  // 시행 준비 체크리스트 — 향후 90일 시행 예정 정책 (실데이터)
+  // 대응 체크리스트 — 향후 90일 이벤트 (실데이터)
   const imminentPolicies = useMemo(
     () =>
       policies
@@ -255,11 +332,10 @@ function PolicyPage() {
           return d >= 0 && d <= 90;
         })
         .sort((a, b) => a.effective_date!.localeCompare(b.effective_date!)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [policies],
   );
 
-  // 내 화물 영향 분석 — HS 챕터·지역으로 DB 정책 필터
+  // 내 화물 영향 분석 — HS 챕터·지역으로 DB 리스크 이벤트 필터
   const impactChapters = useMemo(() => parseChapters(hsInput), [hsInput]);
   const regionQuery = regionInput.trim().toLowerCase();
   const impactMatches = useMemo(() => {
@@ -283,7 +359,7 @@ function PolicyPage() {
   const COLS: ColDef<PolicyRow>[] = [
     {
       key: "title_ko",
-      header: "정책·리스크",
+      header: "리스크 이벤트",
       cell: (r) => (
         <div>
           <span className="font-medium text-foreground">{r.title_ko}</span>
@@ -319,7 +395,7 @@ function PolicyPage() {
     },
     {
       key: "effective_date",
-      header: "시행일",
+      header: "발효일",
       cell: (r) => {
         if (!r.effective_date) return <span className="text-muted-foreground">—</span>;
         const d = daysUntil(r.effective_date);
@@ -330,7 +406,9 @@ function PolicyPage() {
               <span
                 className={[
                   "ml-1.5 rounded px-1 py-0.5 text-[10px] font-medium",
-                  d <= 30 ? "bg-status-alert/10 text-status-alert" : "bg-status-caution/10 text-status-caution",
+                  d <= 30
+                    ? "bg-status-alert/10 text-status-alert"
+                    : "bg-status-caution/10 text-status-caution",
                 ].join(" ")}
               >
                 D−{d}
@@ -349,8 +427,8 @@ function PolicyPage() {
 
   return (
     <DashboardShell
-      title="정책·리스크"
-      subtitle="물류 정책 시행 타임라인 및 영향 매트릭스"
+      title="리스크 인텔리전스"
+      subtitle="해상 병목·항만 혼잡·규제 이벤트 리스크 모니터"
       toolbar={
         <button
           type="button"
@@ -368,14 +446,46 @@ function PolicyPage() {
     >
       <StatusStrip items={statusItems} />
 
+      {/* 외부 리스크 소스 */}
+      <section>
+        <div className="mb-2">
+          <h2 className="text-[13px] font-semibold">외부 리스크 소스</h2>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            아직 DB 자동 수집 전 단계입니다. 원천 링크를 보존하고, 수집 파이프라인 연결 전에는
+            무리하게 "리스크 없음"으로 표시하지 않습니다.
+          </p>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {RISK_SOURCES.map((source) => (
+            <div key={source.group} className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-semibold">{source.group}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{source.note}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {source.links.map(([label, href]) => (
+                  <a
+                    key={href}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded border border-border px-2 py-0.5 text-[11px] text-primary hover:bg-muted"
+                  >
+                    {label}↗
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* 내 화물 영향 분석 */}
       {showImpact && (
         <section className="space-y-3 rounded-lg border border-border bg-card p-4">
           <div>
             <h2 className="text-sm font-semibold">내 화물 영향 분석</h2>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              화물 HS 챕터·지역을 입력하면 현재 DB의 정책 중 영향 항목을 추려 점검 체크리스트를 만듭니다 ·
-              DB 기준, 추정·임의 수치 없음
+              화물 HS 챕터·지역을 입력하면 현재 DB의 리스크 이벤트 중 영향 항목을 추려 점검
+              체크리스트를 만듭니다 · DB 기준, 추정·임의 수치 없음
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -403,7 +513,7 @@ function PolicyPage() {
             <p className="text-xs text-muted-foreground">HS 챕터 또는 지역을 입력하세요.</p>
           ) : impactMatches.length === 0 ? (
             <p className="text-xs text-muted-foreground">
-              입력 조건에 해당하는 정책이 없습니다 (현재 DB 기준).
+              입력 조건에 해당하는 리스크 이벤트가 없습니다 (현재 DB 기준).
             </p>
           ) : (
             <div className="space-y-2">
@@ -421,19 +531,29 @@ function PolicyPage() {
 
       {/* Timeline — 180일 */}
       <section>
-        <h2 className="mb-3 text-[13px] font-semibold">시행 타임라인 — 향후 180일</h2>
+        <h2 className="mb-3 text-[13px] font-semibold">리스크 타임라인 — 향후 180일</h2>
         <div className="relative h-16 overflow-hidden rounded-lg border border-border bg-card px-5">
           {/* Axis line */}
           <div className="absolute bottom-4 left-5 right-5 h-px bg-border" />
           {/* Axis labels */}
           <span className="absolute bottom-1 left-5 text-[10px] text-muted-foreground">오늘</span>
-          <span className="absolute bottom-1 text-[10px] text-muted-foreground" style={{ left: "calc(16.7% + 1.25rem)" }}>30일</span>
-          <span className="absolute bottom-1 text-[10px] text-muted-foreground" style={{ left: "calc(50% + 1.25rem)" }}>90일</span>
+          <span
+            className="absolute bottom-1 text-[10px] text-muted-foreground"
+            style={{ left: "calc(16.7% + 1.25rem)" }}
+          >
+            30일
+          </span>
+          <span
+            className="absolute bottom-1 text-[10px] text-muted-foreground"
+            style={{ left: "calc(50% + 1.25rem)" }}
+          >
+            90일
+          </span>
           <span className="absolute bottom-1 right-5 text-[10px] text-muted-foreground">180일</span>
 
           {timelinePolicies.length === 0 ? (
             <p className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-              180일 이내 시행 예정 정책 없음
+              DB에 입력된 180일 이내 예정 이벤트 없음
             </p>
           ) : (
             timelinePolicies.map((p) => {
@@ -462,12 +582,14 @@ function PolicyPage() {
         </div>
       </section>
 
-      {/* 시행 준비 체크리스트 */}
+      {/* 대응 체크리스트 */}
       <section>
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-[13px] font-semibold">
-            시행 준비 체크리스트{" "}
-            <span className="text-[11px] font-normal text-muted-foreground">향후 90일 시행 정책</span>
+            대응 체크리스트{" "}
+            <span className="text-[11px] font-normal text-muted-foreground">
+              향후 90일 예정 이벤트
+            </span>
           </h2>
           {checkedIds.size > 0 && (
             <button
@@ -484,22 +606,22 @@ function PolicyPage() {
           checkedIds={checkedIds}
           onToggle={toggleChecked}
           onSelect={setSelected}
-          emptyText="향후 90일 이내 시행 예정 정책 없음"
+          emptyText="DB에 입력된 90일 이내 예정 이벤트 없음"
         />
         <p className="mt-1.5 text-[11px] text-muted-foreground">
-          실제 정책 행에서 생성 · 체크 상태는 저장되지 않는 점검용 보조 기능
+          실제 리스크 이벤트 행에서 생성 · 체크 상태는 저장되지 않는 점검용 보조 기능
         </p>
       </section>
 
       {/* Exposure matrix */}
       <section>
         <h2 className="mb-2 text-[13px] font-semibold">
-          정책 영향 매트릭스{" "}
+          입력된 리스크 이벤트{" "}
           <span className="text-[11px] font-normal text-muted-foreground">행 클릭 시 상세</span>
         </h2>
         {policies.length === 0 ? (
           <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-            정책 데이터 수집 중 — 어드민에서 입력하세요
+            리스크 이벤트 데이터 수집 중 — 어드민에서 입력하세요
           </div>
         ) : (
           <IntelTable
@@ -510,14 +632,15 @@ function PolicyPage() {
           />
         )}
         <p className="mt-1.5 text-[11px] text-muted-foreground">
-          현재 {policies.length}건 입력 · 검증 전 정책은 "검증 전" 배지 표시 · 출처 확인 후 last_verified_at 갱신 필요
+          현재 {policies.length}건 입력 · 검증 전 이벤트는 "검증 전" 배지 표시 · 출처 확인 후
+          last_verified_at 갱신 필요
         </p>
       </section>
 
       <DataQualityBar
         sources={[
           {
-            label: "정책 DB",
+            label: "리스크 DB",
             asOf: policies.at(0)?.updated_at?.slice(0, 10) ?? null,
             expectedDays: 30,
           },
@@ -562,13 +685,13 @@ function PolicyDetail({ policy }: { policy: PolicyRow }) {
         <span className="text-muted-foreground">지역·국가</span>
         <span>{[policy.region, policy.country_code].filter(Boolean).join(" · ") || "—"}</span>
         <span className="text-muted-foreground">심각도</span>
-        <span><SevBadge sev={policy.severity} /></span>
-        <span className="text-muted-foreground">시행일</span>
+        <span>
+          <SevBadge sev={policy.severity} />
+        </span>
+        <span className="text-muted-foreground">발효일</span>
         <span>
           {policy.effective_date ?? "—"}
-          {d !== null && d >= 0 && (
-            <span className="ml-1.5 text-muted-foreground">(D−{d})</span>
-          )}
+          {d !== null && d >= 0 && <span className="ml-1.5 text-muted-foreground">(D−{d})</span>}
         </span>
         <span className="text-muted-foreground">만료일</span>
         <span>{policy.expiry_date ?? "—"}</span>

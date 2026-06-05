@@ -2,8 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, Legend,
-  ResponsiveContainer, CartesianGrid, ReferenceArea,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  CartesianGrid,
+  ReferenceArea,
 } from "recharts";
 
 import { resolveFilters, useGlobalFilters, type GlobalFilters } from "@/hooks/useGlobalFilters";
@@ -81,6 +88,112 @@ function fmtUsd(v: number | null, decimals = 0): string {
   return `$${v.toLocaleString("en-US", { maximumFractionDigits: decimals })}`;
 }
 
+function fmtKrw(v: number | null, decimals = 0): string {
+  if (v == null) return "—";
+  return `₩${v.toLocaleString("ko-KR", { maximumFractionDigits: decimals })}`;
+}
+
+function fmtYearMonth(ym: string | null | undefined): string {
+  if (!ym) return "—";
+  const compact = ym.replace(/\D/g, "");
+  if (compact.length >= 6) return `${compact.slice(0, 4)}-${compact.slice(4, 6)}`;
+  return ym;
+}
+
+const PERIOD_MONTHS: Record<GlobalFilters["period"], number> = {
+  "3m": 3,
+  "12m": 12,
+  "36m": 36,
+};
+
+const PERIOD_LABEL: Record<GlobalFilters["period"], string> = {
+  "3m": "최근 3개월",
+  "12m": "최근 12개월",
+  "36m": "최근 36개월",
+};
+
+const MODE_LABEL: Record<GlobalFilters["mode"], string> = {
+  all: "전체 모드",
+  ocean: "해상",
+  air: "항공",
+  rail: "철도",
+};
+
+function filterByPeriodDate<T extends { week_date: string }>(
+  rows: T[],
+  period: GlobalFilters["period"],
+): T[] {
+  const latest = rows
+    .map((r) => r.week_date)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  if (!latest) return rows;
+  const cutoff = new Date(`${latest.slice(0, 10)}T00:00:00Z`);
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - PERIOD_MONTHS[period]);
+  return rows.filter((r) => new Date(`${r.week_date.slice(0, 10)}T00:00:00Z`) >= cutoff);
+}
+
+function filterByPeriodMonth<T extends { year_mon: string }>(
+  rows: T[],
+  period: GlobalFilters["period"],
+): T[] {
+  const latest = rows
+    .map((r) => r.year_mon?.replace(/\D/g, ""))
+    .filter((ym): ym is string => Boolean(ym && ym.length >= 6))
+    .sort()
+    .at(-1);
+  if (!latest) return rows;
+  const y = Number(latest.slice(0, 4));
+  const m = Number(latest.slice(4, 6));
+  const cutoff = new Date(Date.UTC(y, m - PERIOD_MONTHS[period], 1));
+  const cutoffKey = `${cutoff.getUTCFullYear()}${String(cutoff.getUTCMonth() + 1).padStart(2, "0")}`;
+  return rows.filter((r) => r.year_mon.replace(/\D/g, "").slice(0, 6) >= cutoffKey);
+}
+
+function originMatches(rowOrigin: string, filterOrigin: string): boolean {
+  const filter = filterOrigin.trim().toUpperCase();
+  if (!filter || ["KR", "KOR", "KOREA", "한국", "대한민국"].includes(filter)) return true;
+  const aliases: Record<string, string[]> = {
+    ICN: ["인천", "INCHEON"],
+    INCHEON: ["인천", "ICN"],
+    PUS: ["부산", "BUSAN"],
+    BUSAN: ["부산", "PUS"],
+    SEL: ["서울", "인천"],
+  };
+  const origin = rowOrigin.toUpperCase();
+  return (
+    origin.includes(filter) ||
+    (aliases[filter] ?? []).some((alias) => rowOrigin.includes(alias) || origin.includes(alias))
+  );
+}
+
+function destMatches(rowDest: string, filterDest: string | undefined): boolean {
+  const filter = filterDest?.trim().toUpperCase();
+  if (!filter) return true;
+  return rowDest.toUpperCase().includes(filter);
+}
+
+function fmtSeaMoney(
+  value: number | null,
+  currency: GlobalFilters["currency"],
+  exRate: ExchangeRateRow | null,
+): string {
+  if (currency === "KRW")
+    return exRate ? fmtKrw(value === null ? null : value * exRate.usd_krw) : "—";
+  return fmtUsd(value);
+}
+
+function fmtAirMoney(
+  value: number | null,
+  currency: GlobalFilters["currency"],
+  exRate: ExchangeRateRow | null,
+): string {
+  if (currency === "USD")
+    return exRate ? fmtUsd(value === null ? null : value / exRate.usd_krw, 2) : "—";
+  return fmtKrw(value);
+}
+
 function statusFromPct(pct: number | null): "normal" | "observe" | "caution" | "alert" | null {
   if (pct === null) return null;
   if (pct >= 85) return "alert";
@@ -115,9 +228,7 @@ function StatusBadge({ pct }: { pct: number | null }) {
     normal: { label: "정상", cls: "text-status-normal bg-status-normal/10" },
   };
   const { label, cls } = map[level];
-  return (
-    <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${cls}`}>{label}</span>
-  );
+  return <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${cls}`}>{label}</span>;
 }
 
 // --- Main page ---
@@ -133,18 +244,43 @@ function RatesPage() {
   const { data: exRate } = useSuspenseQuery(latestExchangeRateQueryOptions());
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerRow, setDrawerRow] = useState<{ title: string; content: React.ReactNode } | null>(null);
+  const [drawerRow, setDrawerRow] = useState<{ title: string; content: React.ReactNode } | null>(
+    null,
+  );
+
+  const showOcean = filters.mode === "all" || filters.mode === "ocean";
+  const showAir = filters.mode === "all" || filters.mode === "air";
+  const showRail = filters.mode === "all" || filters.mode === "rail";
+
+  const scopedHistory = useMemo(
+    () => filterByPeriodDate(history, filters.period),
+    [history, filters.period],
+  );
+  const scopedAirRates = useMemo(
+    () =>
+      filterByPeriodMonth(airRates, filters.period).filter(
+        (r) => originMatches(r.origin, filters.origin) && destMatches(r.dest, filters.dest),
+      ),
+    [airRates, filters.period, filters.origin, filters.dest],
+  );
+  const scopedSeaRates = useMemo(
+    () =>
+      filterByPeriodMonth(seaRates, filters.period).filter(
+        (r) => originMatches(r.origin, filters.origin) && destMatches(r.dest, filters.dest),
+      ),
+    [seaRates, filters.period, filters.origin, filters.dest],
+  );
 
   // Group history by index code
   const byCode = useMemo(() => {
     const m = new Map<string, FreightIndexPoint[]>();
-    for (const r of history) {
+    for (const r of scopedHistory) {
       const arr = m.get(r.index_code) ?? [];
       arr.push({ week_date: r.week_date, value: r.value, change_pct: r.change_pct });
       m.set(r.index_code, arr);
     }
     return m;
-  }, [history]);
+  }, [scopedHistory]);
 
   const kcciSeries = useMemo(() => byCode.get("KCCI") ?? [], [byCode]);
   const scfiSeries = useMemo(() => byCode.get("SCFI") ?? [], [byCode]);
@@ -153,22 +289,26 @@ function RatesPage() {
   const kcciStat = stats.find((s) => s.index_code === "KCCI") ?? null;
 
   // Signals
-  const oceanSignal = useMemo(() => computeOceanPressureSignal(kcciSeries), [kcciSeries]);
+  const oceanSignal = useMemo(
+    () => (showOcean ? computeOceanPressureSignal(kcciSeries) : null),
+    [showOcean, kcciSeries],
+  );
   const globalSignal = useMemo(
-    () => computeGlobalMomentumSignal(scfiSeries, wciSeries),
-    [scfiSeries, wciSeries],
+    () => (showOcean ? computeGlobalMomentumSignal(scfiSeries, wciSeries) : null),
+    [showOcean, scfiSeries, wciSeries],
   );
 
   // Air modal shift — pick flagship route (highest MoM in kg300)
-  const latestAir = useMemo(() => latestByRoute(airRates), [airRates]);
-  const latestSea = useMemo(() => latestByRoute(seaRates), [seaRates]);
+  const latestAir = useMemo(() => latestByRoute(scopedAirRates), [scopedAirRates]);
+  const latestSea = useMemo(() => latestByRoute(scopedSeaRates), [scopedSeaRates]);
 
   const airModalData = useMemo(() => {
+    if (!showAir) return null;
     const candidates = latestAir.map((r) => {
-      const series = airRates
+      const series = scopedAirRates
         .filter((a) => a.origin === r.origin && a.dest === r.dest)
         .map((a) => ({ year_mon: a.year_mon, value: a.kg300 }));
-      const mom = r.chg300 ?? computeMoM(series);
+      const mom = computeMoM(series);
       return { r, mom };
     });
     return (
@@ -177,38 +317,50 @@ function RatesPage() {
         .sort((a, b) => Math.abs(b.mom!) - Math.abs(a.mom!))
         .at(0) ?? null
     );
-  }, [latestAir, airRates]);
+  }, [showAir, latestAir, scopedAirRates]);
 
   const airModalSignal = useMemo(
     () =>
-      computeAirModalShiftSignal(
-        airModalData?.mom ?? null,
-        airModalData ? `인천→${airModalData.r.dest}` : "인천발",
-        kcciStat?.pct_52w ?? null,
-        airModalData?.r.year_mon ?? null,
-      ),
-    [airModalData, kcciStat],
+      showAir
+        ? computeAirModalShiftSignal(
+            airModalData?.mom ?? null,
+            airModalData ? `${airModalData.r.origin}→${airModalData.r.dest}` : "인천발",
+            kcciStat?.pct_52w ?? null,
+            airModalData ? fmtYearMonth(airModalData.r.year_mon) : null,
+          )
+        : null,
+    [showAir, airModalData, kcciStat],
   );
 
   // StatusStrip
   const statusItems = useMemo((): StatusItem[] => {
-    const s = oceanSignal?.state ?? "normal";
+    const s = oceanSignal?.state ?? airModalSignal?.state ?? "normal";
     const stateMap = { normal: "정상", observe: "관찰", caution: "주의", alert: "경보" } as const;
     return [
-      { label: "해상 운임", value: stateMap[s], state: s },
+      { label: "선택 스코프", value: MODE_LABEL[filters.mode], state: s },
       {
-        label: "KCCI WoW",
-        value: kcciStat?.change_pct != null ? fmtPct(kcciStat.change_pct) : "—",
+        label: showOcean ? "KCCI WoW" : showAir ? "항공 MoM" : "철도 운임",
+        value: showOcean
+          ? kcciStat?.change_pct != null
+            ? fmtPct(kcciStat.change_pct)
+            : "—"
+          : showAir && airModalData?.mom != null
+            ? fmtPct(airModalData.mom)
+            : "별도 수집 전",
         state:
-          kcciStat?.change_pct == null
+          showOcean && kcciStat?.change_pct == null
             ? "normal"
-            : Math.abs(kcciStat.change_pct) >= 5
-            ? "caution"
-            : "normal",
+            : Math.abs(showOcean ? (kcciStat?.change_pct ?? 0) : (airModalData?.mom ?? 0)) >= 5
+              ? "caution"
+              : "normal",
       },
       {
         label: "데이터 기준",
-        value: kcciStat?.latest_date?.slice(0, 10) ?? "—",
+        value: showOcean
+          ? (kcciStat?.latest_date?.slice(0, 10) ?? "—")
+          : showAir
+            ? fmtYearMonth(latestAir.at(0)?.year_mon)
+            : "—",
         state: "normal",
       },
       {
@@ -217,54 +369,84 @@ function RatesPage() {
         state: exRate ? "normal" : "caution",
       },
     ];
-  }, [oceanSignal, kcciStat, exRate]);
+  }, [
+    filters.mode,
+    showOcean,
+    showAir,
+    oceanSignal,
+    airModalSignal,
+    kcciStat,
+    airModalData,
+    latestAir,
+    exRate,
+  ]);
 
   // Sea rows with computed stats
   const seaRows = useMemo((): SeaRow[] => {
     return latestSea.map((r) => {
-      const series = seaRates
+      const series = scopedSeaRates
         .filter((s) => s.origin === r.origin && s.dest === r.dest)
         .map((s) => ({
           week_date: s.year_mon,
           value: s.feu,
-          change_pct: s.feu_chg,
+          change_pct: null,
         }));
-      const mom = r.feu_chg ?? computeMoM(series.map((s) => ({ year_mon: s.week_date, value: s.value })));
+      const mom = computeMoM(series.map((s) => ({ year_mon: s.week_date, value: s.value })));
       const pct52w = r.feu !== null ? percentile52wSeries(series, r.feu) : null;
       const normalRange = normalRange52w(series);
       const spark = series.slice(-12).map((s) => s.value);
       return { ...r, mom, pct52w, normalRange, spark };
     });
-  }, [latestSea, seaRates]);
+  }, [latestSea, scopedSeaRates]);
 
   // Air rows with computed stats
   const airRows = useMemo((): AirRow[] => {
     return latestAir.map((r) => {
-      const series = airRates
+      const series = scopedAirRates
         .filter((a) => a.origin === r.origin && a.dest === r.dest)
         .map((a) => ({
           week_date: a.year_mon,
           value: a.kg300,
-          change_pct: a.chg300,
+          change_pct: null,
         }));
-      const mom = r.chg300 ?? computeMoM(series.map((s) => ({ year_mon: s.week_date, value: s.value })));
+      const mom = computeMoM(series.map((s) => ({ year_mon: s.week_date, value: s.value })));
       const pct52w = r.kg300 !== null ? percentile52wSeries(series, r.kg300) : null;
       const normalRange = normalRange52w(series);
       const spark = series.slice(-12).map((s) => s.value);
       return { ...r, mom, pct52w, normalRange, spark };
     });
-  }, [latestAir, airRates]);
+  }, [latestAir, scopedAirRates]);
 
-  // Chart (KCCI vs compare, normalized to 100 at period start)
-  const compareCode = (filters as Record<string, unknown>).compare as string | undefined ?? "SCFI";
+  // Chart (KCCI vs compare, normalized to 100 at selected period start)
+  const compareOptions = useMemo(
+    () =>
+      (["SCFI", "CCFI", "WCI", "BDI"] as const).filter((code) =>
+        (byCode.get(code) ?? []).some((p) => p.value !== null),
+      ),
+    [byCode],
+  );
+  const requestedCompareCode =
+    ((filters as Record<string, unknown>).compare as string | undefined) ?? "SCFI";
+  const compareCode = compareOptions.includes(
+    requestedCompareCode as (typeof compareOptions)[number],
+  )
+    ? requestedCompareCode
+    : (compareOptions[0] ?? "SCFI");
   const chartData = useMemo(() => {
-    const pts = kcciSeries.slice(-52);
+    const pts = kcciSeries.filter((p) => p.value !== null);
     if (pts.length === 0) return [];
     const base = pts[0].value ?? 1;
-    const comparePts = byCode.get(compareCode) ?? [];
-    const compareBase = comparePts.find((p) => p.week_date >= pts[0].week_date)?.value ?? 1;
+    const comparePts = (byCode.get(compareCode) ?? [])
+      .filter((p) => p.value !== null)
+      .sort((a, b) => a.week_date.localeCompare(b.week_date));
+    const nearestCompare = (date: string) =>
+      comparePts.filter((p) => p.week_date <= date).at(-1) ?? comparePts.at(0);
+    const compareBase =
+      nearestCompare(pts[0].week_date)?.value ??
+      comparePts.find((p) => p.value !== null)?.value ??
+      1;
     return pts.map((pt) => {
-      const cp = comparePts.find((c) => c.week_date === pt.week_date);
+      const cp = nearestCompare(pt.week_date);
       return {
         date: pt.week_date.slice(5),
         KCCI: pt.value !== null ? Math.round((pt.value / base) * 100) : null,
@@ -274,7 +456,7 @@ function RatesPage() {
   }, [kcciSeries, byCode, compareCode]);
 
   const kcciNormal = useMemo(() => normalRange52w(kcciSeries), [kcciSeries]);
-  const kcciBase = kcciSeries[0]?.value ?? 1;
+  const kcciBase = kcciSeries.find((p) => p.value !== null)?.value ?? 1;
   const normalBandNorm = kcciNormal
     ? [Math.round((kcciNormal[0] / kcciBase) * 100), Math.round((kcciNormal[1] / kcciBase) * 100)]
     : null;
@@ -293,15 +475,15 @@ function RatesPage() {
     },
     {
       key: "teu",
-      header: "USD/TEU",
-      cell: (r) => fmtUsd(r.teu),
+      header: `${filters.currency}/TEU`,
+      cell: (r) => fmtSeaMoney(r.teu, filters.currency, exRate),
       className: "text-right",
       headerClassName: "text-right",
     },
     {
       key: "feu",
-      header: "USD/FEU",
-      cell: (r) => fmtUsd(r.feu),
+      header: `${filters.currency}/FEU`,
+      cell: (r) => fmtSeaMoney(r.feu, filters.currency, exRate),
       className: "text-right",
       headerClassName: "text-right",
     },
@@ -309,7 +491,17 @@ function RatesPage() {
       key: "mom",
       header: "MoM",
       cell: (r) => (
-        <span className={r.mom == null ? "" : r.mom > 0 ? "text-status-alert" : r.mom < 0 ? "text-status-normal" : ""}>
+        <span
+          className={
+            r.mom == null
+              ? ""
+              : r.mom > 0
+                ? "text-status-alert"
+                : r.mom < 0
+                  ? "text-status-normal"
+                  : ""
+          }
+        >
           {fmtPct(r.mom)}
         </span>
       ),
@@ -324,7 +516,7 @@ function RatesPage() {
     {
       key: "pct52w",
       header: "52주 백분위",
-      cell: (r) => r.pct52w !== null ? `${r.pct52w}%` : "—",
+      cell: (r) => (r.pct52w !== null ? `${r.pct52w}%` : "—"),
       className: "text-right",
       headerClassName: "text-right",
     },
@@ -335,7 +527,7 @@ function RatesPage() {
     },
   ];
 
-  // Air table columns — 4요소 필수: USD/kg + KRW환산 + 적용환율 + 환율기준일
+  // KITA air source unit is KRW/kg. USD is a display conversion only.
   const AIR_COLS: ColDef<AirRow>[] = [
     {
       key: "dest",
@@ -344,28 +536,22 @@ function RatesPage() {
     },
     {
       key: "kg300",
-      header: "USD/kg",
-      cell: (r) => (r.kg300 != null ? `$${r.kg300.toFixed(2)}` : "—"),
+      header: `${filters.currency}/kg`,
+      cell: (r) => fmtAirMoney(r.kg300, filters.currency, exRate),
       className: "text-right",
       headerClassName: "text-right",
     },
     {
-      key: "krw",
-      header: "KRW 환산",
-      cell: (r) =>
-        r.kg300 != null && exRate != null
-          ? `₩${Math.round(r.kg300 * exRate.usd_krw).toLocaleString("ko-KR")}`
-          : "—",
+      key: "source",
+      header: "원본 KRW/kg",
+      cell: (r) => fmtKrw(r.kg300),
       className: "text-right",
       headerClassName: "text-right",
     },
     {
       key: "exrate",
       header: "적용환율",
-      cell: () =>
-        exRate != null
-          ? `@${Math.round(exRate.usd_krw).toLocaleString("ko-KR")}`
-          : "—",
+      cell: () => (exRate != null ? `@${Math.round(exRate.usd_krw).toLocaleString("ko-KR")}` : "—"),
       className: "text-right text-muted-foreground",
       headerClassName: "text-right",
     },
@@ -377,9 +563,19 @@ function RatesPage() {
     },
     {
       key: "mom",
-      header: "MoM (USD)",
+      header: "MoM",
       cell: (r) => (
-        <span className={r.mom == null ? "" : r.mom > 0 ? "text-status-alert" : r.mom < 0 ? "text-status-normal" : ""}>
+        <span
+          className={
+            r.mom == null
+              ? ""
+              : r.mom > 0
+                ? "text-status-alert"
+                : r.mom < 0
+                  ? "text-status-normal"
+                  : ""
+          }
+        >
           {fmtPct(r.mom)}
         </span>
       ),
@@ -416,7 +612,17 @@ function RatesPage() {
       key: "change_pct",
       header: "WoW",
       cell: (s) => (
-        <span className={s.change_pct == null ? "" : s.change_pct > 0 ? "text-status-alert" : s.change_pct < 0 ? "text-status-normal" : ""}>
+        <span
+          className={
+            s.change_pct == null
+              ? ""
+              : s.change_pct > 0
+                ? "text-status-alert"
+                : s.change_pct < 0
+                  ? "text-status-normal"
+                  : ""
+          }
+        >
           {fmtPct(s.change_pct)}
         </span>
       ),
@@ -448,7 +654,9 @@ function RatesPage() {
       key: "normal_range",
       header: "정상범위 ±1σ",
       cell: (s) =>
-        s.normal_range ? `${s.normal_range[0].toLocaleString()}–${s.normal_range[1].toLocaleString()}` : "—",
+        s.normal_range
+          ? `${s.normal_range[0].toLocaleString()}–${s.normal_range[1].toLocaleString()}`
+          : "—",
     },
     {
       key: "conf",
@@ -468,6 +676,14 @@ function RatesPage() {
   ];
 
   const vlsfoLatest = bunker.find((b) => b.grade === "VLSFO");
+  const rateScope = `${PERIOD_LABEL[filters.period]} · ${MODE_LABEL[filters.mode]} · ${filters.currency}`;
+  const briefAsOf =
+    [oceanSignal?.asOf, globalSignal?.asOf, airModalSignal?.asOf]
+      .filter((d): d is string => Boolean(d && d !== "—"))
+      .sort()
+      .at(-1) ??
+    kcciStat?.latest_date?.slice(0, 10) ??
+    null;
 
   return (
     <DashboardShell title="운임 인텔리전스" subtitle="한국발 해상·항공 운임 모니터">
@@ -478,7 +694,8 @@ function RatesPage() {
       {/* 운임 인텔리전스 브리프 — 시그널 종합 헤드라인 */}
       <RatesBrief
         signals={[oceanSignal, globalSignal, airModalSignal]}
-        asOf={kcciStat?.latest_date?.slice(0, 10) ?? null}
+        asOf={briefAsOf}
+        scope={rateScope}
       />
 
       {/* Signal cards */}
@@ -487,252 +704,355 @@ function RatesPage() {
           Market Posture
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {oceanSignal ? (
-            <SignalCard signal={oceanSignal} />
-          ) : (
-            <div className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
-              해상 운임 압력 — 데이터 수집 중
-            </div>
-          )}
-          {globalSignal ? (
-            <SignalCard signal={globalSignal} />
-          ) : (
-            <div className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
-              글로벌 모멘텀 — 데이터 수집 중
-            </div>
-          )}
-          {airModalSignal ? (
-            <SignalCard signal={airModalSignal} />
-          ) : (
-            <div className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
-              항공 모달 전환 — 데이터 수집 중
-            </div>
-          )}
-          <div className="rounded-lg border border-border bg-card p-4">
-            <p className="text-xs text-muted-foreground">벙커 비용</p>
-            {vlsfoLatest ? (
-              <>
-                <p className="mt-1 text-sm font-semibold">
-                  VLSFO {fmtUsd(vlsfoLatest.price_usd)}/MT
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {vlsfoLatest.port} · {vlsfoLatest.obs_date.slice(0, 10)}
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  VLSFO MoM 미산출 — 히스토리 엔드포인트 추가 후 활성화 예정
-                </p>
-              </>
+          {showOcean &&
+            (oceanSignal ? (
+              <SignalCard signal={oceanSignal} />
             ) : (
-              <p className="mt-1 text-xs text-muted-foreground">데이터 수집 중</p>
-            )}
-          </div>
+              <div className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
+                해상 운임 압력 — 선택 기간 내 데이터 수집 중
+              </div>
+            ))}
+          {showOcean &&
+            (globalSignal ? (
+              <SignalCard signal={globalSignal} />
+            ) : (
+              <div className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
+                글로벌 모멘텀 — 선택 기간 내 데이터 수집 중
+              </div>
+            ))}
+          {showAir &&
+            (airModalSignal ? (
+              <SignalCard signal={airModalSignal} />
+            ) : (
+              <div className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
+                항공 운임 변동 — 선택 기간 내 데이터 수집 중
+              </div>
+            ))}
+          {showRail && (
+            <div className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
+              철도 운임 — KITA 운임 테이블 없음 · 유라시아 운송 리스크 페이지와 분리 추적
+            </div>
+          )}
+          {showOcean && (
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground">벙커 비용</p>
+              {vlsfoLatest ? (
+                <>
+                  <p className="mt-1 text-sm font-semibold">
+                    VLSFO {fmtUsd(vlsfoLatest.price_usd)}/MT
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {vlsfoLatest.port} · {vlsfoLatest.obs_date.slice(0, 10)}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    VLSFO MoM 미산출 — 히스토리 엔드포인트 추가 후 활성화 예정
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">데이터 수집 중</p>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
       {/* 해상 운임 — Sea group (mode-group 분리, 항공과 절대 혼합 금지) */}
-      <section>
-        <h2 className="mb-1 text-[13px] font-semibold">
-          해상 운임 <span className="text-[11px] font-normal text-muted-foreground">USD/FEU · KITA · 월간</span>
-        </h2>
-        {seaRows.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">데이터 수집 중</p>
-        ) : (
-          <IntelTable
-            cols={SEA_COLS}
-            rows={seaRows}
-            rowKey={(r) => `${r.origin}__${r.dest}`}
-            onRowClick={(r) => {
-              setDrawerRow({
-                title: `${r.origin} → ${r.dest} 해상 상세`,
-                content: (
-                  <div className="space-y-3 text-sm">
-                    <div className="grid grid-cols-2 gap-y-2 text-xs">
-                      <span className="text-muted-foreground">TEU</span><span>{fmtUsd(r.teu)}</span>
-                      <span className="text-muted-foreground">FEU</span><span>{fmtUsd(r.feu)}</span>
-                      <span className="text-muted-foreground">MoM</span><span>{fmtPct(r.mom)}</span>
-                      <span className="text-muted-foreground">52주 백분위</span><span>{r.pct52w !== null ? `${r.pct52w}%` : "—"}</span>
-                      <span className="text-muted-foreground">정상범위 ±1σ</span>
-                      <span>{r.normalRange ? `${fmtUsd(r.normalRange[0])}–${fmtUsd(r.normalRange[1])}` : "—"}</span>
-                      <span className="text-muted-foreground">기준월</span><span>{r.year_mon}</span>
-                    </div>
-                    <Sparkline values={r.spark} width={220} height={48} color="var(--color-cyan)" />
-                  </div>
-                ),
-              });
-              setDrawerOpen(true);
-            }}
-          />
-        )}
-      </section>
-
-      {/* 항공 운임 — Air group (해상과 절대 혼합 금지) */}
-      <section>
-        <h2 className="mb-1 text-[13px] font-semibold">
-          항공 운임{" "}
-          <span className="text-[11px] font-normal text-muted-foreground">
-            USD/kg 원본 + KRW 환산 · KITA 인천발 · 월간
-          </span>
-        </h2>
-        {airRows.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">데이터 수집 중</p>
-        ) : (
-          <>
+      {showOcean && (
+        <section>
+          <h2 className="mb-1 text-[13px] font-semibold">
+            해상 운임{" "}
+            <span className="text-[11px] font-normal text-muted-foreground">
+              {filters.currency}/FEU · KITA 부산발 · {PERIOD_LABEL[filters.period]}
+            </span>
+          </h2>
+          {seaRows.length === 0 ? (
+            <p className="py-4 text-sm text-muted-foreground">
+              선택 조건에 맞는 해상 운임 데이터 없음
+            </p>
+          ) : (
             <IntelTable
-              cols={AIR_COLS}
-              rows={airRows}
+              cols={SEA_COLS}
+              rows={seaRows}
               rowKey={(r) => `${r.origin}__${r.dest}`}
               onRowClick={(r) => {
                 setDrawerRow({
-                  title: `${r.origin} → ${r.dest} 항공 상세`,
+                  title: `${r.origin} → ${r.dest} 해상 상세`,
                   content: (
                     <div className="space-y-3 text-sm">
                       <div className="grid grid-cols-2 gap-y-2 text-xs">
-                        <span className="text-muted-foreground">USD/kg (≤100kg)</span><span>{r.kg100 != null ? `$${r.kg100.toFixed(2)}` : "—"}</span>
-                        <span className="text-muted-foreground">USD/kg (≤300kg)</span><span>{r.kg300 != null ? `$${r.kg300.toFixed(2)}` : "—"}</span>
-                        <span className="text-muted-foreground">USD/kg (≤500kg)</span><span>{r.kg500 != null ? `$${r.kg500.toFixed(2)}` : "—"}</span>
-                        <span className="text-muted-foreground">KRW 환산 (300kg)</span>
-                        <span>{r.kg300 != null && exRate != null ? `₩${Math.round(r.kg300 * exRate.usd_krw).toLocaleString("ko-KR")}/kg` : "—"}</span>
-                        <span className="text-muted-foreground">적용 환율</span>
-                        <span>{exRate != null ? `USD/KRW ${Math.round(exRate.usd_krw).toLocaleString("ko-KR")}` : "—"}</span>
-                        <span className="text-muted-foreground">환율 기준일</span><span>{exRate?.rate_date ?? "—"}</span>
-                        <span className="text-muted-foreground">MoM (USD 기준)</span><span>{fmtPct(r.mom)}</span>
-                        <span className="text-muted-foreground">52주 백분위</span><span>{r.pct52w !== null ? `${r.pct52w}%` : "—"}</span>
-                        <span className="text-muted-foreground">기준월</span><span>{r.year_mon}</span>
+                        <span className="text-muted-foreground">TEU</span>
+                        <span>{fmtSeaMoney(r.teu, filters.currency, exRate)}</span>
+                        <span className="text-muted-foreground">FEU</span>
+                        <span>{fmtSeaMoney(r.feu, filters.currency, exRate)}</span>
+                        <span className="text-muted-foreground">MoM</span>
+                        <span>{fmtPct(r.mom)}</span>
+                        <span className="text-muted-foreground">52주 백분위</span>
+                        <span>{r.pct52w !== null ? `${r.pct52w}%` : "—"}</span>
+                        <span className="text-muted-foreground">정상범위 ±1σ</span>
+                        <span>
+                          {r.normalRange
+                            ? `${fmtSeaMoney(r.normalRange[0], filters.currency, exRate)}–${fmtSeaMoney(r.normalRange[1], filters.currency, exRate)}`
+                            : "—"}
+                        </span>
+                        <span className="text-muted-foreground">기준월</span>
+                        <span>{fmtYearMonth(r.year_mon)}</span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        KITA 원본 단위: USD/kg · 정렬·백분위·MoM은 USD 기준 · KRW 환산은 표시용
-                      </p>
-                      <Sparkline values={r.spark} width={220} height={48} color="var(--color-cyan)" />
+                      <Sparkline
+                        values={r.spark}
+                        width={220}
+                        height={48}
+                        color="var(--color-cyan)"
+                      />
                     </div>
                   ),
                 });
                 setDrawerOpen(true);
               }}
             />
-            {exRate ? (
-              <p className="mt-1.5 text-[11px] text-muted-foreground">
-                KITA 원본 단위: USD/kg · 적용 환율 USD/KRW {Math.round(exRate.usd_krw).toLocaleString("ko-KR")} · 기준일 {exRate.rate_date} · KRW 환산은 표시용 — 정렬·백분위·변동률은 USD/kg 원본 기준
-              </p>
-            ) : (
-              <p className="mt-1.5 text-[11px] text-status-caution">
-                환율 데이터 없음 — KRW 환산 불가 (exchange_rates 수집 후 활성화)
-              </p>
-            )}
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              글로벌 지수 선행·후행 비교는 방법론 확정 전까지 비활성
+          )}
+        </section>
+      )}
+
+      {/* 항공 운임 — Air group (해상과 절대 혼합 금지) */}
+      {showAir && (
+        <section>
+          <h2 className="mb-1 text-[13px] font-semibold">
+            항공 운임{" "}
+            <span className="text-[11px] font-normal text-muted-foreground">
+              {filters.currency}/kg · KITA 인천발 원본 KRW/kg · {PERIOD_LABEL[filters.period]}
+            </span>
+          </h2>
+          {airRows.length === 0 ? (
+            <p className="py-4 text-sm text-muted-foreground">
+              선택 조건에 맞는 항공 운임 데이터 없음
             </p>
-          </>
-        )}
-      </section>
+          ) : (
+            <>
+              <IntelTable
+                cols={AIR_COLS}
+                rows={airRows}
+                rowKey={(r) => `${r.origin}__${r.dest}`}
+                onRowClick={(r) => {
+                  setDrawerRow({
+                    title: `${r.origin} → ${r.dest} 항공 상세`,
+                    content: (
+                      <div className="space-y-3 text-sm">
+                        <div className="grid grid-cols-2 gap-y-2 text-xs">
+                          <span className="text-muted-foreground">
+                            {filters.currency}/kg (≤100kg)
+                          </span>
+                          <span>{fmtAirMoney(r.kg100, filters.currency, exRate)}</span>
+                          <span className="text-muted-foreground">
+                            {filters.currency}/kg (≤300kg)
+                          </span>
+                          <span>{fmtAirMoney(r.kg300, filters.currency, exRate)}</span>
+                          <span className="text-muted-foreground">
+                            {filters.currency}/kg (≤500kg)
+                          </span>
+                          <span>{fmtAirMoney(r.kg500, filters.currency, exRate)}</span>
+                          <span className="text-muted-foreground">원본 KRW/kg (300kg)</span>
+                          <span>{fmtKrw(r.kg300)}</span>
+                          <span className="text-muted-foreground">적용 환율</span>
+                          <span>
+                            {exRate != null
+                              ? `USD/KRW ${Math.round(exRate.usd_krw).toLocaleString("ko-KR")}`
+                              : "—"}
+                          </span>
+                          <span className="text-muted-foreground">환율 기준일</span>
+                          <span>{exRate?.rate_date ?? "—"}</span>
+                          <span className="text-muted-foreground">MoM</span>
+                          <span>{fmtPct(r.mom)}</span>
+                          <span className="text-muted-foreground">52주 백분위</span>
+                          <span>{r.pct52w !== null ? `${r.pct52w}%` : "—"}</span>
+                          <span className="text-muted-foreground">기준월</span>
+                          <span>{fmtYearMonth(r.year_mon)}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          KITA 원본 단위: KRW/kg · USD는 최신 환율 기준 표시용 환산 ·
+                          정렬·백분위·MoM은 원본 KRW/kg 기준
+                        </p>
+                        <Sparkline
+                          values={r.spark}
+                          width={220}
+                          height={48}
+                          color="var(--color-cyan)"
+                        />
+                      </div>
+                    ),
+                  });
+                  setDrawerOpen(true);
+                }}
+              />
+              {exRate ? (
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  KITA 원본 단위: KRW/kg · 적용 환율 USD/KRW{" "}
+                  {Math.round(exRate.usd_krw).toLocaleString("ko-KR")} · 기준일 {exRate.rate_date} ·
+                  USD 환산은 표시용 — 정렬·백분위·변동률은 KRW/kg 원본 기준
+                </p>
+              ) : (
+                <p className="mt-1.5 text-[11px] text-status-caution">
+                  환율 데이터 없음 — USD 환산 불가 (exchange_rates 수집 후 활성화)
+                </p>
+              )}
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                글로벌 지수 선행·후행 비교는 방법론 확정 전까지 비활성
+              </p>
+            </>
+          )}
+        </section>
+      )}
 
       {/* Comparison chart */}
-      <section>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-[13px] font-semibold">
-            KCCI vs {compareCode} · 지수화 100
-          </h2>
-          <div className="flex gap-1">
-            {(["SCFI", "CCFI", "FBX", "WCI"] as const).map((code) => (
-              <button
-                key={code}
-                type="button"
-                onClick={() => setFilters({ ...filters, compare: code } as GlobalFilters & { compare: string })}
-                className={[
-                  "rounded border px-2 py-0.5 text-[11px] transition-colors",
-                  compareCode === code
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:border-foreground/40",
-                ].join(" ")}
-              >
-                {code}
-              </button>
-            ))}
+      {showOcean && (
+        <section>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-[13px] font-semibold">
+              KCCI vs {compareCode} · {PERIOD_LABEL[filters.period]} 지수화 100
+            </h2>
+            <div className="flex gap-1">
+              {compareOptions.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setFilters({ compare: code })}
+                  className={[
+                    "rounded border px-2 py-0.5 text-[11px] transition-colors",
+                    compareCode === code
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-foreground/40",
+                  ].join(" ")}
+                >
+                  {code}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-        {chartData.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">데이터 수집 중</p>
-        ) : (
-          <div className="rounded-lg border border-border bg-card p-3">
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={7} />
-                <YAxis domain={["auto", "auto"]} tick={{ fontSize: 10 }} width={36} />
-                <Tooltip
-                  contentStyle={{
-                    fontSize: 11,
-                    border: "1px solid var(--color-border)",
-                    background: "var(--color-card)",
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                {normalBandNorm && (
-                  <ReferenceArea
-                    y1={normalBandNorm[0]}
-                    y2={normalBandNorm[1]}
-                    fill="var(--color-status-normal)"
-                    fillOpacity={0.08}
+          {chartData.length === 0 ? (
+            <p className="py-4 text-sm text-muted-foreground">데이터 수집 중</p>
+          ) : (
+            <div className="rounded-lg border border-border bg-card p-3">
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={7} />
+                  <YAxis domain={["auto", "auto"]} tick={{ fontSize: 10 }} width={36} />
+                  <Tooltip
+                    contentStyle={{
+                      fontSize: 11,
+                      border: "1px solid var(--color-border)",
+                      background: "var(--color-card)",
+                    }}
                   />
-                )}
-                <Line
-                  type="monotone"
-                  dataKey="KCCI"
-                  stroke="var(--color-cyan)"
-                  dot={false}
-                  strokeWidth={2}
-                />
-                <Line
-                  type="monotone"
-                  dataKey={compareCode}
-                  stroke="var(--color-warning)"
-                  dot={false}
-                  strokeWidth={1.5}
-                  strokeDasharray="4 2"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              지수화: 52주 시작 = 100 · 녹색 밴드: KCCI 정상범위 ±1σ · 기준 {kcciStat?.latest_date?.slice(0, 10) ?? "—"}
-            </p>
-          </div>
-        )}
-      </section>
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  {normalBandNorm && (
+                    <ReferenceArea
+                      y1={normalBandNorm[0]}
+                      y2={normalBandNorm[1]}
+                      fill="var(--color-status-normal)"
+                      fillOpacity={0.08}
+                    />
+                  )}
+                  <Line
+                    type="monotone"
+                    dataKey="KCCI"
+                    stroke="var(--color-cyan)"
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey={compareCode}
+                    stroke="var(--color-warning)"
+                    dot={false}
+                    strokeWidth={1.5}
+                    strokeDasharray="4 2"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                지수화: 선택 기간 시작 = 100 · 녹색 밴드: KCCI 정상범위 ±1σ · 기준{" "}
+                {kcciStat?.latest_date?.slice(0, 10) ?? "—"}
+              </p>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Global index stats */}
-      <IntelligenceBrief title="글로벌 지수 현황">
-        <IntelTable
-          cols={STAT_COLS}
-          rows={stats.filter((s) => s.latest_value !== null)}
-          rowKey={(s) => s.index_code}
-          onRowClick={(s) => {
-            setDrawerRow({
-              title: `${s.index_code} 지수 상세`,
-              content: (
-                <div className="grid grid-cols-2 gap-y-2 text-xs">
-                  <span className="text-muted-foreground">최신값</span><span>{fmt(s.latest_value)}</span>
-                  <span className="text-muted-foreground">기준일</span><span>{s.latest_date?.slice(0, 10) ?? "—"}</span>
-                  <span className="text-muted-foreground">WoW</span><span>{fmtPct(s.change_pct)}</span>
-                  <span className="text-muted-foreground">MoM</span><span>{fmtPct(s.mom_pct)}</span>
-                  <span className="text-muted-foreground">YoY</span><span>{fmtPct(s.yoy_pct)}</span>
-                  <span className="text-muted-foreground">52주 백분위</span><span>{s.pct_52w !== null ? `${s.pct_52w}%` : "—"}</span>
-                  <span className="text-muted-foreground">정상범위 ±1σ</span>
-                  <span>{s.normal_range ? `${s.normal_range[0].toLocaleString()}–${s.normal_range[1].toLocaleString()}` : "—"}</span>
-                </div>
-              ),
-            });
-            setDrawerOpen(true);
-          }}
-          emptyText="데이터 수집 중"
-        />
-      </IntelligenceBrief>
+      {showOcean && (
+        <IntelligenceBrief title="글로벌 지수 현황">
+          <IntelTable
+            cols={STAT_COLS}
+            rows={stats.filter((s) => s.latest_value !== null)}
+            rowKey={(s) => s.index_code}
+            onRowClick={(s) => {
+              setDrawerRow({
+                title: `${s.index_code} 지수 상세`,
+                content: (
+                  <div className="grid grid-cols-2 gap-y-2 text-xs">
+                    <span className="text-muted-foreground">최신값</span>
+                    <span>{fmt(s.latest_value)}</span>
+                    <span className="text-muted-foreground">기준일</span>
+                    <span>{s.latest_date?.slice(0, 10) ?? "—"}</span>
+                    <span className="text-muted-foreground">WoW</span>
+                    <span>{fmtPct(s.change_pct)}</span>
+                    <span className="text-muted-foreground">MoM</span>
+                    <span>{fmtPct(s.mom_pct)}</span>
+                    <span className="text-muted-foreground">YoY</span>
+                    <span>{fmtPct(s.yoy_pct)}</span>
+                    <span className="text-muted-foreground">52주 백분위</span>
+                    <span>{s.pct_52w !== null ? `${s.pct_52w}%` : "—"}</span>
+                    <span className="text-muted-foreground">정상범위 ±1σ</span>
+                    <span>
+                      {s.normal_range
+                        ? `${s.normal_range[0].toLocaleString()}–${s.normal_range[1].toLocaleString()}`
+                        : "—"}
+                    </span>
+                  </div>
+                ),
+              });
+              setDrawerOpen(true);
+            }}
+            emptyText="데이터 수집 중"
+          />
+        </IntelligenceBrief>
+      )}
 
       <DataQualityBar
         sources={[
-          { label: "KCCI·SCFI", asOf: kcciStat?.latest_date?.slice(0, 10) ?? null, expectedDays: 7 },
-          { label: "KITA 항공", asOf: latestAir.at(0)?.year_mon ?? null, expectedDays: 35 },
-          { label: "KITA 해상", asOf: latestSea.at(0)?.year_mon ?? null, expectedDays: 35 },
+          ...(showOcean
+            ? [
+                {
+                  label: "KCCI·SCFI·WCI",
+                  asOf: kcciStat?.latest_date?.slice(0, 10) ?? null,
+                  expectedDays: 7,
+                },
+                {
+                  label: "KITA 해상",
+                  asOf: latestSea.at(0)?.year_mon ? fmtYearMonth(latestSea.at(0)?.year_mon) : null,
+                  expectedDays: 35,
+                },
+              ]
+            : []),
+          ...(showAir
+            ? [
+                {
+                  label: "KITA 항공",
+                  asOf: latestAir.at(0)?.year_mon ? fmtYearMonth(latestAir.at(0)?.year_mon) : null,
+                  expectedDays: 35,
+                },
+              ]
+            : []),
           { label: "환율", asOf: exRate?.rate_date ?? null, expectedDays: 3 },
-          { label: "벙커유", asOf: vlsfoLatest?.obs_date?.slice(0, 10) ?? null, expectedDays: 7 },
+          ...(showOcean
+            ? [
+                {
+                  label: "벙커유",
+                  asOf: vlsfoLatest?.obs_date?.slice(0, 10) ?? null,
+                  expectedDays: 7,
+                },
+              ]
+            : []),
         ]}
       />
 

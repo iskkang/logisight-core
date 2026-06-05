@@ -14,18 +14,28 @@ import type {
   IndexStats,
 } from "./rates";
 
-const CODES = ["SCFI", "FBX", "KCCI", "CCFI"] as const;
+const CODES = ["SCFI", "FBX", "KCCI", "CCFI", "WCI", "BDI"] as const;
+const PAGE_SIZE = 1000;
 
 export const getFreightIndicesHistory = createServerFn({ method: "GET" }).handler(
   async (): Promise<FreightIndexHistoryRow[]> => {
-    const { data, error } = await supabasePublicServer
-      .from("freight_indices")
-      .select("index_code,value,change_pct,week_date,source,source_url")
-      .in("index_code", CODES as unknown as string[])
-      .order("week_date", { ascending: true })
-      .limit(5000);
-    if (error) throw new Error(error.message);
-    return (data ?? []) as FreightIndexHistoryRow[];
+    const all: FreightIndexHistoryRow[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabasePublicServer
+        .from("freight_indices")
+        .select("index_code,value,change_pct,week_date,source,source_url")
+        .in("index_code", CODES as unknown as string[])
+        .order("week_date", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw new Error(error.message);
+      const rows = (data ?? []) as FreightIndexHistoryRow[];
+      all.push(...rows);
+      if (rows.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+      if (from > 10000) break;
+    }
+    return all;
   },
 );
 
@@ -46,8 +56,12 @@ export const getRateFilterOptions = createServerFn({ method: "GET" }).handler(
       if (r.container_type) ctypeSet.add(r.container_type);
     }
     return {
-      pols: [...polMap.entries()].map(([code, name]) => ({ code, name })).sort((a, b) => a.name.localeCompare(b.name, "ko")),
-      pods: [...podMap.entries()].map(([code, name]) => ({ code, name })).sort((a, b) => a.name.localeCompare(b.name, "ko")),
+      pols: [...polMap.entries()]
+        .map(([code, name]) => ({ code, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, "ko")),
+      pods: [...podMap.entries()]
+        .map(([code, name]) => ({ code, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, "ko")),
       containerTypes: [...ctypeSet].sort(),
     };
   },
@@ -81,31 +95,51 @@ export const getFreightRates = createServerFn({ method: "GET" })
 
 export const getKitaAirRates = createServerFn({ method: "GET" }).handler(
   async (): Promise<KitaAirRateRow[]> => {
-    const { data, error } = await supabasePublicServer
-      .from("kita_air_rates")
-      .select("origin,dest,region,year_mon,kg100,kg300,kg500,chg100,chg300,chg500")
-      .order("year_mon", { ascending: false })
-      .limit(2000);
-    if (error) throw new Error(error.message);
-    return (data ?? []) as KitaAirRateRow[];
+    const all: KitaAirRateRow[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabasePublicServer
+        .from("kita_air_rates")
+        .select("origin,dest,region,year_mon,kg100,kg300,kg500,chg100,chg300,chg500")
+        .order("year_mon", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw new Error(error.message);
+      const rows = (data ?? []) as KitaAirRateRow[];
+      all.push(...rows);
+      if (rows.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+      if (from > 10000) break;
+    }
+    return all;
   },
 );
 
 export const getKitaSeaRates = createServerFn({ method: "GET" }).handler(
   async (): Promise<KitaSeaRateRow[]> => {
-    const { data, error } = await supabasePublicServer
-      .from("kita_sea_rates")
-      .select("origin,dest,region,year_mon,teu,feu,teu_chg,feu_chg")
-      .order("year_mon", { ascending: false })
-      .limit(2000);
-    if (error) throw new Error(error.message);
-    return (data ?? []) as KitaSeaRateRow[];
+    const all: KitaSeaRateRow[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabasePublicServer
+        .from("kita_sea_rates")
+        .select("origin,dest,region,year_mon,teu,feu,teu_chg,feu_chg")
+        .order("year_mon", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw new Error(error.message);
+      const rows = (data ?? []) as KitaSeaRateRow[];
+      all.push(...rows);
+      if (rows.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+      if (from > 10000) break;
+    }
+    return all;
   },
 );
 
 // 52-week percentile and normal range (mean ±1σ) — computed server-side, never on missing data
 export const getKitaAirPercentile = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ origin: z.string(), dest: z.string(), tier: z.enum(["kg100", "kg300", "kg500"]) }))
+  .inputValidator(
+    z.object({ origin: z.string(), dest: z.string(), tier: z.enum(["kg100", "kg300", "kg500"]) }),
+  )
   .handler(async ({ data }): Promise<KitaPercentileResult | null> => {
     const { data: rows, error } = await supabasePublicServer
       .from("kita_air_rates")
@@ -118,7 +152,7 @@ export const getKitaAirPercentile = createServerFn({ method: "GET" })
     if (!rows || rows.length < 4) return null;
 
     const values = rows
-      .map((r) => (r[data.tier] as number | null))
+      .map((r) => r[data.tier] as number | null)
       .filter((v): v is number => v !== null);
     if (values.length < 4) return null;
 
@@ -136,15 +170,25 @@ const INDEX_CODES = ["SCFI", "KCCI", "CCFI", "FBX", "WCI", "BDI"] as const;
 
 export const getIndexStats = createServerFn({ method: "GET" }).handler(
   async (): Promise<IndexStats[]> => {
-    const { data, error } = await supabasePublicServer
-      .from("freight_indices")
-      .select("index_code,value,change_pct,week_date,source")
-      .in("index_code", INDEX_CODES as unknown as string[])
-      .order("week_date", { ascending: true })
-      .limit(10000);
-    if (error) throw new Error(error.message);
-
-    const rows = (data ?? []) as (FreightIndexPoint & { index_code: string; source: string | null })[];
+    const rows: (FreightIndexPoint & { index_code: string; source: string | null })[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabasePublicServer
+        .from("freight_indices")
+        .select("index_code,value,change_pct,week_date,source")
+        .in("index_code", INDEX_CODES as unknown as string[])
+        .order("week_date", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw new Error(error.message);
+      const pageRows = (data ?? []) as (FreightIndexPoint & {
+        index_code: string;
+        source: string | null;
+      })[];
+      rows.push(...pageRows);
+      if (pageRows.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+      if (from > 10000) break;
+    }
 
     const grouped = new Map<string, (FreightIndexPoint & { source: string | null })[]>();
     for (const r of rows) {
@@ -157,15 +201,29 @@ export const getIndexStats = createServerFn({ method: "GET" }).handler(
       const series = grouped.get(code) ?? [];
       const last = series.at(-1);
       if (!last || last.value === null) {
-        return { index_code: code, latest_value: null, latest_date: null, change_pct: null, mom_pct: null, yoy_pct: null, pct_52w: null, normal_range: null, source: null };
+        return {
+          index_code: code,
+          latest_value: null,
+          latest_date: null,
+          change_pct: null,
+          mom_pct: null,
+          yoy_pct: null,
+          pct_52w: null,
+          normal_range: null,
+          source: null,
+        };
       }
 
       const lastDate = new Date(last.week_date).getTime();
       const monthAgo = series
-        .filter((p) => p.value !== null && new Date(p.week_date).getTime() <= lastDate - 28 * 86400000)
+        .filter(
+          (p) => p.value !== null && new Date(p.week_date).getTime() <= lastDate - 28 * 86400000,
+        )
         .at(-1);
       const yearAgo = series
-        .filter((p) => p.value !== null && new Date(p.week_date).getTime() <= lastDate - 365 * 86400000)
+        .filter(
+          (p) => p.value !== null && new Date(p.week_date).getTime() <= lastDate - 365 * 86400000,
+        )
         .at(-1);
 
       const mom_pct =
