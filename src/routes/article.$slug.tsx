@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import type { ReactNode } from "react";
@@ -9,7 +9,7 @@ import {
   relatedArticlesQueryOptions,
   estimateReadMinutes,
 } from "@/lib/api/article";
-import { formatPublishedAt } from "@/lib/api/news";
+import { formatPublishedAt, isInternalNewsItem } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
 import { normalizeArticleContent } from "@/lib/article-content";
 
@@ -18,6 +18,14 @@ export const Route = createFileRoute("/article/$slug")({
     const slug = params.slug?.trim();
     if (!slug) throw notFound();
     const article = await context.queryClient.ensureQueryData(articleQueryOptions(slug));
+    if (
+      article.agent_type === "external" &&
+      !article.content?.trim() &&
+      article.url &&
+      /^https?:\/\//.test(article.url)
+    ) {
+      throw redirect({ href: article.url });
+    }
     context.queryClient.prefetchQuery(
       relatedArticlesQueryOptions({ id: article.id, category: article.category }),
     );
@@ -295,9 +303,13 @@ function NewsItemLink({
   className?: string;
   children: ReactNode;
 }) {
-  return (
+  return isInternalNewsItem(item) ? (
     <Link to="/article/$slug" params={{ slug: articleParam(item) }} className={className}>
       {children}
     </Link>
+  ) : (
+    <a href={item.url} target="_blank" rel="noopener noreferrer" className={className}>
+      {children}
+    </a>
   );
 }
