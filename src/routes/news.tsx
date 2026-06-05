@@ -7,7 +7,6 @@ import {
   latestNewsQueryOptions,
   formatPublishedAt,
   todayKST,
-  isInternalNewsItem,
 } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
 import { articleParam } from "@/lib/api/article";
@@ -494,13 +493,11 @@ function NewsItemLink({
   className?: string;
   children: ReactNode;
 }) {
-  return isInternalNewsItem(item) ? (
+  // Every article opens the internal /article page (id fallback for slug-less
+  // rows); the article page shows the summary + a 출처 link to the source.
+  return (
     <Link to="/article/$slug" params={{ slug: articleParam(item) }} className={className}>
       {children}
     </Link>
-  ) : (
-    <a href={item.url} target="_blank" rel="noopener noreferrer" className={className}>
-      {children}
-    </a>
   );
 }
