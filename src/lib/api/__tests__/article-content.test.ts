@@ -23,7 +23,7 @@ describe("normalizeArticleContent", () => {
         imageUrl: "https://example.com/hero.jpg",
         imageCredit: "Photo: Example",
       }),
-    ).toBe("## 현상\n\n본문입니다.");
+    ).toBe("본문입니다.");
   });
 
   it("preserves different headings and inline images", () => {
