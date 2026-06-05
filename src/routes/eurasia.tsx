@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
@@ -78,6 +78,148 @@ function DataQualityDot({ level }: { level: string }) {
   return <span className={`font-medium text-xs ${cls}`}>{level}</span>;
 }
 
+// --- Corridor concept diagram (built only from real lane data) ---
+type CorridorNode = { label: string; kind: "endpoint" | "border" };
+
+function splitEndpoints(name: string | null): [string, string] | null {
+  if (!name) return null;
+  const parts = name
+    .split(/[–—→~]|->|\s-\s|-/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length >= 2) return [parts[0], parts[parts.length - 1]];
+  return null;
+}
+
+function buildCorridorNodes(lane: LaneRow): CorridorNode[] {
+  const fullName = lane.name_ko ?? lane.name_en ?? null;
+  const borders = (lane.border_points ?? []).map((b) => b.trim()).filter(Boolean);
+  const ends = splitEndpoints(fullName);
+  const nodes: CorridorNode[] = [];
+  if (ends) nodes.push({ label: ends[0], kind: "endpoint" });
+  else if (fullName) nodes.push({ label: fullName, kind: "endpoint" });
+  for (const b of borders) {
+    if (!nodes.some((n) => n.label === b)) nodes.push({ label: b, kind: "border" });
+  }
+  if (ends && !nodes.some((n) => n.label === ends[1])) {
+    nodes.push({ label: ends[1], kind: "endpoint" });
+  }
+  return nodes;
+}
+
+function CorridorDiagram({ lane }: { lane: LaneWithDelay }) {
+  const nodes = useMemo(() => buildCorridorNodes(lane), [lane]);
+
+  // Map each active disruption to the nearest matching node by segment text
+  const markers = useMemo(() => {
+    return lane.activeDisruptions.map((d, order) => {
+      const seg = (d.segment ?? "").trim();
+      let idx = nodes.findIndex((n) => seg && (seg.includes(n.label) || n.label.includes(seg)));
+      if (idx < 0) idx = Math.floor(nodes.length / 2);
+      return { d, idx, order };
+    });
+  }, [lane.activeDisruptions, nodes]);
+
+  if (nodes.length < 2) {
+    return <p className="py-6 text-sm text-muted-foreground">노선 구간 데이터 수집 중</p>;
+  }
+
+  const W = 880;
+  const H = 170;
+  const padX = 70;
+  const lineY = 112;
+  const step = (W - 2 * padX) / (nodes.length - 1);
+  const xOf = (i: number) => padX + i * step;
+
+  return (
+    <div className="overflow-x-auto">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full min-w-[640px]"
+        role="img"
+        aria-label={`${lane.name_ko ?? lane.name_en ?? lane.id} 노선 개념도`}
+      >
+        {/* connecting line */}
+        <line
+          x1={xOf(0)}
+          y1={lineY}
+          x2={xOf(nodes.length - 1)}
+          y2={lineY}
+          stroke="var(--color-cyan)"
+          strokeOpacity={0.35}
+          strokeWidth={2}
+        />
+
+        {/* nodes */}
+        {nodes.map((n, i) => (
+          <g key={`${n.label}-${i}`}>
+            <circle
+              cx={xOf(i)}
+              cy={lineY}
+              r={n.kind === "endpoint" ? 7 : 6}
+              className={
+                n.kind === "endpoint"
+                  ? "fill-[var(--color-cyan)]"
+                  : "fill-[var(--color-status-caution)]"
+              }
+            />
+            <text
+              x={xOf(i)}
+              y={lineY + 24}
+              textAnchor="middle"
+              className="fill-foreground text-[12px] font-medium"
+            >
+              {n.label}
+            </text>
+            {n.kind === "border" && (
+              <text
+                x={xOf(i)}
+                y={lineY + 40}
+                textAnchor="middle"
+                className="fill-[var(--color-status-caution)] text-[10px]"
+              >
+                국경·환적
+              </text>
+            )}
+          </g>
+        ))}
+
+        {/* disruption markers */}
+        {markers.map(({ d, idx, order }) => {
+          const x = xOf(idx);
+          const y = 22 + order * 17;
+          const days =
+            d.delay_contribution_days !== null && d.delay_contribution_days !== undefined
+              ? ` +${d.delay_contribution_days}일`
+              : "";
+          const title = d.title.length > 16 ? `${d.title.slice(0, 16)}…` : d.title;
+          return (
+            <g key={d.id}>
+              <line
+                x1={x}
+                y1={y + 4}
+                x2={x}
+                y2={lineY - 9}
+                stroke="var(--color-status-alert)"
+                strokeOpacity={0.5}
+                strokeDasharray="2 2"
+              />
+              <text
+                x={x}
+                y={y}
+                textAnchor="middle"
+                className="fill-[var(--color-status-alert)] text-[11px] font-medium"
+              >
+                ▲ {title}{days}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 // --- Admin disruption form (minimal) ---
 type DisruptionDraft = {
   lane_id: string;
@@ -110,6 +252,7 @@ function EurasiaPage() {
   const { data: disruptions } = useSuspenseQuery(eurasiaDisruptionsActiveQueryOptions());
 
   const [selectedLane, setSelectedLane] = useState<LaneWithDelay | null>(null);
+  const [focusLaneId, setFocusLaneId] = useState<string | null>(null);
   const [showAdminForm, setShowAdminForm] = useState(false);
   const [draft, setDraft] = useState<DisruptionDraft>(EMPTY_DRAFT);
   const [adminMsg, setAdminMsg] = useState<string | null>(null);
@@ -145,6 +288,15 @@ function EurasiaPage() {
       return { ...lane, latestDelay, delayHistory: laneDelays, activeDisruptions };
     });
   }, [lanes, delays, disruptions]);
+
+  // --- Featured lanes + focused lane for concept diagram ---
+  const featuredLanes = useMemo(() => {
+    const feat = lanesWithDelay.filter((l) => l.is_featured);
+    return feat.length > 0 ? feat : lanesWithDelay;
+  }, [lanesWithDelay]);
+
+  const focusLane =
+    lanesWithDelay.find((l) => l.id === focusLaneId) ?? featuredLanes[0] ?? null;
 
   // --- Aggregate metrics ---
   const latestTcr = tcrSnapshots.at(0) ?? null;
@@ -405,6 +557,83 @@ function EurasiaPage() {
         )}
       </div>
 
+      {/* Comparison lanes (real transit + delay) */}
+      {(() => {
+        const others = lanesWithDelay.filter((l) => l.id !== selectedLane.id);
+        if (others.length === 0) return null;
+        return (
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              다른 회랑 비교 (리드타임·지연)
+            </h3>
+            <div className="space-y-1.5">
+              {others.slice(0, 4).map((l) => (
+                <div
+                  key={l.id}
+                  className="flex items-center justify-between gap-2 rounded border border-border bg-muted/30 px-2.5 py-1.5 text-xs"
+                >
+                  <span className="min-w-0 truncate">{l.name_ko ?? l.name_en ?? l.id}</span>
+                  <span className="flex shrink-0 items-center gap-3 text-muted-foreground">
+                    <span>
+                      {l.transit_min !== null && l.transit_max !== null
+                        ? `${l.transit_min}–${l.transit_max}일`
+                        : "리드타임 —"}
+                    </span>
+                    <span>
+                      {l.latestDelay?.median_delay_d !== null && l.latestDelay?.median_delay_d !== undefined
+                        ? `지연 ${l.latestDelay.median_delay_d}일`
+                        : "지연 —"}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              lanes·delay_index_weekly 실측 비교 · 운임 비교는 데이터 수집 중
+            </p>
+          </div>
+        );
+      })()}
+
+      {/* Operational checklist (derived from real route structure) */}
+      {((selectedLane.border_points ?? []).length > 0 ||
+        selectedLane.activeDisruptions.length > 0) && (
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            확인해야 할 운영사항
+          </h3>
+          <ul className="space-y-1.5 text-xs">
+            {(selectedLane.border_points ?? []).map((bp) => (
+              <li key={`bp-${bp}`} className="flex items-start gap-2">
+                <span className="mt-0.5 text-muted-foreground">▢</span>
+                <span>{bp} 환적·통관 서류 사전 확인</span>
+              </li>
+            ))}
+            {selectedLane.activeDisruptions.map((d) => (
+              <li key={`dis-${d.id}`} className="flex items-start gap-2">
+                <span className="mt-0.5 text-status-alert">▢</span>
+                <span>
+                  {d.segment}: {d.title} 대응 확인
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Related policy */}
+      <div>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          관련 정책
+        </h3>
+        <Link
+          to="/policy"
+          className="inline-flex items-center gap-1 text-xs font-medium text-[var(--color-cyan)] hover:underline"
+        >
+          제재·통관 정책 모니터링 보기 → 정책 탭
+        </Link>
+      </div>
+
       <p className="text-[11px] text-muted-foreground border-t border-border pt-3">
         원본 shipment_legs 비공개 — 집계 지연·신뢰도만 표시
       </p>
@@ -558,10 +787,55 @@ function EurasiaPage() {
             cols={CORRIDOR_COLS}
             rows={lanesWithDelay}
             rowKey={(r) => r.id}
-            onRowClick={(r) => setSelectedLane(r)}
+            onRowClick={(r) => {
+              setSelectedLane(r);
+              setFocusLaneId(r.id);
+            }}
           />
         )}
       </section>
+
+      {/* Corridor concept diagram */}
+      {focusLane && (
+        <section>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-[13px] font-semibold">
+              선택 노선 개념도{" "}
+              <span className="text-[11px] font-normal text-muted-foreground">
+                {focusLane.name_ko ?? focusLane.name_en ?? focusLane.id}
+              </span>
+            </h2>
+            {featuredLanes.length > 1 && (
+              <div className="flex flex-wrap gap-1">
+                {featuredLanes.map((l) => {
+                  const active = l.id === focusLane.id;
+                  return (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => setFocusLaneId(l.id)}
+                      className={`rounded-full border px-2.5 py-0.5 text-[11px] transition-colors ${
+                        active
+                          ? "border-[var(--color-cyan)] bg-[var(--color-cyan)]/10 text-foreground"
+                          : "border-border text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {l.name_ko ?? l.name_en ?? l.id}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <CorridorDiagram lane={focusLane} />
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              지원 노선·국경/환적 구간·활성 장애만 표시 · 장식 요소나 미확인 실시간 위치 없음 ·
+              구간 지연 기여는 어드민 보완(eurasia_disruptions) 추정치
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* Active disruptions list */}
       {disruptions.length > 0 && (
