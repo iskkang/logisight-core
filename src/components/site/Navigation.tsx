@@ -1,8 +1,11 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { Menu, Moon, Search, Sun, X } from "lucide-react";
 import { Logo } from "./Logo";
 import { useDarkMode } from "@/hooks/useDarkMode";
+
+// Dark mode is a dashboard feature; editorial pages stay light.
+const DASHBOARD_PREFIXES = ["/rates", "/trade", "/policy", "/eurasia", "/dashboard"];
 
 const DASHBOARD_NAV = [
   { to: "/dashboard", label: "종합" },
@@ -21,6 +24,10 @@ const CONTENT_NAV = [
 export function Navigation() {
   const [open, setOpen] = useState(false);
   const { dark, toggle } = useDarkMode();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const showThemeToggle = DASHBOARD_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
 
   return (
     <header
@@ -81,15 +88,17 @@ export function Navigation() {
               className="h-8 w-56 rounded-md border border-white/15 bg-white/5 pl-8 pr-3 text-xs text-white placeholder:text-white/50 outline-none focus:border-[var(--color-cyan)]"
             />
           </div>
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={dark ? "라이트 모드로 전환" : "다크 모드로 전환"}
-            className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-2.5 py-1 text-[11px] font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
-          >
-            {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-            <span>{dark ? "라이트" : "다크"}</span>
-          </button>
+          {showThemeToggle && (
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label={dark ? "라이트 모드로 전환" : "다크 모드로 전환"}
+              className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-2.5 py-1 text-[11px] font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              <span>{dark ? "라이트" : "다크"}</span>
+            </button>
+          )}
         </div>
 
         <button
@@ -143,15 +152,17 @@ export function Navigation() {
                   className="h-9 w-full rounded-md border border-white/15 bg-white/5 pl-8 pr-3 text-xs text-white placeholder:text-white/50 outline-none focus:border-[var(--color-cyan)]"
                 />
               </div>
-              <button
-                type="button"
-                onClick={toggle}
-                aria-label={dark ? "라이트 모드로 전환" : "다크 모드로 전환"}
-                className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-2.5 py-1.5 text-[11px] font-medium text-white/70 hover:bg-white/10 hover:text-white"
-              >
-                {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-                <span>{dark ? "라이트" : "다크"}</span>
-              </button>
+              {showThemeToggle && (
+                <button
+                  type="button"
+                  onClick={toggle}
+                  aria-label={dark ? "라이트 모드로 전환" : "다크 모드로 전환"}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-2.5 py-1.5 text-[11px] font-medium text-white/70 hover:bg-white/10 hover:text-white"
+                >
+                  {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                  <span>{dark ? "라이트" : "다크"}</span>
+                </button>
+              )}
             </div>
           </nav>
         </div>

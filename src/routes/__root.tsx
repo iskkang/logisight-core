@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Outlet, Link, createRootRouteWithContext, useRouter, HeadContent, Scripts } from "@tanstack/react-router";
+import { Outlet, Link, createRootRouteWithContext, useRouter, useRouterState, HeadContent, Scripts } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
 import { Navigation } from "@/components/site/Navigation";
@@ -157,9 +157,21 @@ function RootComponent() {
   );
 }
 
+// Dashboards keep the dark/light toggle; everything else (editorial pages) is
+// pinned light via the .theme-light scope.
+const DASHBOARD_PREFIXES = ["/rates", "/trade", "/policy", "/eurasia", "/dashboard"];
+
 function SiteShell({ children }: { children: React.ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isDashboard = DASHBOARD_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+
   return (
-    <div className="flex min-h-screen flex-col" style={{ background: "var(--color-surface)" }}>
+    <div
+      className={`flex min-h-screen flex-col ${isDashboard ? "" : "theme-light"}`}
+      style={{ background: "var(--color-surface)" }}
+    >
       <Navigation />
       <IndexBar />
       <main className="flex-1">{children}</main>

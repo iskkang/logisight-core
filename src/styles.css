@@ -247,6 +247,66 @@
   --demand-3: oklch(0.56 0.13 65);
 }
 
+/*
+ * Force-light scope — editorial pages (home/news/article/industries) are a
+ * light-only newspaper design. This re-declares the base tokens to their light
+ * values so the global .dark toggle never applies inside this subtree.
+ */
+.theme-light {
+  --navy-900: oklch(0.272 0.073 258);
+  --navy-800: oklch(0.32 0.075 258);
+  --navy-600: oklch(0.402 0.105 256);
+  --heading: var(--navy-600);
+  --surface: oklch(0.955 0.016 252);
+  --surface-alt: oklch(0.972 0.012 250);
+  --ink: oklch(0.236 0.04 257);
+  --ink-muted: oklch(0.45 0.03 257);
+  --line: oklch(0.885 0.022 252);
+
+  --status-normal: oklch(0.62 0.16 152);
+  --status-observe: oklch(0.58 0.13 248);
+  --status-caution: oklch(0.78 0.16 75);
+  --status-alert: oklch(0.703 0.18 22);
+
+  --demand-0: oklch(0.96 0.007 247);
+  --demand-1: oklch(0.93 0.06 230);
+  --demand-2: oklch(0.778 0.142 230);
+  --demand-3: oklch(0.46 0.13 65);
+
+  --background: var(--surface);
+  --foreground: var(--ink);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--ink);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--ink);
+  --primary: var(--navy-600);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.955 0.016 252);
+  --secondary-foreground: var(--navy-900);
+  --muted: oklch(0.945 0.018 252);
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--cyan);
+  --accent-foreground: var(--navy-900);
+  --destructive: var(--danger);
+  --destructive-foreground: oklch(1 0 0);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--cyan);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.984 0.003 247.858);
+  --sidebar-foreground: oklch(0.129 0.042 264.695);
+  --sidebar-primary: oklch(0.208 0.042 265.755);
+  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-accent: oklch(0.968 0.007 247.896);
+  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
+  --sidebar-border: oklch(0.929 0.013 255.508);
+  --sidebar-ring: oklch(0.704 0.04 256.788);
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
