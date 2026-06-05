@@ -8,6 +8,7 @@
  *   SUPABASE_SERVICE_ROLE_KEY
  */
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY =
@@ -22,6 +23,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
+  realtime: { transport: ws },
 });
 
 const PORTS_URL =
