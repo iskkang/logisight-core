@@ -173,7 +173,7 @@ function Index() {
 function TradeWidgetBand() {
   const { data } = useSuspenseQuery(tradeProvisionalQueryOptions());
   return (
-    <section className="border-t border-[var(--color-line)] bg-white">
+    <section className="border-t border-[var(--color-line)] bg-[var(--color-card)]">
       <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <HomeExportWidget rows={data} />
@@ -222,7 +222,7 @@ function WeeklyBriefingBlock() {
   };
 
   return (
-    <article className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-sm">
+    <article className="rounded-lg border border-[var(--color-line)] bg-[var(--color-card)] p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <span
@@ -330,7 +330,7 @@ function NewsBlock() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="mt-6 rounded-md border border-dashed border-[var(--color-line)] bg-white p-8 text-center text-sm text-[var(--color-ink-muted)]">
+        <p className="mt-6 rounded-md border border-dashed border-[var(--color-line)] bg-[var(--color-card)] p-8 text-center text-sm text-[var(--color-ink-muted)]">
           수집 예정 (매주 업데이트)
         </p>
       ) : (
@@ -354,7 +354,7 @@ function FeaturedNewsCard({ item }: { item: NewsItem }) {
     <Link
       to="/article/$slug"
       params={{ slug: articleParam(item) }}
-      className="mt-5 grid gap-4 rounded-lg border border-[var(--color-line)] bg-white p-4 transition-shadow hover:shadow-md sm:grid-cols-[200px_1fr]"
+      className="mt-5 grid gap-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-card)] p-4 transition-shadow hover:shadow-md sm:grid-cols-[200px_1fr]"
     >
       <div
         className="aspect-[4/3] w-full overflow-hidden rounded-md bg-[var(--color-surface-alt,#eef2f7)] sm:aspect-auto sm:h-full"
@@ -403,7 +403,7 @@ function SmallNewsCard({ item }: { item: NewsItem }) {
       <Link
         to="/article/$slug"
         params={{ slug: articleParam(item) }}
-        className="group block h-full rounded-md border border-[var(--color-line)] bg-white p-4 transition-shadow hover:shadow-md"
+        className="group block h-full rounded-md border border-[var(--color-line)] bg-[var(--color-card)] p-4 transition-shadow hover:shadow-md"
       >
         <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-[var(--color-ink-muted)]">
           {item.category && (
@@ -448,7 +448,7 @@ function SidebarCard({
       className={`rounded-lg border p-4 shadow-sm ${
         dark
           ? "border-white/10 text-white"
-          : "border-[var(--color-line)] bg-white"
+          : "border-[var(--color-line)] bg-[var(--color-card)]"
       }`}
       style={dark ? { background: "var(--color-navy-900)" } : undefined}
     >
@@ -646,7 +646,7 @@ function IndustryInsightsSection() {
           <li key={c.title}>
             <Link
               to={c.to}
-              className="block h-full rounded-lg border border-[var(--color-line)] bg-white p-5 transition-shadow hover:shadow-md"
+              className="block h-full rounded-lg border border-[var(--color-line)] bg-[var(--color-card)] p-5 transition-shadow hover:shadow-md"
             >
               <div className="text-xl">{c.icon}</div>
               <h3 className="mt-2 text-sm font-bold text-[var(--color-ink)]">

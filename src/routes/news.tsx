@@ -70,9 +70,9 @@ function NewsPage() {
   const mostPopular = items.slice(0, 6);
 
   return (
-    <div className="bg-white">
+    <div className="bg-[var(--color-card)]">
       {/* Masthead */}
-      <header className="border-b-[3px] border-double border-[var(--color-navy-900)] bg-white">
+      <header className="border-b-[3px] border-double border-[var(--color-navy-900)] bg-[var(--color-card)]">
         <div className="mx-auto max-w-[1280px] px-4 pb-3 pt-8 text-center lg:px-6">
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.3em]"
@@ -95,7 +95,7 @@ function NewsPage() {
         </div>
 
         {/* Section nav */}
-        <nav className="border-t border-[var(--color-line)] bg-white">
+        <nav className="border-t border-[var(--color-line)] bg-[var(--color-card)]">
           <ul className="mx-auto flex max-w-[1280px] items-center justify-center gap-1 overflow-x-auto px-4 py-2 text-[13px] lg:px-6">
             {CATEGORIES.map((c) => {
               const active = (cat ?? undefined) === c.value;

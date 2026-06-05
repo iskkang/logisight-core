@@ -78,7 +78,7 @@ export function IndexBar({
   return (
     <div
       className="sticky top-14 z-40 border-b"
-      style={{ background: "#fff", borderColor: "var(--color-line)" }}
+      style={{ background: "var(--color-card)", borderColor: "var(--color-line)" }}
     >
       <div className="mx-auto max-w-7xl overflow-hidden whitespace-nowrap">
         <ul className="animate-ticker inline-flex min-w-max items-center px-4 py-2 lg:px-6">

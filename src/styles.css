@@ -79,6 +79,7 @@
   --color-ink-muted: var(--ink-muted);
   --color-line: var(--line);
   --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
 
   /* Status semantic tokens */
   --color-status-normal: var(--status-normal);
@@ -126,6 +127,7 @@
   --ink: oklch(0.236 0.04 257);         /* #1E293B text */
   --ink-muted: oklch(0.45 0.03 257);    /* darker muted for WCAG AA contrast */
   --line: oklch(0.885 0.022 252);       /* navy-tinted, crisper border */
+  --surface-alt: oklch(0.972 0.012 250);/* off-white sub-surface (light) */
   --heading: var(--navy-600);           /* brand navy headings (light) */
 
   /* Status semantic */
@@ -227,6 +229,7 @@
   --navy-600: oklch(0.55 0.12 256);
   --heading: var(--foreground);         /* keep near-white headings (dark unchanged) */
   --surface: oklch(0.15 0.03 258);
+  --surface-alt: oklch(0.205 0.035 258);/* sub-surface (dark) */
   --ink: oklch(0.97 0.006 247);
   --ink-muted: oklch(0.72 0.025 257);
   --line: oklch(0.28 0.04 258);

@@ -100,7 +100,7 @@ function formatDayRange(priodDt: string | null): string {
 
 function EmptyCard() {
   return (
-    <div className="block rounded-lg border border-dashed border-[var(--color-line)] bg-white p-4 shadow-sm">
+    <div className="block rounded-lg border border-dashed border-[var(--color-line)] bg-[var(--color-card)] p-4 shadow-sm">
       <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#0d9488]">
         <span>📦</span>
         <span>이달 수출 현황</span>
@@ -124,14 +124,14 @@ export function HomeExportWidget({ rows }: { rows: TradeProvisionalRow[] }) {
   return (
     <Link
       to="/trade"
-      className="block rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+      className="block rounded-lg border border-[var(--color-line)] bg-[var(--color-card)] p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#0d9488]">
         <span>📦</span>
         <span>이달 수출 현황</span>
       </div>
       <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-2xl font-black tabular-nums text-[var(--color-navy-900)]">
+        <span className="text-2xl font-black tabular-nums text-[var(--color-heading)]">
           {formatUSD(view.total)}
         </span>
         {view.totalMom != null && (

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import type { ReactNode } from "react";
@@ -18,6 +18,14 @@ export const Route = createFileRoute("/article/$slug")({
     const slug = params.slug?.trim();
     if (!slug) throw notFound();
     const article = await context.queryClient.ensureQueryData(articleQueryOptions(slug));
+    if (
+      article.agent_type === "external" &&
+      !article.content?.trim() &&
+      article.url &&
+      /^https?:\/\//.test(article.url)
+    ) {
+      throw redirect({ href: article.url });
+    }
     context.queryClient.prefetchQuery(
       relatedArticlesQueryOptions({ id: article.id, category: article.category }),
     );
@@ -278,7 +286,7 @@ function RelatedCard({ item }: { item: NewsItem }) {
     <li>
       <NewsItemLink
         item={item}
-        className="block h-full rounded-lg border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-navy-600)]"
+        className="block h-full rounded-lg border border-[var(--color-line)] bg-[var(--color-card)] p-4 transition hover:border-[var(--color-navy-600)]"
       >
         {content}
       </NewsItemLink>
