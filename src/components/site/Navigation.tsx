@@ -85,9 +85,10 @@ export function Navigation() {
             type="button"
             onClick={toggle}
             aria-label={dark ? "라이트 모드로 전환" : "다크 모드로 전환"}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-2.5 py-1 text-[11px] font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
           >
-            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+            <span>{dark ? "라이트" : "다크"}</span>
           </button>
         </div>
 
@@ -146,9 +147,10 @@ export function Navigation() {
                 type="button"
                 onClick={toggle}
                 aria-label={dark ? "라이트 모드로 전환" : "다크 모드로 전환"}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-white/70 hover:bg-white/10 hover:text-white"
+                className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-2.5 py-1.5 text-[11px] font-medium text-white/70 hover:bg-white/10 hover:text-white"
               >
-                {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                <span>{dark ? "라이트" : "다크"}</span>
               </button>
             </div>
           </nav>
