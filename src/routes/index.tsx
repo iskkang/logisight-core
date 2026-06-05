@@ -223,20 +223,19 @@ function DashboardSection() {
       className="border-t border-[var(--color-line)]"
       style={{ background: "var(--color-surface-alt, #f7f9fc)" }}
     >
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 lg:grid-cols-3 lg:px-6 lg:py-14">
-        <div className="lg:col-span-2">
-          <HomeRatesBrief />
+      <div className="mx-auto max-w-7xl px-4 py-10 lg:px-6 lg:py-14">
+        <div className="grid gap-8 lg:grid-cols-3">
+          {/* Left column flows independently: rates brief → news */}
+          <div className="space-y-8 lg:col-span-2">
+            <HomeRatesBrief />
+            <NewsBlock />
+          </div>
+          {/* Right column: weekly briefing → newsletter */}
+          <aside className="space-y-6">
+            <WeeklyBriefingBlock />
+            <NewsletterSidebar />
+          </aside>
         </div>
-        <aside className="flex flex-col gap-6">
-          <WeeklyBriefingBlock />
-        </aside>
-        <div className="lg:col-span-2">
-          <NewsBlock />
-        </div>
-        <aside className="flex flex-col gap-6 lg:self-stretch">
-          <div className="hidden flex-1 lg:block" aria-hidden="true" />
-          <NewsletterSidebar />
-        </aside>
       </div>
     </section>
   );
