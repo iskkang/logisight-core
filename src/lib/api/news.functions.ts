@@ -6,7 +6,7 @@ import type { NewsItem } from "./news";
 import { normalizeNewsImage } from "./news-image";
 
 const SELECT =
-  "id,slug,title,summary,url,source,category,image_url,image_source,image_credit,published_at,lang,tags,is_hero,agent_type";
+  "id,slug,title,summary,url,source,category,image_url,image_source,image_credit,published_at,lang,tags,is_hero,agent_type,content";
 
 export const getLatestNews = createServerFn({ method: "GET" })
   .inputValidator(
@@ -34,5 +34,18 @@ export const getLatestNews = createServerFn({ method: "GET" })
 
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return ((rows ?? []) as NewsItem[]).map(normalizeNewsImage);
+
+    // Hide bot-blocked sources: external items whose body couldn't be
+    // generated (content empty) — keep internal articles and externals
+    // that do have a body. Strip content from the payload afterwards.
+    return ((rows ?? []) as (NewsItem & { content?: string | null })[])
+      .filter(
+        (r) =>
+          r.agent_type !== "external" ||
+          (r.content != null && String(r.content).trim().length > 0),
+      )
+      .map((r) => {
+        delete (r as { content?: unknown }).content;
+        return normalizeNewsImage(r as NewsItem);
+      });
   });
