@@ -113,37 +113,41 @@ function HeroCard({ code, sub, label }: { code: string; sub: string; label?: str
 
   let value = "—";
   let change: number | null | undefined = null;
+  let weekDate: string | null = null;
   let displayLabel = label ?? indexDisplayLabel(code);
 
   if (isNyfi) {
     const lane = (nyfi ?? []).find((l) => l.code === code);
     value = formatNyfiValue(lane?.value);
     change = lane?.wow ?? null;
+    weekDate = lane?.weekDate ?? null;
     if (!label && lane) displayLabel = `NYFI ${lane.nameKo}`;
   } else {
     const row = idx?.find((r) => r.index_code === code);
     value = formatIndexValue(row?.value ?? null);
     change = row?.change_pct;
+    weekDate = row?.week_date || null;
   }
 
-  const changeLabel =
-    change == null
-      ? "수집 예정"
-      : `${change >= 0 ? "+" : ""}${change.toFixed(2)}% WoW`;
   const changeColor =
-    change == null
-      ? "text-white/50"
-      : change >= 0
-        ? "text-emerald-300"
-        : "text-rose-300";
+    change == null ? "text-white/50" : change >= 0 ? "text-emerald-300" : "text-rose-300";
+  const dateLabel = weekDate ? `${weekDate.slice(0, 10).replace(/-/g, ".")} 기준` : null;
 
   return (
     <div className="rounded-lg border border-white/10 bg-white/5 p-4 backdrop-blur">
       <div className="text-[11px] uppercase tracking-wide text-white/60">{displayLabel}</div>
       <div className="mt-1 text-2xl font-bold tabular-nums text-white">{value}</div>
-      <div className={`text-[11px] tabular-nums ${changeColor}`}>
-        {sub} · {changeLabel}
+      <div className="mt-0.5 text-[11px] tabular-nums">
+        <span className="text-white/55">{sub}</span>
+        {change != null && (
+          <span className={changeColor}>
+            {" · "}
+            {change >= 0 ? "+" : ""}
+            {change.toFixed(2)}% WoW
+          </span>
+        )}
       </div>
+      {dateLabel && <div className="mt-0.5 text-[10px] text-white/40">{dateLabel}</div>}
     </div>
   );
 }

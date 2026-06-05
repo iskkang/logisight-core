@@ -16,18 +16,24 @@ export const getLatestFreightIndices = createServerFn({ method: "GET" }).handler
     if (error) throw new Error(error.message);
 
     const latest = new Map<string, FreightIndexRow>();
+    const prev = new Map<string, FreightIndexRow>();
     for (const row of (data ?? []) as FreightIndexRow[]) {
       if (!latest.has(row.index_code)) latest.set(row.index_code, row);
+      else if (!prev.has(row.index_code)) prev.set(row.index_code, row);
     }
-    return CODES.map(
-      (code) =>
-        latest.get(code) ?? {
-          index_code: code,
-          value: null,
-          change_pct: null,
-          week_date: "",
-          source: null,
-        },
-    );
+    return CODES.map((code) => {
+      const row = latest.get(code);
+      if (!row) {
+        return { index_code: code, value: null, change_pct: null, week_date: "", source: null };
+      }
+      // Derive WoW change from the previous week when the source didn't store it.
+      if (row.change_pct == null && row.value != null) {
+        const p = prev.get(code);
+        if (p?.value != null && p.value !== 0) {
+          row.change_pct = ((row.value - p.value) / p.value) * 100;
+        }
+      }
+      return row;
+    });
   },
 );
