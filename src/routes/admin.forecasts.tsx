@@ -7,6 +7,8 @@ import {
   saveForecastDraft,
   publishForecast,
   resolveForecast,
+  annotateForecast,
+  needsRetrospective,
   MODULE_LABEL,
   type Forecast,
   type ForecastModule,
@@ -23,8 +25,9 @@ export const Route = createFileRoute("/admin/forecasts")({
   component: AdminForecastsPage,
 });
 
-const SELECT =
-  "id,module,statement,basis,impact_note,horizon_date,confidence,invalidation_condition,status,outcome,outcome_note,metric_ref,created_at,published_at,resolved_at";
+// "*" so scoring columns (direction/composite/factor_scores/…) load when present and the
+// query never 400s before the scoring migration is applied.
+const SELECT = "*";
 
 type Draft = {
   id?: string;
@@ -71,6 +74,10 @@ function AdminForecastsPage() {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<ForecastOutcome>("hit");
   const [outcomeNote, setOutcomeNote] = useState("");
+
+  // 복기(annotate) inline form — 자동 판정된 miss/partial에 사후 복기 작성
+  const [annotatingId, setAnnotatingId] = useState<string | null>(null);
+  const [annotateNote, setAnnotateNote] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -148,6 +155,22 @@ function AdminForecastsPage() {
     try {
       await publishForecast({ data: { id } });
       toast("발행됨");
+      refresh();
+    } catch (e) {
+      toast(`오류: ${(e as Error).message}`);
+    }
+  }
+
+  async function handleAnnotate(id: string) {
+    if (!annotateNote.trim()) {
+      toast("복기 내용을 입력하세요.");
+      return;
+    }
+    try {
+      await annotateForecast({ data: { id, outcome_note: annotateNote.trim() } });
+      toast("복기 저장됨");
+      setAnnotatingId(null);
+      setAnnotateNote("");
       refresh();
     } catch (e) {
       toast(`오류: ${(e as Error).message}`);
@@ -404,13 +427,66 @@ function AdminForecastsPage() {
             <ForecastHead f={f} />
             <p className="mt-1.5 whitespace-pre-wrap text-sm">{f.statement}</p>
             {f.outcome && (
-              <div className="mt-1.5 text-xs">
-                <span className={`rounded px-1.5 py-0.5 font-medium ${OUTCOME_CLS[f.outcome]}`}>
-                  {OUTCOME_LABEL[f.outcome]}
-                </span>
-                {f.outcome_note && (
-                  <span className="ml-2 text-muted-foreground">복기: {f.outcome_note}</span>
-                )}
+              <div className="mt-1.5 space-y-1.5 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded px-1.5 py-0.5 font-medium ${OUTCOME_CLS[f.outcome]}`}>
+                    {OUTCOME_LABEL[f.outcome]}
+                  </span>
+                  {f.realized_pct != null && (
+                    <span className="text-muted-foreground">
+                      실측 {f.realized_pct > 0 ? "+" : ""}
+                      {f.realized_pct}%
+                      {f.expected_range_pct ? ` · 예상 ${f.expected_range_pct}%` : ""}
+                    </span>
+                  )}
+                  {needsRetrospective(f) && (
+                    <span className="rounded bg-status-caution/10 px-1.5 py-0.5 font-medium text-status-caution">
+                      복기 작성 중
+                    </span>
+                  )}
+                </div>
+                {f.outcome_note ? (
+                  <p className="text-muted-foreground">복기: {f.outcome_note}</p>
+                ) : needsRetrospective(f) ? (
+                  annotatingId === f.id ? (
+                    <div className="space-y-1.5 rounded border border-border bg-muted/30 p-2">
+                      <textarea
+                        value={annotateNote}
+                        onChange={(e) => setAnnotateNote(e.target.value)}
+                        rows={2}
+                        placeholder="복기 (outcome_note) — 왜 빗나갔/부분 적중했는지"
+                        className="w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-xs"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleAnnotate(f.id)}
+                          className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground"
+                        >
+                          복기 저장
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAnnotatingId(null)}
+                          className="rounded border border-border px-2.5 py-1 text-xs hover:bg-muted"
+                        >
+                          취소
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAnnotatingId(f.id);
+                        setAnnotateNote("");
+                      }}
+                      className="rounded border border-border px-2.5 py-1 text-xs hover:bg-muted"
+                    >
+                      복기 작성
+                    </button>
+                  )
+                ) : null}
               </div>
             )}
           </div>
@@ -443,15 +519,29 @@ function Section({
   );
 }
 
+const DIR_LABEL: Record<string, string> = { up: "▲ 상승", down: "▼ 하락", flat: "▬ 보합" };
+
 function ForecastHead({ f }: { f: Forecast }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
       <span className="rounded bg-muted px-1.5 py-0.5 font-medium text-foreground/70">
         {MODULE_LABEL[f.module]}
       </span>
+      {f.direction && (
+        <span className="rounded bg-status-observe/10 px-1.5 py-0.5 font-medium text-status-observe">
+          {DIR_LABEL[f.direction]}
+          {f.expected_range_pct ? ` ${f.expected_range_pct}%` : ""}
+          {f.composite_score != null
+            ? ` · 종합 ${f.composite_score > 0 ? "+" : ""}${f.composite_score}`
+            : ""}
+        </span>
+      )}
       {f.confidence && <span>확신도 {CONF_LABEL[f.confidence]}</span>}
       {f.horizon_date && <span>· 판정일 {f.horizon_date}</span>}
-      {f.metric_ref && <span>· {f.metric_ref}</span>}
+      {f.metric_ref && <span className="font-mono">· {f.metric_ref}</span>}
+      {f.data_quality_flags && f.data_quality_flags.length > 0 && (
+        <span className="text-muted-foreground/70">· 결측 {f.data_quality_flags.length}</span>
+      )}
     </div>
   );
 }

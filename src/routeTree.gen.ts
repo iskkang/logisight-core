@@ -15,6 +15,7 @@ import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PolicyRouteImport } from './routes/policy'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as IndustriesRouteImport } from './routes/industries'
+import { Route as ForecastsRouteImport } from './routes/forecasts'
 import { Route as EurasiaRouteImport } from './routes/eurasia'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -22,6 +23,7 @@ import { Route as ArticleSlugRouteImport } from './routes/article.$slug'
 import { Route as AdminRoutesRouteImport } from './routes/admin.routes'
 import { Route as AdminPoliciesRouteImport } from './routes/admin.policies'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminForecastsRouteImport } from './routes/admin.forecasts'
 
 const TradeRoute = TradeRouteImport.update({
   id: '/trade',
@@ -51,6 +53,11 @@ const NewsRoute = NewsRouteImport.update({
 const IndustriesRoute = IndustriesRouteImport.update({
   id: '/industries',
   path: '/industries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForecastsRoute = ForecastsRouteImport.update({
+  id: '/forecasts',
+  path: '/forecasts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EurasiaRoute = EurasiaRouteImport.update({
@@ -88,17 +95,24 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/admin/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminForecastsRoute = AdminForecastsRouteImport.update({
+  id: '/admin/forecasts',
+  path: '/admin/forecasts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
+  '/forecasts': typeof ForecastsRoute
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
+  '/admin/forecasts': typeof AdminForecastsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
@@ -108,12 +122,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
+  '/forecasts': typeof ForecastsRoute
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
+  '/admin/forecasts': typeof AdminForecastsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
@@ -124,12 +140,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
+  '/forecasts': typeof ForecastsRoute
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
+  '/admin/forecasts': typeof AdminForecastsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
@@ -141,12 +159,14 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/eurasia'
+    | '/forecasts'
     | '/industries'
     | '/news'
     | '/policy'
     | '/rates'
     | '/sitemap.xml'
     | '/trade'
+    | '/admin/forecasts'
     | '/admin/login'
     | '/admin/policies'
     | '/admin/routes'
@@ -156,12 +176,14 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/eurasia'
+    | '/forecasts'
     | '/industries'
     | '/news'
     | '/policy'
     | '/rates'
     | '/sitemap.xml'
     | '/trade'
+    | '/admin/forecasts'
     | '/admin/login'
     | '/admin/policies'
     | '/admin/routes'
@@ -171,12 +193,14 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/eurasia'
+    | '/forecasts'
     | '/industries'
     | '/news'
     | '/policy'
     | '/rates'
     | '/sitemap.xml'
     | '/trade'
+    | '/admin/forecasts'
     | '/admin/login'
     | '/admin/policies'
     | '/admin/routes'
@@ -187,12 +211,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   EurasiaRoute: typeof EurasiaRoute
+  ForecastsRoute: typeof ForecastsRoute
   IndustriesRoute: typeof IndustriesRoute
   NewsRoute: typeof NewsRoute
   PolicyRoute: typeof PolicyRoute
   RatesRoute: typeof RatesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TradeRoute: typeof TradeRoute
+  AdminForecastsRoute: typeof AdminForecastsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminPoliciesRoute: typeof AdminPoliciesRoute
   AdminRoutesRoute: typeof AdminRoutesRoute
@@ -241,6 +267,13 @@ declare module '@tanstack/react-router' {
       path: '/industries'
       fullPath: '/industries'
       preLoaderRoute: typeof IndustriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forecasts': {
+      id: '/forecasts'
+      path: '/forecasts'
+      fullPath: '/forecasts'
+      preLoaderRoute: typeof ForecastsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/eurasia': {
@@ -292,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/forecasts': {
+      id: '/admin/forecasts'
+      path: '/admin/forecasts'
+      fullPath: '/admin/forecasts'
+      preLoaderRoute: typeof AdminForecastsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -299,12 +339,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   EurasiaRoute: EurasiaRoute,
+  ForecastsRoute: ForecastsRoute,
   IndustriesRoute: IndustriesRoute,
   NewsRoute: NewsRoute,
   PolicyRoute: PolicyRoute,
   RatesRoute: RatesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TradeRoute: TradeRoute,
+  AdminForecastsRoute: AdminForecastsRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminPoliciesRoute: AdminPoliciesRoute,
   AdminRoutesRoute: AdminRoutesRoute,

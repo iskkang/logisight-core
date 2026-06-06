@@ -3,8 +3,9 @@ import { z } from "zod";
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { Forecast } from "./forecasts";
 
-const SELECT =
-  "id,module,statement,basis,impact_note,horizon_date,confidence,invalidation_condition,status,outcome,outcome_note,metric_ref,created_at,published_at,resolved_at";
+// "*" so new scoring columns (direction/composite/factor_scores/…) flow through when present,
+// and the query never 400s if the scoring migration hasn't been applied yet (resilient).
+const SELECT = "*";
 
 async function serviceClient() {
   const { createClient } = await import("@supabase/supabase-js");
@@ -90,6 +91,23 @@ export const resolveForecast = createServerFn({ method: "POST" })
         outcome_note: data.outcome_note ?? null,
         resolved_at: new Date().toISOString(),
       })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// Add/replace the retrospective (복기) on an already-resolved forecast — for rows the
+// auto-adjudicator confirmed as miss/partial without a note ("복기 작성 중"). The DB
+// immutability trigger permits outcome_note changes post-publish.
+export const annotateForecast = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({ id: z.string().uuid(), outcome_note: z.string().min(1).max(4000) }),
+  )
+  .handler(async ({ data }) => {
+    const sb = await serviceClient();
+    const { error } = await sb
+      .from("forecasts")
+      .update({ outcome_note: data.outcome_note.trim() })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };

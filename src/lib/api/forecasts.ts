@@ -5,11 +5,20 @@ import {
   saveForecastDraft,
   publishForecast,
   resolveForecast,
+  annotateForecast,
 } from "./forecasts.functions";
 
 export type ForecastModule = "rates" | "eurasia" | "trade" | "policy";
 export type ForecastStatus = "draft" | "published" | "resolved";
 export type ForecastOutcome = "hit" | "partial" | "miss";
+export type ForecastDirection = "up" | "flat" | "down";
+
+export type FactorScore = {
+  factor: string;
+  score: number | null;
+  weight?: number;
+  missing?: boolean;
+};
 
 export type Forecast = {
   id: string;
@@ -27,9 +36,23 @@ export type Forecast = {
   created_at: string;
   published_at: string | null;
   resolved_at: string | null;
+  // Scoring layer (present only after the scoring migration; all optional/resilient).
+  cadence?: "weekly" | "monthly" | null;
+  direction?: ForecastDirection | null;
+  strength?: string | null;
+  expected_range_pct?: string | null;
+  range_low_pct?: number | null;
+  range_high_pct?: number | null;
+  composite_score?: number | null;
+  confidence_reason?: string | null;
+  factor_scores?: FactorScore[] | null;
+  data_quality_flags?: string[] | null;
+  model_version?: string | null;
+  metric_value_at_publish?: number | null;
+  realized_pct?: number | null;
 };
 
-export { saveForecastDraft, publishForecast, resolveForecast };
+export { saveForecastDraft, publishForecast, resolveForecast, annotateForecast };
 
 export const MODULE_LABEL: Record<ForecastModule, string> = {
   rates: "운임",
@@ -37,6 +60,15 @@ export const MODULE_LABEL: Record<ForecastModule, string> = {
   trade: "무역",
   policy: "정책",
 };
+
+/** A resolved miss/partial without an editor retrospective yet → "복기 작성 중". */
+export function needsRetrospective(f: Forecast): boolean {
+  return (
+    f.status === "resolved" &&
+    (f.outcome === "miss" || f.outcome === "partial") &&
+    !f.outcome_note?.trim()
+  );
+}
 
 // Public display — published/resolved only.
 export const publishedForecastsQueryOptions = () =>

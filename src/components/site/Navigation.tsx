@@ -18,6 +18,7 @@ const DASHBOARD_NAV = [
 const CONTENT_NAV = [
   { to: "/", label: "홈" },
   { to: "/news", label: "뉴스" },
+  { to: "/forecasts", label: "전망" },
   { to: "/industries", label: "산업별" },
 ] as const;
 
