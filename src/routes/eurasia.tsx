@@ -8,6 +8,8 @@ import { IntelTable, type ColDef } from "@/components/dashboard/IntelTable";
 import { DetailDrawer } from "@/components/dashboard/DetailDrawer";
 import { DataQualityBar } from "@/components/dashboard/DataQualityBar";
 import { Sparkline } from "@/components/dashboard/Sparkline";
+import { ForecastTracking } from "@/components/dashboard/ForecastPanel";
+import { publishedForecastsQueryOptions } from "@/lib/api/forecasts";
 
 import {
   eurasiaLanesQueryOptions,
@@ -29,6 +31,7 @@ export const Route = createFileRoute("/eurasia")({
     context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
     context.queryClient.ensureQueryData(tcrSnapshotsQueryOptions());
     context.queryClient.ensureQueryData(eurasiaDisruptionsActiveQueryOptions());
+    context.queryClient.ensureQueryData(publishedForecastsQueryOptions());
   },
   head: () => ({
     meta: [
@@ -250,6 +253,7 @@ function EurasiaPage() {
   const { data: delays } = useSuspenseQuery(eurasiaDelaysQueryOptions());
   const { data: tcrSnapshots } = useSuspenseQuery(tcrSnapshotsQueryOptions());
   const { data: disruptions } = useSuspenseQuery(eurasiaDisruptionsActiveQueryOptions());
+  const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
 
   const [selectedLane, setSelectedLane] = useState<LaneWithDelay | null>(null);
   const [focusLaneId, setFocusLaneId] = useState<string | null>(null);
@@ -655,6 +659,8 @@ function EurasiaPage() {
       }
     >
       <StatusStrip items={statusItems} />
+
+      <ForecastTracking forecasts={forecasts} module="eurasia" title="유라시아 전망 트래킹" />
 
       {/* Admin form */}
       {showAdminForm && (

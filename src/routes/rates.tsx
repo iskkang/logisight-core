@@ -22,6 +22,8 @@ import { IntelTable, type ColDef } from "@/components/dashboard/IntelTable";
 import { DetailDrawer } from "@/components/dashboard/DetailDrawer";
 import { IntelligenceBrief } from "@/components/dashboard/IntelligenceBrief";
 import { RatesBrief } from "@/components/dashboard/RatesBrief";
+import { ForecastTracking } from "@/components/dashboard/ForecastPanel";
+import { publishedForecastsQueryOptions } from "@/lib/api/forecasts";
 import { DataQualityBar } from "@/components/dashboard/DataQualityBar";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { ConfidenceBadge } from "@/components/dashboard/ConfidenceBadge";
@@ -58,6 +60,7 @@ export const Route = createFileRoute("/rates")({
     context.queryClient.ensureQueryData(kitaAirRatesQueryOptions());
     context.queryClient.ensureQueryData(kitaSeaRatesQueryOptions());
     context.queryClient.ensureQueryData(latestExchangeRateQueryOptions());
+    context.queryClient.ensureQueryData(publishedForecastsQueryOptions());
   },
   head: () => ({
     meta: [
@@ -242,6 +245,7 @@ function RatesPage() {
   const { data: airRates } = useSuspenseQuery(kitaAirRatesQueryOptions());
   const { data: seaRates } = useSuspenseQuery(kitaSeaRatesQueryOptions());
   const { data: exRate } = useSuspenseQuery(latestExchangeRateQueryOptions());
+  const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerRow, setDrawerRow] = useState<{ title: string; content: React.ReactNode } | null>(
@@ -697,6 +701,8 @@ function RatesPage() {
         asOf={briefAsOf}
         scope={rateScope}
       />
+
+      <ForecastTracking forecasts={forecasts} module="rates" title="운임 전망 트래킹" />
 
       {/* Signal cards */}
       <section>

@@ -18,6 +18,8 @@ import {
 import { eurasiaDisruptionsActiveQueryOptions } from "@/lib/api/eurasia-disruptions";
 import { eurasiaDelaysQueryOptions } from "@/lib/api/eurasia";
 import { latestExchangeRateQueryOptions } from "@/lib/api/exchange-rates";
+import { publishedForecastsQueryOptions } from "@/lib/api/forecasts";
+import { ForecastItem, HitRateChip } from "@/components/dashboard/ForecastPanel";
 
 export const Route = createFileRoute("/dashboard")({
   loader: ({ context }) => {
@@ -28,6 +30,7 @@ export const Route = createFileRoute("/dashboard")({
     context.queryClient.ensureQueryData(eurasiaDisruptionsActiveQueryOptions());
     context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
     context.queryClient.ensureQueryData(latestExchangeRateQueryOptions());
+    context.queryClient.ensureQueryData(publishedForecastsQueryOptions());
   },
   head: () => ({
     meta: [
@@ -118,6 +121,8 @@ function DashboardPage() {
   const { data: disruptions } = useSuspenseQuery(eurasiaDisruptionsActiveQueryOptions());
   const { data: delays } = useSuspenseQuery(eurasiaDelaysQueryOptions());
   const { data: exRate } = useSuspenseQuery(latestExchangeRateQueryOptions());
+  const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
+  const openForecasts = forecasts.filter((f) => f.status === "published").slice(0, 4);
 
   // --- 주요 노선 현황 (MTL 선정) — code-defined, same for every visitor ---
   const keyLaneRows = useMemo(() => {
@@ -246,6 +251,24 @@ function DashboardPage() {
           <div className="space-y-2">
             {alerts.map((alert) => (
               <AlertCard key={alert.key} alert={alert} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 오늘의 종합 판단 (검수된 전망) */}
+      <section>
+        <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          오늘의 종합 판단
+        </h2>
+        {openForecasts.length === 0 ? (
+          <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+            발행된 전망 없음 — 검수 후 게재됩니다.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {openForecasts.map((f) => (
+              <ForecastItem key={f.id} f={f} showModule />
             ))}
           </div>
         )}
@@ -450,6 +473,11 @@ function DashboardPage() {
           { label: "환율", asOf: exRate?.rate_date ?? null, expectedDays: 3 },
         ]}
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-[11px] text-muted-foreground">
+        <span>전망 적중률 · published 전수 기준 (표본 제외 없음)</span>
+        <HitRateChip forecasts={forecasts} />
+      </div>
     </DashboardShell>
   );
 }
