@@ -139,9 +139,10 @@ function AdminPoliciesPage() {
     <div className="mx-auto max-w-5xl px-4 py-8 lg:px-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold">정책 관리</h1>
-        <a href="/admin/routes" className="text-sm text-muted-foreground hover:underline">
-          ← 노선 관리
-        </a>
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <a href="/admin/forecasts" className="hover:underline">전망 검수 →</a>
+          <a href="/admin/routes" className="hover:underline">← 노선 관리</a>
+        </div>
       </div>
 
       {/* Form */}
