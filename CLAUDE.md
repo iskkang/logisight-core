@@ -94,6 +94,13 @@ These override any default behavior. Violations are deployment blockers.
 - 경보 영향 노선 수는 `경보 영향 노선 ∩ KEY_LANES`로 계산("영향 주요 노선 수").
 - 모든 방문자가 동일 화면 → 대시보드 라우트는 사용자 무관 SSR 캐싱 가능(캐시 전략에 반영).
 
+**Phase 6 — 인텔리전스 레이어 (forecasts)** · 상세: `docs/superpowers/specs/2026-06-06-phase6-intelligence-layer-design.md`
+- 전망은 `forecasts` 테이블에 적재. AI 생성 산출물은 전부 `status='draft'` — **에디터 검수 후에만 published**.
+- **발행 후 본문 수정·삭제 불가**(사전 명시 무효 조건만 예외). 화면에 "AI 초안 · 에디터 검수" 표기 필수.
+- 적중률은 **published 전망 전수 기준** — 표본에서 빼기 금지. 공개 화면은 published/resolved만 노출.
+- 전망 본문엔 독자 단위 3단 변환 필수: **지수 변화 → FEU/kg 비용·리드타임 영향 → 권장 행동 1개**. 단정 금지·확률 표현 강제.
+- 생성 파이프라인(주간 스크립트·Claude API)은 `logisight` 저장소 — 프론트는 산출물 표시·검수만.
+
 **Scope**
 - 이 작업 지시문 범위 밖 리팩터링·라이브러리 교체·페이지 삭제 금지.
 - 기존 `/news`, `/article`, `/industries` 기능 회귀 금지.
