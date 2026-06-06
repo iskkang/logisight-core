@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -79,6 +79,8 @@ function AdminForecastsPage() {
   const [annotatingId, setAnnotatingId] = useState<string | null>(null);
   const [annotateNote, setAnnotateNote] = useState("");
 
+  const editorRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) navigate({ to: "/admin/login" });
@@ -115,6 +117,10 @@ function AdminForecastsPage() {
       invalidation_condition: f.invalidation_condition ?? "",
       metric_ref: f.metric_ref ?? "",
     });
+    // 편집 폼은 페이지 상단에 있음 — 클릭 즉시 폼으로 스크롤해 편집 위치를 보여준다.
+    requestAnimationFrame(() =>
+      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
   }
 
   async function handleSave() {
@@ -213,7 +219,12 @@ function AdminForecastsPage() {
       </div>
 
       {/* Draft editor */}
-      <div className="mb-8 rounded-lg border border-border bg-card p-5">
+      <div
+        ref={editorRef}
+        className={`mb-8 rounded-lg border bg-card p-5 transition-shadow ${
+          editingId ? "border-ring ring-2 ring-ring/40" : "border-border"
+        }`}
+      >
         <h2 className="mb-4 text-sm font-semibold">
           {editingId ? "초안 수정" : "초안 추가"}{" "}
           <span className="rounded bg-status-observe/10 px-1.5 py-0.5 text-[11px] text-status-observe">
