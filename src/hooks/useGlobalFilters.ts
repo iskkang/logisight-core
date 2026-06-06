@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
 export type GlobalFilters = {
@@ -19,9 +18,8 @@ const DEFAULTS: GlobalFilters = {
   currency: "USD",
 };
 
-const STORAGE_KEY = "logisight:global-filters";
-
-// SSR-safe: only uses URL params, no localStorage access during render
+// SSR-safe: screen state is derived solely from the URL query — no per-user
+// state, no localStorage. All visitors with the same URL see the same screen.
 export function resolveFilters(s: Record<string, unknown>): GlobalFilters {
   const period = (["3m", "12m", "36m"] as const).includes(s.period as "3m" | "12m" | "36m")
     ? (s.period as GlobalFilters["period"])
@@ -49,38 +47,10 @@ export function resolveFilters(s: Record<string, unknown>): GlobalFilters {
 
 export function useGlobalFilters(currentSearch: Record<string, unknown>) {
   const navigate = useNavigate();
-  const [filters, setFiltersState] = useState<GlobalFilters>(() =>
-    resolveFilters(currentSearch),
-  );
-
-  // After hydration, merge with localStorage backup (client-only)
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const stored = JSON.parse(raw) as Partial<GlobalFilters>;
-      // Only apply stored values if URL has no overrides
-      const hasUrlParams = Object.keys(currentSearch).some(
-        (k) => k in DEFAULTS && currentSearch[k] !== undefined,
-      );
-      if (!hasUrlParams) {
-        setFiltersState((prev) => resolveFilters({ ...stored, ...prev }));
-      }
-    } catch {
-      // ignore
-    }
-    // Only on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const filters = resolveFilters(currentSearch);
 
   function setFilters(patch: Partial<GlobalFilters>) {
     const next = { ...filters, ...patch };
-    setFiltersState(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // storage quota or SSR — ignore
-    }
     navigate({ search: next as Record<string, string | undefined>, replace: true });
   }
 

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo } from "react";
 
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { StatusStrip, type StatusItem } from "@/components/dashboard/StatusStrip";
@@ -16,8 +16,8 @@ import {
   latestByRoute,
 } from "@/lib/api/rates";
 import { eurasiaDisruptionsActiveQueryOptions } from "@/lib/api/eurasia-disruptions";
+import { eurasiaDelaysQueryOptions } from "@/lib/api/eurasia";
 import { latestExchangeRateQueryOptions } from "@/lib/api/exchange-rates";
-import { createLocalWatchlist, type WatchlistItem } from "@/lib/watchlist";
 
 export const Route = createFileRoute("/dashboard")({
   loader: ({ context }) => {
@@ -26,6 +26,7 @@ export const Route = createFileRoute("/dashboard")({
     context.queryClient.ensureQueryData(kitaAirRatesQueryOptions());
     context.queryClient.ensureQueryData(kitaSeaRatesQueryOptions());
     context.queryClient.ensureQueryData(eurasiaDisruptionsActiveQueryOptions());
+    context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
     context.queryClient.ensureQueryData(latestExchangeRateQueryOptions());
   },
   head: () => ({
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/dashboard")({
       { title: "종합 Control Tower — Logisight" },
       {
         name: "description",
-        content: "오늘의 핵심 변화, Watchlist, 운임 상승 현황, 정책·장애 요약.",
+        content: "오늘의 핵심 변화, 주요 노선 현황, 운임 상승 현황, 정책·장애 요약.",
       },
     ],
   }),
@@ -54,6 +55,28 @@ const SEV_COLOR: Record<string, string> = {
   info: "var(--color-status-observe)",
 };
 const STATUS_LABEL: Record<string, string> = { new: "신규", escalated: "악화", unchanged: "지속" };
+
+// --- 주요 노선 (MTL 선정) ---
+// Fixed, code-defined lanes shown to every visitor — no per-user watchlist.
+// admin 편집 기능은 백로그. rate 노선은 해상만(항공 단독 표기는 4요소 제약 위반).
+type KeyLane = {
+  laneId: string;
+  origin: string;
+  dest: string;
+  mode: "ocean" | "air" | "rail";
+  metricType: "rate" | "delay";
+  displayOrder: number;
+};
+
+const KEY_LANES: KeyLane[] = [
+  { laneId: "PUS-LAX", origin: "부산", dest: "로스앤젤레스", mode: "ocean", metricType: "rate", displayOrder: 1 },
+  { laneId: "PUS-NYC", origin: "부산", dest: "뉴욕", mode: "ocean", metricType: "rate", displayOrder: 2 },
+  { laneId: "PUS-CHI", origin: "부산", dest: "시카고", mode: "ocean", metricType: "rate", displayOrder: 3 },
+  { laneId: "KR-ANDIJAN", origin: "한국", dest: "안디잔", mode: "rail", metricType: "delay", displayOrder: 4 },
+  { laneId: "CN-ALMATY", origin: "중국", dest: "알마티", mode: "rail", metricType: "delay", displayOrder: 5 },
+];
+
+const MODE_LABEL: Record<KeyLane["mode"], string> = { ocean: "해상", air: "항공", rail: "철도" };
 
 // --- Alert card ---
 function AlertCard({ alert }: { alert: AlertCandidate }) {
@@ -93,19 +116,31 @@ function DashboardPage() {
   const { data: airRates } = useSuspenseQuery(kitaAirRatesQueryOptions());
   const { data: seaRates } = useSuspenseQuery(kitaSeaRatesQueryOptions());
   const { data: disruptions } = useSuspenseQuery(eurasiaDisruptionsActiveQueryOptions());
+  const { data: delays } = useSuspenseQuery(eurasiaDelaysQueryOptions());
   const { data: exRate } = useSuspenseQuery(latestExchangeRateQueryOptions());
 
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
-  const [wlStore] = useState(() => (typeof window !== "undefined" ? createLocalWatchlist() : null));
-
-  useEffect(() => {
-    if (wlStore) setWatchlist(wlStore.getAll());
-  }, [wlStore]);
-
-  function removeFromWatchlist(id: string) {
-    wlStore?.remove(id);
-    setWatchlist(wlStore?.getAll() ?? []);
-  }
+  // --- 주요 노선 현황 (MTL 선정) — code-defined, same for every visitor ---
+  const keyLaneRows = useMemo(() => {
+    const latestSea = latestByRoute(seaRates);
+    return [...KEY_LANES]
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .map((lane) => {
+        if (lane.metricType === "rate") {
+          const row = latestSea.find((r) => r.origin === lane.origin && r.dest === lane.dest);
+          if (!row || row.feu == null) return { lane, value: null as string | null, mom: null as number | null };
+          const series = seaRates
+            .filter((s) => s.origin === lane.origin && s.dest === lane.dest)
+            .map((s) => ({ year_mon: s.year_mon, value: s.feu }));
+          return { lane, value: `$${row.feu.toLocaleString("en-US")}/FEU`, mom: computeMoM(series) };
+        }
+        const laneDelays = delays
+          .filter((d) => d.lane_id === lane.laneId)
+          .sort((a, b) => a.week_iso.localeCompare(b.week_iso));
+        const latest = laneDelays.at(-1);
+        if (!latest || latest.median_delay_d == null) return { lane, value: null as string | null, mom: null as number | null };
+        return { lane, value: `중위 지연 ${latest.median_delay_d}일`, mom: null as number | null };
+      });
+  }, [seaRates, delays]);
 
   // --- Top 3 rising rates (compute MoM from KITA source values; chg fields are absolute deltas) ---
   const topRising = useMemo(() => {
@@ -216,45 +251,57 @@ function DashboardPage() {
         )}
       </section>
 
-      {/* 2-col: Watchlist + Top rising rates */}
+      {/* 2-col: 주요 노선 현황 + Top rising rates */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Watchlist */}
+        {/* 주요 노선 현황 (MTL 선정) */}
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[13px] font-semibold">내 관심 노선 (Watchlist)</h2>
-            <Link
-              to="/rates"
-              className="rounded border border-border px-2 py-0.5 text-[11px] hover:bg-muted"
-            >
-              운임에서 추가 ↗
-            </Link>
+            <h2 className="text-[13px] font-semibold">
+              주요 노선 현황{" "}
+              <span className="text-[11px] font-normal text-muted-foreground">MTL 선정</span>
+            </h2>
           </div>
-          {watchlist.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              저장된 노선 없음 — 운임 페이지에서 관심 노선을 등록하세요
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {watchlist.map((item) => (
-                <li key={item.id} className="flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-medium">{item.label}</span>
-                    <span className="ml-1.5 text-muted-foreground">
-                      {item.origin}→{item.dest} · {item.mode}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeFromWatchlist(item.id)}
-                    className="text-[11px] text-muted-foreground hover:text-destructive"
-                  >
-                    삭제
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="mt-2 text-[10px] text-muted-foreground">로컬 저장 · 추후 계정 연동 예정</p>
+          <ul className="space-y-2">
+            {keyLaneRows.map((r) => (
+              <li
+                key={r.lane.laneId}
+                className="flex items-center justify-between gap-2 text-xs"
+              >
+                <div className="min-w-0">
+                  <span className="font-medium">
+                    {r.lane.origin}→{r.lane.dest}
+                  </span>
+                  <span className="ml-1.5 text-muted-foreground">{MODE_LABEL[r.lane.mode]}</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 tabular-nums">
+                  {r.value ? (
+                    <>
+                      <span className="font-medium">{r.value}</span>
+                      {r.mom != null && (
+                        <span
+                          className={
+                            r.mom > 0
+                              ? "text-status-alert"
+                              : r.mom < 0
+                                ? "text-status-normal"
+                                : "text-muted-foreground"
+                          }
+                        >
+                          {r.mom >= 0 ? "+" : ""}
+                          {r.mom.toFixed(1)}%
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">데이터 수집 중</span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            MTL 선정 고정 노선 · 전체 방문자 공통 · 해상 MoM / 철도 중위 지연
+          </p>
         </div>
 
         {/* Top rising rates */}

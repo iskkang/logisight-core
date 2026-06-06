@@ -88,6 +88,12 @@ These override any default behavior. Violations are deployment blockers.
 - `data.go.kr` 계열 API 키: Encoding 키 그대로 사용, `encodeURIComponent` 추가 금지.
 - GitHub Actions 워크플로 파일 병합 금지 — 책임별 1파일 유지.
 
+**Personalization (개인화 제거 — v1.1)**
+- 사용자별 상태 없음. Watchlist·저장된 화면·`WatchlistStore`·필터 `localStorage` 전부 금지. 화면 상태는 URL 쿼리만으로 결정.
+- `/dashboard` 주요 노선은 코드 상수 `KEY_LANES`(MTL 선정, 전체 방문자 공통). 범위 토글 없음, admin 편집은 백로그.
+- 경보 영향 노선 수는 `경보 영향 노선 ∩ KEY_LANES`로 계산("영향 주요 노선 수").
+- 모든 방문자가 동일 화면 → 대시보드 라우트는 사용자 무관 SSR 캐싱 가능(캐시 전략에 반영).
+
 **Scope**
 - 이 작업 지시문 범위 밖 리팩터링·라이브러리 교체·페이지 삭제 금지.
 - 기존 `/news`, `/article`, `/industries` 기능 회귀 금지.
