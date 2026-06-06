@@ -2,11 +2,13 @@ import { queryOptions } from "@tanstack/react-query";
 
 import {
   getPublishedForecasts,
+  getForecastSeriesBatch,
   saveForecastDraft,
   publishForecast,
   resolveForecast,
   annotateForecast,
 } from "./forecasts.functions";
+import type { ForecastSeries } from "./forecasts.functions";
 
 export type ForecastModule = "rates" | "eurasia" | "trade" | "policy";
 export type ForecastStatus = "draft" | "published" | "resolved";
@@ -19,6 +21,8 @@ export type FactorScore = {
   weight?: number;
   missing?: boolean;
 };
+
+export type WatchPoint = { label: string; source: string; due: string };
 
 export type Forecast = {
   id: string;
@@ -50,8 +54,10 @@ export type Forecast = {
   model_version?: string | null;
   metric_value_at_publish?: number | null;
   realized_pct?: number | null;
+  watch_points?: WatchPoint[] | null;
 };
 
+export type { ForecastSeries };
 export { saveForecastDraft, publishForecast, resolveForecast, annotateForecast };
 
 export const MODULE_LABEL: Record<ForecastModule, string> = {
@@ -75,6 +81,14 @@ export const publishedForecastsQueryOptions = () =>
   queryOptions({
     queryKey: ["forecasts", "published"],
     queryFn: () => getPublishedForecasts(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+// 카드별 스파크라인 시계열 — 전 방문자 동일이라 단일 배치(id→series), loader prefetch + SSR 캐시.
+export const forecastSeriesQueryOptions = () =>
+  queryOptions({
+    queryKey: ["forecasts", "series"],
+    queryFn: () => getForecastSeriesBatch(),
     staleTime: 5 * 60 * 1000,
   });
 

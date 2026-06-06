@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
-import { ForecastItem } from "@/components/dashboard/ForecastPanel";
-import { publishedForecastsQueryOptions, hitRate } from "@/lib/api/forecasts";
+import { ForecastBoard } from "@/components/forecasts/ForecastBoard";
+import { ForecastCardV2 } from "@/components/forecasts/ForecastCardV2";
+import {
+  publishedForecastsQueryOptions,
+  forecastSeriesQueryOptions,
+  hitRate,
+} from "@/lib/api/forecasts";
 
 export const Route = createFileRoute("/forecasts")({
   head: () => ({
@@ -16,13 +21,18 @@ export const Route = createFileRoute("/forecasts")({
     ],
   }),
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(publishedForecastsQueryOptions());
+    // 전 방문자 동일 화면 → 전망 + 시계열 배치를 둘 다 prefetch(워터폴 금지, SSR 캐시).
+    await Promise.all([
+      context.queryClient.ensureQueryData(publishedForecastsQueryOptions()),
+      context.queryClient.ensureQueryData(forecastSeriesQueryOptions()),
+    ]);
   },
   component: ForecastsPage,
 });
 
 function ForecastsPage() {
   const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
+  const { data: series } = useSuspenseQuery(forecastSeriesQueryOptions());
   const hr = hitRate(forecasts);
   const open = forecasts.filter((f) => f.status === "published");
   const resolved = forecasts.filter((f) => f.status === "resolved");
@@ -73,27 +83,30 @@ function ForecastsPage() {
         </div>
       ) : (
         <>
+          {/* 전망 보드 — 전체가 3초에 들어오는 층 */}
           {open.length > 0 && (
-            <section className="mt-9">
-              <h2 className="mb-3 text-sm font-semibold text-foreground">
-                진행 중인 전망 <span className="text-muted-foreground">{open.length}</span>
-              </h2>
-              <div className="grid gap-3 lg:grid-cols-2">
-                {open.map((f) => (
-                  <ForecastItem key={f.id} f={f} showModule />
-                ))}
-              </div>
+            <section className="mt-7">
+              <ForecastBoard forecasts={open} />
+            </section>
+          )}
+
+          {/* 카드 V2 — 그림이 결론을 말하는 층 */}
+          {open.length > 0 && (
+            <section className="mt-8 space-y-4">
+              {open.map((f) => (
+                <ForecastCardV2 key={f.id} f={f} series={series[f.id]} />
+              ))}
             </section>
           )}
 
           {resolved.length > 0 && (
-            <section className="mt-9">
+            <section className="mt-10">
               <h2 className="mb-3 text-sm font-semibold text-foreground">
                 트랙 레코드 · 판정 완료 <span className="text-muted-foreground">{resolved.length}</span>
               </h2>
-              <div className="grid gap-3 lg:grid-cols-2">
+              <div className="space-y-4">
                 {resolved.map((f) => (
-                  <ForecastItem key={f.id} f={f} showModule />
+                  <ForecastCardV2 key={f.id} f={f} series={series[f.id]} />
                 ))}
               </div>
             </section>

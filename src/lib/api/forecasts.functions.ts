@@ -26,7 +26,81 @@ export const getPublishedForecasts = createServerFn({ method: "GET" }).handler(
       .order("published_at", { ascending: false, nullsFirst: false })
       .limit(100);
     if (error) throw new Error(error.message);
-    return (data ?? []) as Forecast[];
+    // impact_note(화주 영향)는 영업 토킹포인트 자산 — 공개 페이로드에서 제거(admin 카드에서만 노출).
+    return ((data ?? []) as Forecast[]).map((f) => ({ ...f, impact_note: null }));
+  },
+);
+
+export type SeriesPoint = { date: string; value: number };
+export type ForecastSeries = {
+  points: SeriesPoint[]; // 발행 이전 이력(오름차순)
+  actuals: SeriesPoint[]; // 발행 이후 도착한 실측(오름차순) — 콘 위에 겹쳐 그림
+  published_at: string | null;
+  horizon_date: string | null;
+};
+
+// metric_ref → 소스 테이블 매핑(서버 내부에서만 — 임의 테이블 조회 인젝션 차단).
+function parseMetricRef(ref: string | null) {
+  if (ref && ref.startsWith("kita_sea_rates:")) {
+    const lane = ref.slice("kita_sea_rates:".length);
+    const i = lane.indexOf("-"); // 첫 하이픈에서 origin/dest 분리(dest에 하이픈 가능)
+    return { kind: "kita" as const, origin: i >= 0 ? lane.slice(0, i) : lane, dest: i >= 0 ? lane.slice(i + 1) : "" };
+  }
+  return { kind: "index" as const, code: ref ?? "" };
+}
+const ymToDate = (ym: string) => `${String(ym).slice(0, 4)}-${String(ym).slice(4, 6)}-01`;
+
+type SeriesRow = { id: string; metric_ref: string | null; cadence: string | null; published_at: string | null; horizon_date: string | null };
+
+async function fetchSeries(
+  sb: Awaited<ReturnType<typeof serviceClient>>,
+  f: SeriesRow,
+): Promise<ForecastSeries> {
+  const m = parseMetricRef(f.metric_ref);
+  const limit = f.cadence === "monthly" ? 6 : 12; // 월간 4~6 / 주간 8~12
+  let raw: SeriesPoint[] = [];
+  if (m.kind === "index") {
+    const { data } = await sb
+      .from("freight_indices")
+      .select("value,week_date")
+      .eq("index_code", m.code)
+      .order("week_date", { ascending: false })
+      .limit(limit);
+    raw = (data ?? [])
+      .filter((r: { value: number | null }) => r.value != null)
+      .map((r: { value: number; week_date: string }) => ({ date: r.week_date, value: Number(r.value) }));
+  } else {
+    const { data } = await sb
+      .from("kita_sea_rates")
+      .select("feu,year_mon")
+      .eq("origin", m.origin)
+      .eq("dest", m.dest)
+      .order("year_mon", { ascending: false })
+      .limit(limit);
+    raw = (data ?? [])
+      .filter((r: { feu: number | null }) => r.feu != null)
+      .map((r: { feu: number; year_mon: string }) => ({ date: ymToDate(r.year_mon), value: Number(r.feu) }));
+  }
+  raw.sort((a, b) => a.date.localeCompare(b.date)); // 오름차순
+  const pub = f.published_at ? String(f.published_at).slice(0, 10) : null;
+  const points = pub ? raw.filter((p) => p.date <= pub) : raw;
+  const actuals = pub ? raw.filter((p) => p.date > pub) : [];
+  return { points, actuals, published_at: f.published_at, horizon_date: f.horizon_date };
+}
+
+// 공개 페이지는 전 방문자 동일 → published/resolved 전체 시계열을 단일 배치로(워터폴 금지, loader prefetch).
+export const getForecastSeriesBatch = createServerFn({ method: "GET" }).handler(
+  async (): Promise<Record<string, ForecastSeries>> => {
+    const sb = await serviceClient();
+    const { data: rows, error } = await sb
+      .from("forecasts")
+      .select("id,metric_ref,cadence,published_at,horizon_date")
+      .in("status", ["published", "resolved"])
+      .limit(100);
+    if (error) throw new Error(error.message);
+    const out: Record<string, ForecastSeries> = {};
+    await Promise.all(((rows ?? []) as SeriesRow[]).map(async (f) => { out[f.id] = await fetchSeries(sb, f); }));
+    return out;
   },
 );
 
