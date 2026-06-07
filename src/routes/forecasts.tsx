@@ -131,7 +131,7 @@ function ForecastsPage() {
           </div>
           <div className="lg:col-span-2 xl:col-span-1">
             <div className="mb-3 text-sm font-semibold text-foreground">분석자 패널</div>
-            <ForecastAnalystPanel forecast={selected} dataUpdates={dataUpdates} riskNotes={riskNotes} />
+            <ForecastAnalystPanel forecast={selected} forecasts={open} dataUpdates={dataUpdates} riskNotes={riskNotes} />
           </div>
         </div>
       )}

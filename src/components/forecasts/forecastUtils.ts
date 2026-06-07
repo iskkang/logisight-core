@@ -127,6 +127,39 @@ export function nearestWatch(f: Forecast): { due: string; source: string } | nul
   return ws[0] ? { due: ws[0].due, source: ws[0].source } : null;
 }
 
+// 방향 강도(확률 아님) — composite |점수|/2 → 0~100%, 부호로 방향. 더미 금지·방법론 준수.
+export function directionStrength(
+  score: number | null | undefined,
+  direction?: string | null,
+): { dir: "up" | "down" | "flat"; pct: number; label: string } {
+  const s = score ?? 0;
+  const dir = (direction as "up" | "down" | "flat" | null) ?? (s >= 0.4 ? "up" : s <= -0.4 ? "down" : "flat");
+  const pct = Math.round(Math.min(Math.abs(s) / 2, 1) * 100);
+  return { dir, pct, label: dir === "up" ? "상승" : dir === "down" ? "하락" : "보합" };
+}
+
+// 전 전망 watch_points 통합 → 다가오는 이벤트 캘린더(실 일정만, 중복 제거).
+export function upcomingEvents(
+  forecasts: Forecast[],
+  now = Date.now(),
+  limit = 6,
+): { due: string; source: string; label: string }[] {
+  const today = new Date(now).toISOString().slice(0, 10);
+  const seen = new Set<string>();
+  const out: { due: string; source: string; label: string }[] = [];
+  for (const f of forecasts) {
+    for (const w of f.watch_points ?? []) {
+      if (!w.due || w.due < today) continue;
+      const k = `${w.due}|${w.source}|${w.label}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(w);
+    }
+  }
+  out.sort((a, b) => a.due.localeCompare(b.due));
+  return out.slice(0, limit);
+}
+
 // ─── KPI 산출(전부 실데이터, 더미 0) ───
 const DAY = 86400000;
 const weekStartMonday = (now = Date.now()) => {

@@ -1,36 +1,52 @@
 import { useState } from "react";
 
 import type { Forecast, RiskNote, DataUpdate } from "@/lib/api/forecasts";
-import { FACTOR_LABEL, missingNames, displayLabelOf, mdLabel } from "./forecastUtils";
+import {
+  FACTOR_LABEL,
+  missingNames,
+  displayLabelOf,
+  mdLabel,
+  sentences,
+  directionStrength,
+  upcomingEvents,
+} from "./forecastUtils";
 
-// composite −2~+2 게이지(시나리오 확률 도넛 대체 — 모델은 확률 미산출이라 % 표기 금지).
-// 바늘 색 = 방향 구간(≥+0.4 상승=적 / ≤−0.4 하락=청 / 그 외 보합=중립).
-function CompositeGauge({ score }: { score: number | null | undefined }) {
-  const s = score ?? 0;
-  const pct = ((Math.max(-2, Math.min(2, s)) + 2) / 4) * 100; // 0~100
-  const needle = s >= 0.4 ? "bg-direction-up" : s <= -0.4 ? "bg-direction-down" : "bg-direction-flat";
+// 방향 강도 도넛(확률 아님 — composite |점수|/2). 링 색 = 방향(상승 적/하락 녹/보합 황).
+function DirectionDonut({ score, direction }: { score: number | null | undefined; direction: string | null | undefined }) {
+  const { dir, pct, label } = directionStrength(score, direction);
+  const stroke = `var(--direction-${dir})`;
+  const R = 40;
+  const C = 2 * Math.PI * R;
+  const dash = (pct / 100) * C;
   return (
-    <div>
-      <div className="relative h-2 rounded-full bg-muted">
-        {/* 보합 구간 음영(중립) */}
-        <div className="absolute inset-y-0 rounded-full bg-foreground/5" style={{ left: "40%", right: "40%" }} />
-        {score != null && (
-          <div className={`absolute top-1/2 h-3.5 w-1 -translate-x-1/2 -translate-y-1/2 rounded ${needle}`} style={{ left: `${pct}%` }} />
-        )}
-      </div>
-      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-        <span>하락 −2</span>
-        <span>보합 0</span>
-        <span>상승 +2</span>
-      </div>
-      <div className="mt-1 text-center text-xs text-muted-foreground">
-        종합 {score != null ? `${score > 0 ? "+" : ""}${score}` : "—"}
+    <div className="flex items-center gap-4">
+      <svg viewBox="0 0 100 100" className="h-24 w-24 shrink-0 -rotate-90">
+        <circle cx="50" cy="50" r={R} fill="none" className="stroke-border" strokeWidth="10" />
+        <circle
+          cx="50"
+          cy="50"
+          r={R}
+          fill="none"
+          style={{ stroke }}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${C}`}
+        />
+      </svg>
+      <div>
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">방향 강도</div>
+        <div className="text-2xl font-bold" style={{ color: stroke }}>
+          {label} {pct}%
+        </div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground">
+          종합 {score != null ? `${score > 0 ? "+" : ""}${score}` : "—"} · |점수|/2 환산
+        </div>
       </div>
     </div>
   );
 }
 
-// 팩터 다이버징 바(raw −2~+2, 결측 비표시). 단일 청색.
+// 팩터 다이버징 바(raw −2~+2, 결측 비표시).
 function FactorBars({ f }: { f: Forecast }) {
   const factors = (f.factor_scores ?? []).filter((x) => !x.missing && x.score != null);
   const miss = missingNames(f);
@@ -39,7 +55,7 @@ function FactorBars({ f }: { f: Forecast }) {
       {factors.map((x) => {
         const sc = x.score as number;
         const w = (Math.min(Math.abs(sc), 2) / 2) * 50; // 한쪽 최대 50%
-        // 부호별 방향색: 양(+)=상승 적 / 음(−)=하락 청.
+        // 부호별 방향색: 양(+)=상승 적 / 음(−)=하락 녹.
         const barCls = sc >= 0 ? "bg-direction-up" : "bg-direction-down";
         return (
           <div key={x.factor} className="flex items-center gap-2 text-xs">
@@ -60,18 +76,34 @@ function FactorBars({ f }: { f: Forecast }) {
   );
 }
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{children}</div>;
+}
+
 type Props = {
   forecast: Forecast | null;
+  forecasts: Forecast[];
   dataUpdates: DataUpdate[];
   riskNotes: RiskNote[];
 };
 
-export function ForecastAnalystPanel({ forecast, dataUpdates, riskNotes }: Props) {
+export function ForecastAnalystPanel({ forecast, forecasts, dataUpdates, riskNotes }: Props) {
   const [tab, setTab] = useState<"model" | "editor">("model");
-  const risk = riskNotes[0] ?? null;
+  const insights = forecast ? sentences(forecast.statement || "").slice(0, 4) : [];
+  const events = upcomingEvents(forecasts);
 
   return (
     <aside className="space-y-5 rounded-xl border border-border bg-card p-4 text-sm">
+      {/* 방향 강도 도넛 */}
+      {forecast ? (
+        <div>
+          <SectionLabel>{displayLabelOf(forecast)} · 종합 신호</SectionLabel>
+          <DirectionDonut score={forecast.composite_score} direction={forecast.direction} />
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">카드를 선택하면 종합 신호가 표시됩니다.</p>
+      )}
+
       <div className="inline-flex rounded-lg border border-border p-0.5">
         {(["model", "editor"] as const).map((t) => (
           <button
@@ -87,51 +119,31 @@ export function ForecastAnalystPanel({ forecast, dataUpdates, riskNotes }: Props
 
       {tab === "model" ? (
         <>
-          {forecast ? (
+          {forecast && (
             <>
               <div>
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  팩터 스코어 · {displayLabelOf(forecast)}
-                </div>
+                <SectionLabel>팩터 스코어</SectionLabel>
                 <FactorBars f={forecast} />
               </div>
-              <div>
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">종합 점수</div>
-                <CompositeGauge score={forecast.composite_score} />
-              </div>
+              {insights.length > 0 && (
+                <div>
+                  <SectionLabel>핵심 인사이트</SectionLabel>
+                  <ul className="space-y-1.5">
+                    {insights.map((s, i) => (
+                      <li key={i} className="flex gap-2 text-xs leading-relaxed text-foreground">
+                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/50" aria-hidden />
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </>
-          ) : (
-            <p className="text-xs text-muted-foreground">카드를 선택하면 팩터 분석이 표시됩니다.</p>
-          )}
-
-          {dataUpdates.length > 0 && (
-            <div>
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">주요 데이터 출처</div>
-              <ul className="space-y-1">
-                {dataUpdates.map((u) => (
-                  <li key={u.dataset} className="flex items-center justify-between text-xs">
-                    <span className="text-foreground">{u.dataset}</span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {u.updated_at ? mdLabel(u.updated_at.slice(0, 10)) : "—"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {risk && (
-            <div>
-              <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">리스크 노트</div>
-              <p className="rounded-lg bg-status-caution/10 px-3 py-2 text-xs leading-relaxed text-foreground">
-                ⚠ {risk.note}
-              </p>
-            </div>
           )}
         </>
       ) : (
         <div>
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">에디터 코멘트</div>
+          <SectionLabel>에디터 코멘트</SectionLabel>
           {forecast?.editor_note ? (
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{forecast.editor_note}</p>
           ) : (
@@ -139,6 +151,63 @@ export function ForecastAnalystPanel({ forecast, dataUpdates, riskNotes }: Props
           )}
         </div>
       )}
+
+      {/* 주요 데이터 출처 — 실 갱신일(data_updates). 로고 미보유 → 소스명 배지(공식 엠블럼 위조 금지). */}
+      {dataUpdates.length > 0 && (
+        <div>
+          <SectionLabel>주요 데이터 출처</SectionLabel>
+          <div className="grid grid-cols-1 gap-1.5">
+            {dataUpdates.map((u) => (
+              <div key={u.dataset} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded bg-muted text-[10px] font-bold text-muted-foreground">
+                    {u.dataset.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="text-xs text-foreground">{u.dataset}</span>
+                </div>
+                <span className="text-[11px] tabular-nums text-muted-foreground">
+                  {u.updated_at ? `업데이트 ${mdLabel(u.updated_at.slice(0, 10))}` : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 리스크 노트 — 실 입력 전수(admin). 없으면 미표시. */}
+      {riskNotes.length > 0 && (
+        <div>
+          <SectionLabel>리스크 노트</SectionLabel>
+          <div className="space-y-1.5 rounded-lg bg-status-caution/10 px-3 py-2.5">
+            {riskNotes.map((r) => (
+              <p key={r.id} className="flex gap-2 text-xs leading-relaxed text-foreground">
+                <span aria-hidden className="text-status-caution">⚠</span>
+                {r.note}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 이벤트 캘린더 — 전 전망 watch_points 통합. 없으면 게이트. */}
+      <div>
+        <SectionLabel>이벤트 캘린더</SectionLabel>
+        {events.length > 0 ? (
+          <ul className="space-y-1.5">
+            {events.map((e, i) => (
+              <li key={i} className="flex items-baseline gap-2 text-xs">
+                <span className="w-10 shrink-0 tabular-nums font-semibold text-foreground">{mdLabel(e.due)}</span>
+                <div className="min-w-0">
+                  <span className="text-foreground">{e.source}</span>
+                  <span className="ml-1.5 text-muted-foreground">{e.label}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground">데이터 수집 중</p>
+        )}
+      </div>
     </aside>
   );
 }
