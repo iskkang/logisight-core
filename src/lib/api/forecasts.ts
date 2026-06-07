@@ -3,12 +3,14 @@ import { queryOptions } from "@tanstack/react-query";
 import {
   getPublishedForecasts,
   getForecastSeriesBatch,
+  getRiskNotes,
+  getRecentDataUpdates,
   saveForecastDraft,
   publishForecast,
   resolveForecast,
   annotateForecast,
 } from "./forecasts.functions";
-import type { ForecastSeries } from "./forecasts.functions";
+import type { ForecastSeries, RiskNote, DataUpdate } from "./forecasts.functions";
 
 export type ForecastModule = "rates" | "eurasia" | "trade" | "policy";
 export type ForecastStatus = "draft" | "published" | "resolved";
@@ -55,9 +57,10 @@ export type Forecast = {
   metric_value_at_publish?: number | null;
   realized_pct?: number | null;
   watch_points?: WatchPoint[] | null;
+  editor_note?: string | null; // 발행 후 수정 가능한 에디터 코멘트(본문 불변 대상 아님)
 };
 
-export type { ForecastSeries };
+export type { ForecastSeries, RiskNote, DataUpdate };
 export { saveForecastDraft, publishForecast, resolveForecast, annotateForecast };
 
 export const MODULE_LABEL: Record<ForecastModule, string> = {
@@ -89,6 +92,20 @@ export const forecastSeriesQueryOptions = () =>
   queryOptions({
     queryKey: ["forecasts", "series"],
     queryFn: () => getForecastSeriesBatch(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const riskNotesQueryOptions = () =>
+  queryOptions({
+    queryKey: ["forecasts", "risk-notes"],
+    queryFn: () => getRiskNotes(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const dataUpdatesQueryOptions = () =>
+  queryOptions({
+    queryKey: ["forecasts", "data-updates"],
+    queryFn: () => getRecentDataUpdates(),
     staleTime: 5 * 60 * 1000,
   });
 

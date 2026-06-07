@@ -88,6 +88,39 @@ async function fetchSeries(
   return { points, actuals, published_at: f.published_at, horizon_date: f.horizon_date };
 }
 
+export type RiskNote = { id: string; note: string; week_start: string | null; created_at: string };
+export type DataUpdate = { dataset: string; updated_at: string | null };
+
+// 리스크 노트 — 최신순. 마이그레이션 미적용 시 graceful([])로 페이지 비파손.
+export const getRiskNotes = createServerFn({ method: "GET" }).handler(async (): Promise<RiskNote[]> => {
+  const sb = await serviceClient();
+  const { data, error } = await sb
+    .from("risk_notes")
+    .select("id,note,week_start,created_at")
+    .order("created_at", { ascending: false })
+    .limit(5);
+  if (error) return [];
+  return (data ?? []) as RiskNote[];
+});
+
+// 주요 데이터 출처 — data_updates의 dataset별 최신, 최근 4개.
+export const getRecentDataUpdates = createServerFn({ method: "GET" }).handler(async (): Promise<DataUpdate[]> => {
+  const sb = await serviceClient();
+  const { data, error } = await sb
+    .from("data_updates")
+    .select("dataset,updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(20);
+  if (error) return [];
+  const seen = new Set<string>();
+  const out: DataUpdate[] = [];
+  for (const r of (data ?? []) as DataUpdate[]) {
+    if (r.dataset && !seen.has(r.dataset)) { seen.add(r.dataset); out.push(r); }
+    if (out.length >= 4) break;
+  }
+  return out;
+});
+
 // 공개 페이지는 전 방문자 동일 → published/resolved 전체 시계열을 단일 배치로(워터폴 금지, loader prefetch).
 export const getForecastSeriesBatch = createServerFn({ method: "GET" }).handler(
   async (): Promise<Record<string, ForecastSeries>> => {
