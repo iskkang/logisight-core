@@ -5,6 +5,7 @@ import { ForecastKpiStrip } from "@/components/forecasts/ForecastKpiStrip";
 import { ForecastFilters } from "@/components/forecasts/ForecastFilters";
 import { ForecastCardGrid } from "@/components/forecasts/ForecastCardGrid";
 import { ForecastDetailPanel } from "@/components/forecasts/ForecastDetailPanel";
+import { ForecastAnalystPanel } from "@/components/forecasts/ForecastAnalystPanel";
 import {
   applyFilter,
   computeKpis,
@@ -15,6 +16,8 @@ import {
 import {
   publishedForecastsQueryOptions,
   forecastSeriesQueryOptions,
+  riskNotesQueryOptions,
+  dataUpdatesQueryOptions,
 } from "@/lib/api/forecasts";
 
 const arr = (v: unknown): string[] =>
@@ -48,6 +51,8 @@ export const Route = createFileRoute("/forecasts")({
     await Promise.all([
       context.queryClient.ensureQueryData(publishedForecastsQueryOptions()),
       context.queryClient.ensureQueryData(forecastSeriesQueryOptions()),
+      context.queryClient.ensureQueryData(riskNotesQueryOptions()),
+      context.queryClient.ensureQueryData(dataUpdatesQueryOptions()),
     ]);
   },
   component: ForecastsPage,
@@ -56,6 +61,8 @@ export const Route = createFileRoute("/forecasts")({
 function ForecastsPage() {
   const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
   const { data: series } = useSuspenseQuery(forecastSeriesQueryOptions());
+  const { data: riskNotes } = useSuspenseQuery(riskNotesQueryOptions());
+  const { data: dataUpdates } = useSuspenseQuery(dataUpdatesQueryOptions());
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
 
@@ -100,7 +107,7 @@ function ForecastsPage() {
           <p className="mt-1 text-xs text-muted-foreground">검수를 통과한 전망이 게재되면 이곳에 표시됩니다.</p>
         </div>
       ) : (
-        <div className="mt-7 grid gap-6 lg:grid-cols-[180px_1fr]">
+        <div className="mt-7 grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[180px_minmax(0,1fr)_320px]">
           <ForecastFilters value={filter} onChange={setFilter} seriesCounts={seriesCounts} />
           <div className="space-y-5">
             <div>
@@ -108,6 +115,10 @@ function ForecastsPage() {
               <ForecastCardGrid forecasts={filtered} series={series} selectedId={selectedId} onSelect={setSel} />
             </div>
             {selected && <ForecastDetailPanel f={selected} series={series[selected.id]} />}
+          </div>
+          <div className="lg:col-span-2 xl:col-span-1">
+            <div className="mb-3 text-sm font-semibold text-foreground">분석자 패널</div>
+            <ForecastAnalystPanel forecast={selected} dataUpdates={dataUpdates} riskNotes={riskNotes} />
           </div>
         </div>
       )}
