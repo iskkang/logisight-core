@@ -24,9 +24,20 @@ export function ForecastHero({
   return (
     <div
       className="relative overflow-hidden rounded-2xl px-6 py-8 lg:px-9 lg:py-10"
-      style={{ background: "linear-gradient(120deg, #0b1f33 0%, #11314d 55%, #0e2740 100%)" }}
+      style={{ background: "#0b1f33" }}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(74,144,217,0.18),transparent_55%)]" aria-hidden />
+      {/* 배경 선박 이미지(public/forecast-hero.jpg) — 부재 시 아래 그라데이션이 폴백 */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url(/forecast-hero.jpg)" }}
+        aria-hidden
+      />
+      {/* 좌→우 어두운 오버레이: 좌측 텍스트 가독성, 우측 이미지 노출(선박이 우측) */}
+      <div
+        className="absolute inset-0"
+        style={{ background: "linear-gradient(90deg, rgba(8,20,33,0.94) 0%, rgba(8,20,33,0.80) 42%, rgba(8,20,33,0.30) 100%)" }}
+        aria-hidden
+      />
       <div className="relative">
         {modules.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-1.5">

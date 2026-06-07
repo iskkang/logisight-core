@@ -1,8 +1,13 @@
 // G — 방법론 스트립(실제 파이프라인만 기술). Z-Score·50+ 지표 등 시안 문구 사용 금지.
+// 가중치 단일 소스 — 스펙 freight-rate-forecast-prompt-v1.x(config/forecast-model.js WEIGHTS.ocean)와
+// 동기화. 분기 보정 시 이 상수 1곳만 갱신(v1.5 연동).
+const OCEAN_WEIGHTS: Record<string, number> = { 공급: 30, 모멘텀: 25, 수요: 25, 비용: 10, 가격행동: 10 };
+const WEIGHTS_LABEL = Object.entries(OCEAN_WEIGHTS).map(([k, v]) => `${k} ${v}`).join("·");
+
 const STEPS = [
   { t: "데이터 수집", d: "관세청·Drewry·상하이해운거래소·KITA·SCFI/WCI" },
   { t: "5팩터 채점", d: "모멘텀·공급·수요·비용·가격 −2~+2" },
-  { t: "가중 합산", d: "해상 공급30·모멘텀25·수요25·비용10·가격10 · 한국발 중국 수급 보정" },
+  { t: "가중 합산", d: `해상 ${WEIGHTS_LABEL} · 한국발 중국 수급 보정` },
   { t: "AI 산문 + 자동 검증", d: "단정·단위·결측 단정 검사" },
   { t: "에디터 검수 후 발행", d: "발행 후 본문 불변 · 판정일 실측 적중" },
 ];
