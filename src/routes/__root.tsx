@@ -166,6 +166,9 @@ function SiteShell({ children }: { children: React.ReactNode }) {
   const isDashboard = DASHBOARD_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
+  // 종합(/dashboard)은 freight_indices 전용 자체 티커(DashboardTicker)를 그리므로
+  // 전역 NYFI IndexBar는 숨긴다(이중 티커·가공 NYFI 라벨 방지).
+  const hideGlobalTicker = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
 
   return (
     <div
@@ -173,7 +176,7 @@ function SiteShell({ children }: { children: React.ReactNode }) {
       style={{ background: "var(--color-surface)" }}
     >
       <Navigation />
-      <IndexBar />
+      {!hideGlobalTicker && <IndexBar />}
       <main className="flex-1">{children}</main>
       <Footer />
     </div>

@@ -25,6 +25,7 @@ import { publishedForecastsQueryOptions, forecastSeriesQueryOptions } from "@/li
 import { HitRateChip } from "@/components/dashboard/ForecastPanel";
 import { DashboardJudgmentCard } from "@/components/dashboard/DashboardJudgmentCard";
 import { DashboardForecastTiles } from "@/components/dashboard/DashboardForecastTiles";
+import { DashboardProcessStrip } from "@/components/dashboard/DashboardProcessStrip";
 
 export const Route = createFileRoute("/dashboard")({
   loader: ({ context }) => {
@@ -533,6 +534,8 @@ function DashboardPage() {
       <p className="text-[11px] text-muted-foreground">
         데이터 기준 · 기준일 {asOf} · 소스 4종 · 모델 {modelVersion}
       </p>
+
+      <DashboardProcessStrip />
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-[11px] text-muted-foreground">
         <span>전망 적중률 · published 전수 기준 (표본 제외 없음)</span>
