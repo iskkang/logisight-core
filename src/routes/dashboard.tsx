@@ -24,6 +24,7 @@ import { latestExchangeRateQueryOptions } from "@/lib/api/exchange-rates";
 import { publishedForecastsQueryOptions, forecastSeriesQueryOptions } from "@/lib/api/forecasts";
 import { HitRateChip } from "@/components/dashboard/ForecastPanel";
 import { DashboardJudgmentCard } from "@/components/dashboard/DashboardJudgmentCard";
+import { DashboardForecastTiles } from "@/components/dashboard/DashboardForecastTiles";
 
 export const Route = createFileRoute("/dashboard")({
   loader: ({ context }) => {
@@ -192,7 +193,11 @@ function DashboardPage() {
         : [];
     });
 
-    return [...airItems, ...seaItems].sort((a, b) => b.mom - a.mom).slice(0, 3);
+    // 스파이크 가드 — |MoM|>50%는 검증 전까지 게이트(노출 보류). admin 해제는 백로그.
+    const all = [...airItems, ...seaItems];
+    const guardedCount = all.filter((x) => Math.abs(x.mom) > 50).length;
+    const shown = all.filter((x) => Math.abs(x.mom) <= 50).sort((a, b) => b.mom - a.mom).slice(0, 3);
+    return { shown, guardedCount };
   }, [airRates, seaRates]);
 
   // --- StatusStrip ---
@@ -253,6 +258,7 @@ function DashboardPage() {
   // KPI ② 종합 판단 = 대표 전망(KCCI)의 방향 + 밴드.
   const kcciForecast = forecasts.find((f) => f.status === "published" && f.metric_ref === "KCCI");
   const repForecast = kcciForecast ?? openForecasts[0] ?? null;
+  const modelVersion = forecasts.find((f) => f.model_version)?.model_version ?? "—";
   const judgment =
     kcciForecast?.direction != null
       ? {
@@ -318,6 +324,8 @@ function DashboardPage() {
         </section>
       )}
 
+      <DashboardForecastTiles forecasts={forecasts} series={series} />
+
       {/* 2-col: 주요 노선 현황 + Top rising rates */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* 주요 노선 현황 (MTL 선정) */}
@@ -348,13 +356,13 @@ function DashboardPage() {
                         <span
                           className={
                             r.mom > 0
-                              ? "text-status-alert"
+                              ? "text-direction-up"
                               : r.mom < 0
-                                ? "text-status-normal"
-                                : "text-muted-foreground"
+                                ? "text-direction-down"
+                                : "text-direction-flat"
                           }
                         >
-                          {r.mom >= 0 ? "+" : ""}
+                          {r.mom > 0 ? "▲" : r.mom < 0 ? "▼" : "▬"} {r.mom >= 0 ? "+" : ""}
                           {r.mom.toFixed(1)}%
                         </span>
                       )}
@@ -374,22 +382,27 @@ function DashboardPage() {
         {/* Top rising rates */}
         <div className="rounded-lg border border-border bg-card p-4">
           <h2 className="mb-3 text-[13px] font-semibold">가장 크게 상승한 한국발 운임</h2>
-          {topRising.length === 0 ? (
+          {topRising.shown.length === 0 ? (
             <p className="text-xs text-muted-foreground">운임 데이터 수집 중</p>
           ) : (
             <ul className="space-y-2.5">
-              {topRising.map((r, i) => (
+              {topRising.shown.map((r, i) => (
                 <li key={r.label} className="flex items-center gap-3 text-xs">
                   <span className="w-4 shrink-0 text-center text-muted-foreground font-mono">
                     {i + 1}
                   </span>
                   <span className="flex-1">{r.label}</span>
-                  <span className="font-mono font-semibold text-status-alert">
-                    +{r.mom.toFixed(1)}%
+                  <span className="font-mono font-semibold text-direction-up">
+                    ▲ +{r.mom.toFixed(1)}%
                   </span>
                 </li>
               ))}
             </ul>
+          )}
+          {topRising.guardedCount > 0 && (
+            <p className="mt-2 rounded bg-status-caution/10 px-2 py-1 text-[11px] text-status-caution">
+              스파이크 가드: |MoM|&gt;50% {topRising.guardedCount}건 검증 중 — 확인 후 노출
+            </p>
           )}
           <p className="mt-2 text-[11px] text-muted-foreground">
             MoM 기준 · 환율 기준일 {exRate?.rate_date ?? "—"} · KITA
@@ -421,14 +434,14 @@ function DashboardPage() {
                         s.change_pct == null
                           ? "text-muted-foreground"
                           : s.change_pct > 0
-                            ? "text-status-alert"
+                            ? "text-direction-up"
                             : s.change_pct < 0
-                              ? "text-status-normal"
-                              : "text-muted-foreground"
+                              ? "text-direction-down"
+                              : "text-direction-flat"
                       }
                     >
                       {s.change_pct != null
-                        ? `${s.change_pct >= 0 ? "+" : ""}${s.change_pct.toFixed(1)}%`
+                        ? `${s.change_pct > 0 ? "▲ " : s.change_pct < 0 ? "▼ " : "▬ "}${s.change_pct >= 0 ? "+" : ""}${s.change_pct.toFixed(1)}%`
                         : "—"}
                     </span>
                     {s.pct_52w !== null && (
@@ -517,6 +530,9 @@ function DashboardPage() {
           { label: "환율", asOf: exRate?.rate_date ?? null, expectedDays: 3 },
         ]}
       />
+      <p className="text-[11px] text-muted-foreground">
+        데이터 기준 · 기준일 {asOf} · 소스 4종 · 모델 {modelVersion}
+      </p>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-[11px] text-muted-foreground">
         <span>전망 적중률 · published 전수 기준 (표본 제외 없음)</span>
