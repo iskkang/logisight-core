@@ -14,6 +14,7 @@ import {
   type ForecastModule,
   type ForecastOutcome,
 } from "@/lib/api/forecasts";
+import { displayLabelOf } from "@/components/forecasts/forecastUtils";
 
 export const Route = createFileRoute("/admin/forecasts")({
   head: () => ({
@@ -538,6 +539,7 @@ function ForecastHead({ f }: { f: Forecast }) {
       <span className="rounded bg-muted px-1.5 py-0.5 font-medium text-foreground/70">
         {MODULE_LABEL[f.module]}
       </span>
+      {f.metric_ref && <span className="font-medium text-foreground/80">{displayLabelOf(f)}</span>}
       {f.direction && (
         <span className="rounded bg-status-observe/10 px-1.5 py-0.5 font-medium text-status-observe">
           {DIR_LABEL[f.direction]}
