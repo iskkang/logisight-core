@@ -1,13 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
-import { ForecastBoard } from "@/components/forecasts/ForecastBoard";
-import { ForecastCardV2 } from "@/components/forecasts/ForecastCardV2";
+import { ForecastKpiStrip } from "@/components/forecasts/ForecastKpiStrip";
+import { ForecastFilters } from "@/components/forecasts/ForecastFilters";
+import { ForecastCardGrid } from "@/components/forecasts/ForecastCardGrid";
+import {
+  applyFilter,
+  computeKpis,
+  seriesClassOf,
+  type ForecastFilter,
+  type SeriesClass,
+} from "@/components/forecasts/forecastUtils";
 import {
   publishedForecastsQueryOptions,
   forecastSeriesQueryOptions,
-  hitRate,
 } from "@/lib/api/forecasts";
+
+const arr = (v: unknown): string[] =>
+  Array.isArray(v) ? v.map(String) : typeof v === "string" && v ? [v] : [];
+
+type Search = {
+  cadence?: "weekly" | "monthly";
+  dir: string[];
+  series: string[];
+  sel?: string;
+};
 
 export const Route = createFileRoute("/forecasts")({
   head: () => ({
@@ -20,8 +37,13 @@ export const Route = createFileRoute("/forecasts")({
       },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>): Search => ({
+    cadence: s.cadence === "weekly" || s.cadence === "monthly" ? s.cadence : undefined,
+    dir: arr(s.dir),
+    series: arr(s.series),
+    sel: typeof s.sel === "string" ? s.sel : undefined,
+  }),
   loader: async ({ context }) => {
-    // 전 방문자 동일 화면 → 전망 + 시계열 배치를 둘 다 prefetch(워터폴 금지, SSR 캐시).
     await Promise.all([
       context.queryClient.ensureQueryData(publishedForecastsQueryOptions()),
       context.queryClient.ensureQueryData(forecastSeriesQueryOptions()),
@@ -33,85 +55,55 @@ export const Route = createFileRoute("/forecasts")({
 function ForecastsPage() {
   const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
   const { data: series } = useSuspenseQuery(forecastSeriesQueryOptions());
-  const hr = hitRate(forecasts);
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+
+  const kpis = computeKpis(forecasts);
   const open = forecasts.filter((f) => f.status === "published");
-  const resolved = forecasts.filter((f) => f.status === "resolved");
+
+  const filter: ForecastFilter = { cadence: search.cadence, dir: search.dir, series: search.series };
+  const filtered = applyFilter(open, filter);
+
+  // 지표 계열별 건수(필터 전 기준)
+  const seriesCounts: Record<string, number> = {};
+  for (const f of open) {
+    const sc = seriesClassOf(f);
+    if (sc) seriesCounts[sc] = (seriesCounts[sc] ?? 0) + 1;
+  }
+
+  const setFilter = (next: ForecastFilter) =>
+    navigate({ search: (prev: Search) => ({ ...prev, ...next }), replace: true });
+  const setSel = (id: string) =>
+    navigate({ search: (prev: Search) => ({ ...prev, sel: id }), replace: true });
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 lg:px-6">
+    <div className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
       <header>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-observe">
-          AI 인텔리전스
-        </p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-observe">AI 인텔리전스</p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight text-heading">물류 시장 전망</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          한국발 해상 지수·노선 운임의 향후 2~4주 방향을 정량 모델(팩터 채점)로 산출하고, 에디터가
-          검수해 발행합니다. 모든 전망은 단정이 아닌 확률 표현이며, 판정일에 실측값으로 사후 적중을
-          매깁니다.
+          정량 모델(팩터 채점)과 에디터 검수를 결합해 향후 2~4주 방향을 제시합니다. 모든 전망은 단정이
+          아닌 확률 표현이며, 판정일에 실측값으로 사후 적중을 매깁니다.
         </p>
-
-        <div className="mt-5 inline-flex items-stretch gap-5 rounded-xl border border-border bg-card px-5 py-3.5">
-          <div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              적중률 · published 전수
-            </div>
-            <div className="mt-0.5 text-3xl font-bold tabular-nums text-heading">
-              {hr.rate != null ? `${hr.rate}%` : "—"}
-            </div>
-          </div>
-          <div className="w-px self-stretch bg-border" />
-          <div className="self-center text-xs leading-relaxed text-muted-foreground">
-            {hr.resolved > 0 ? (
-              <>
-                적중 {hr.hit} · 부분 {hr.partial} · 빗나감 {hr.miss}
-                <br />
-                판정 완료 {hr.resolved}건
-              </>
-            ) : (
-              "판정 표본 누적 중"
-            )}
-          </div>
-        </div>
       </header>
 
-      {forecasts.length === 0 ? (
+      <div className="mt-5">
+        <ForecastKpiStrip kpis={kpis} />
+      </div>
+
+      {open.length === 0 ? (
         <div className="mt-10 rounded-xl border border-dashed border-border bg-card px-6 py-16 text-center">
           <p className="text-sm font-medium text-foreground">데이터 수집 중</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            검수를 통과한 전망이 게재되면 이곳에 표시됩니다.
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">검수를 통과한 전망이 게재되면 이곳에 표시됩니다.</p>
         </div>
       ) : (
-        <>
-          {/* 전망 보드 — 전체가 3초에 들어오는 층 */}
-          {open.length > 0 && (
-            <section className="mt-7">
-              <ForecastBoard forecasts={open} />
-            </section>
-          )}
-
-          {/* 카드 V2 — 그림이 결론을 말하는 층 */}
-          {open.length > 0 && (
-            <section className="mt-8 space-y-4">
-              {open.map((f) => (
-                <ForecastCardV2 key={f.id} f={f} series={series[f.id]} />
-              ))}
-            </section>
-          )}
-
-          {resolved.length > 0 && (
-            <section className="mt-10">
-              <h2 className="mb-3 text-sm font-semibold text-foreground">
-                트랙 레코드 · 판정 완료 <span className="text-muted-foreground">{resolved.length}</span>
-              </h2>
-              <div className="space-y-4">
-                {resolved.map((f) => (
-                  <ForecastCardV2 key={f.id} f={f} series={series[f.id]} />
-                ))}
-              </div>
-            </section>
-          )}
-        </>
+        <div className="mt-7 grid gap-6 lg:grid-cols-[180px_1fr]">
+          <ForecastFilters value={filter} onChange={setFilter} seriesCounts={seriesCounts} />
+          <div>
+            <div className="mb-3 text-sm font-semibold text-foreground">전망 카드</div>
+            <ForecastCardGrid forecasts={filtered} series={series} selectedId={search.sel ?? filtered[0]?.id ?? null} onSelect={setSel} />
+          </div>
+        </div>
       )}
 
       <p className="mt-10 border-t border-border pt-4 text-[11px] leading-relaxed text-muted-foreground">
@@ -122,3 +114,5 @@ function ForecastsPage() {
     </div>
   );
 }
+
+export type { SeriesClass };
