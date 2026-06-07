@@ -1,0 +1,901 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logisight Forecast Mockup</title>
+  <style>
+    :root {
+      --navy-950: #061326;
+      --navy-900: #071a33;
+      --navy-850: #09203d;
+      --navy-800: #0d2748;
+      --slate-900: #122033;
+      --slate-700: #40516a;
+      --slate-500: #718198;
+      --slate-300: #cbd5e1;
+      --slate-200: #e2e8f0;
+      --slate-100: #f1f5f9;
+      --slate-50: #f8fafc;
+      --white: #ffffff;
+      --teal: #18d6b2;
+      --blue: #2f80ed;
+      --green: #16a365;
+      --green-bg: #e8f8ef;
+      --amber: #f59e0b;
+      --amber-bg: #fff4df;
+      --red: #ef4444;
+      --red-bg: #ffe8ea;
+      --card-border: #dbe3ee;
+      --shadow-soft: 0 16px 40px rgba(15, 23, 42, .10);
+      --shadow-card: 0 8px 24px rgba(15, 23, 42, .07);
+      --radius-xl: 18px;
+      --radius-lg: 14px;
+      --radius-md: 10px;
+      --font: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--slate-900);
+      background:
+        radial-gradient(circle at 80% 0%, rgba(24, 214, 178, .08), transparent 34%),
+        linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
+      letter-spacing: -0.02em;
+    }
+
+    .page {
+      min-width: 1280px;
+      background: linear-gradient(180deg, rgba(255,255,255,.2), rgba(248,250,252,.98));
+    }
+
+    .topbar {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 34px;
+      background: linear-gradient(90deg, #061225 0%, #081a34 55%, #0a1730 100%);
+      color: #fff;
+      box-shadow: 0 1px 0 rgba(255,255,255,.08) inset;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 170px;
+      font-size: 20px;
+      font-weight: 760;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--teal);
+      border-radius: 10px;
+      position: relative;
+      transform: rotate(-8deg);
+    }
+
+    .brand-mark::before {
+      content: "";
+      position: absolute;
+      width: 13px;
+      height: 13px;
+      border: 2px solid var(--teal);
+      border-left: 0;
+      border-radius: 0 10px 10px 0;
+      top: 5px;
+      right: -8px;
+      background: #061225;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 34px;
+      font-size: 15px;
+      font-weight: 700;
+      color: rgba(255,255,255,.85);
+    }
+
+    .nav a {
+      color: inherit;
+      text-decoration: none;
+      padding: 22px 0 18px;
+      position: relative;
+    }
+
+    .nav a.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 13px;
+      height: 2px;
+      background: var(--teal);
+      border-radius: 2px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .command {
+      width: 330px;
+      height: 42px;
+      border: 1px solid rgba(203,213,225,.35);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 9px;
+      color: rgba(255,255,255,.72);
+      background: rgba(255,255,255,.06);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.07);
+      font-size: 13px;
+    }
+
+    .kbd {
+      margin-left: auto;
+      border: 1px solid rgba(203,213,225,.35);
+      border-radius: 7px;
+      padding: 2px 6px;
+      color: rgba(255,255,255,.55);
+      font-size: 11px;
+    }
+
+    .icon-text {
+      font-size: 13px;
+      color: rgba(255,255,255,.84);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      white-space: nowrap;
+    }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #243a5c;
+      color: #dbeafe;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .tabs {
+      height: 46px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 0 34px;
+      background: rgba(255,255,255,.94);
+      border-bottom: 1px solid #e5edf6;
+      backdrop-filter: blur(12px);
+    }
+
+    .tab {
+      min-width: 74px;
+      height: 26px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #334155;
+      background: #f2f5f9;
+      border: 1px solid #e5edf6;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .tab.active {
+      color: #fff;
+      background: linear-gradient(180deg, #0c294d, #061a34);
+      box-shadow: 0 6px 16px rgba(2, 6, 23, .18);
+      border-color: #102d50;
+    }
+
+    .hero {
+      height: 178px;
+      position: relative;
+      overflow: hidden;
+      padding: 27px 34px 0;
+      color: #fff;
+      background:
+        linear-gradient(90deg, rgba(4,16,34,.98) 0%, rgba(4,16,34,.90) 42%, rgba(4,16,34,.48) 68%, rgba(4,16,34,.22) 100%),
+        linear-gradient(120deg, #06152a 0%, #0c2a4f 62%, #163b60 100%);
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(118deg, transparent 48%, rgba(255,255,255,.13) 48.3%, transparent 49%),
+        radial-gradient(ellipse at 84% 33%, rgba(56,189,248,.28), transparent 30%),
+        repeating-linear-gradient(14deg, transparent 0 16px, rgba(255,255,255,.05) 17px 18px);
+      opacity: .95;
+    }
+
+    .ship {
+      position: absolute;
+      right: 82px;
+      top: 20px;
+      width: 338px;
+      height: 108px;
+      transform: rotate(21deg);
+      opacity: .78;
+      filter: drop-shadow(0 22px 20px rgba(0,0,0,.25));
+    }
+
+    .ship .hull {
+      position: absolute;
+      left: 12px;
+      top: 58px;
+      width: 310px;
+      height: 34px;
+      border-radius: 16px 22px 20px 28px;
+      background: linear-gradient(180deg, #9fb4c9, #375067);
+      border: 1px solid rgba(255,255,255,.25);
+    }
+
+    .containers {
+      position: absolute;
+      left: 52px;
+      top: 15px;
+      display: grid;
+      grid-template-columns: repeat(8, 28px);
+      gap: 4px;
+    }
+
+    .container-box {
+      height: 18px;
+      border-radius: 2px;
+      border: 1px solid rgba(255,255,255,.23);
+      background: #b94b4b;
+    }
+    .container-box:nth-child(3n) { background: #d89355; }
+    .container-box:nth-child(4n) { background: #526f91; }
+    .container-box:nth-child(5n) { background: #cfb36b; }
+
+    .hero-content { position: relative; z-index: 2; }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 33px;
+      line-height: 1.14;
+      font-weight: 860;
+      letter-spacing: -0.055em;
+    }
+
+    .hero p {
+      margin: 0;
+      font-size: 14px;
+      color: rgba(255,255,255,.78);
+      font-weight: 500;
+    }
+
+    .updated-chip {
+      margin-top: 19px;
+      height: 34px;
+      width: fit-content;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 9px;
+      background: rgba(255,255,255,.10);
+      color: rgba(255,255,255,.9);
+      font-size: 12px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    .updated-chip strong { color: #fff; font-weight: 760; }
+
+    .content {
+      padding: 0 34px 32px;
+      transform: translateY(-46px);
+    }
+
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr 1fr 1.1fr 1.05fr;
+      background: #fff;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+
+    .kpi {
+      height: 96px;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-right: 1px solid #e2e8f0;
+    }
+
+    .kpi:last-child { border-right: 0; }
+
+    .kpi-label {
+      font-size: 12px;
+      color: #25364d;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+
+    .kpi-value {
+      font-size: 28px;
+      line-height: 1;
+      color: #0b1b32;
+      font-weight: 880;
+      letter-spacing: -0.04em;
+    }
+
+    .kpi-value small {
+      font-size: 16px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .kpi-caption {
+      margin-top: 7px;
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .kpi-icon {
+      width: 46px;
+      height: 46px;
+      border: 2px solid #6b7280;
+      border-radius: 16px;
+      opacity: .85;
+      display: grid;
+      place-items: center;
+      font-size: 25px;
+      color: #566276;
+    }
+
+    .main-grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: 220px minmax(640px, 1fr) 300px;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .panel, .forecast-card, .analysis-card, .method-card {
+      background: rgba(255,255,255,.96);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+    }
+
+    .filter-panel {
+      min-height: 575px;
+      padding: 17px;
+    }
+
+    .panel-title {
+      margin: 0 0 18px;
+      font-size: 14px;
+      font-weight: 830;
+      color: #17243a;
+    }
+
+    .filter-group { margin-bottom: 22px; }
+    .filter-label {
+      margin-bottom: 10px;
+      color: #22324a;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .segmented {
+      height: 34px;
+      border: 1px solid #dfe7f0;
+      background: #f8fafc;
+      border-radius: 8px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      padding: 3px;
+    }
+
+    .segmented span {
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 760;
+    }
+    .segmented span.active { background: #061b34; color: #fff; }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #31415a;
+    }
+
+    .status-ico {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 5px;
+      font-weight: 900;
+      font-size: 13px;
+    }
+    .status-ico.up { color: var(--green); background: var(--green-bg); }
+    .status-ico.flat { color: var(--amber); background: var(--amber-bg); }
+    .status-ico.down { color: var(--red); background: var(--red-bg); }
+
+    .source-row {
+      display: grid;
+      grid-template-columns: 17px 1fr auto;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 10px;
+      color: #506178;
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .checkbox {
+      width: 13px;
+      height: 13px;
+      border: 1px solid #cbd5e1;
+      border-radius: 3px;
+      background: #fff;
+    }
+    .count {
+      min-width: 24px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #dbe3ee;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 11px;
+    }
+
+    .reset {
+      margin-top: 128px;
+      color: #2f80ed;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .center-head {
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 4px 0 10px;
+    }
+    .center-head h2 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 850;
+    }
+    .sort-btn {
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid #dbe3ee;
+      background: #fff;
+      font-size: 12px;
+      color: #334155;
+      font-weight: 700;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .forecast-card {
+      min-height: 148px;
+      padding: 14px 13px 11px;
+      position: relative;
+      overflow: hidden;
+    }
+    .forecast-card.selected { border: 2px solid #0b2b51; padding: 13px 12px 10px; }
+
+    .forecast-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .forecast-name {
+      font-size: 14px;
+      font-weight: 860;
+      color: #14223a;
+    }
+    .badge {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+    .badge.up { color: var(--green); background: var(--green-bg); }
+    .badge.flat { color: #da8500; background: var(--amber-bg); }
+    .badge.down, .badge.hot { color: var(--red); background: var(--red-bg); }
+
+    .evidence {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #334155;
+      font-weight: 760;
+    }
+    .sparkline { width: 100%; height: 38px; margin: 5px 0 3px; }
+    .next {
+      font-size: 11px;
+      color: #334155;
+      font-weight: 650;
+      margin-bottom: 7px;
+    }
+    .thesis {
+      font-size: 11px;
+      color: #53637a;
+      line-height: 1.35;
+      font-weight: 560;
+    }
+
+    .analyst-panel { min-height: 575px; padding: 16px; }
+    .panel-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border: 1px solid #dfe7f0;
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 18px;
+    }
+    .panel-tabs span {
+      height: 27px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .panel-tabs .active { color: #fff; background: #071b34; }
+
+    .subhead {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #22324a;
+      font-weight: 850;
+      margin-bottom: 10px;
+    }
+    .factor-row {
+      display: grid;
+      grid-template-columns: 78px 1fr 38px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 9px;
+      font-size: 11px;
+      color: #334155;
+      font-weight: 690;
+    }
+    .factor-track {
+      height: 7px;
+      border-radius: 999px;
+      background: #e8eef6;
+      position: relative;
+      overflow: hidden;
+    }
+    .factor-fill {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      border-radius: 999px;
+    }
+    .factor-fill.neg { left: auto; right: 50%; background: var(--red); }
+    .factor-fill.pos { background: var(--green); }
+    .value.pos { color: var(--green); font-weight: 850; text-align: right; }
+    .value.neg { color: var(--red); font-weight: 850; text-align: right; }
+    .scale { display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin: 8px 38px 20px 85px; }
+
+    .donut-row {
+      display: grid;
+      grid-template-columns: 108px 1fr;
+      gap: 12px;
+      align-items: center;
+      margin: 12px 0 22px;
+    }
+    .donut {
+      width: 94px;
+      height: 94px;
+      border-radius: 50%;
+      background: conic-gradient(#ef4444 0 35%, #f59e0b 35% 80%, #16a365 80% 100%);
+      position: relative;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.05);
+    }
+    .donut::after {
+      content: "";
+      position: absolute;
+      inset: 22px;
+      border-radius: 50%;
+      background: #fff;
+    }
+    .legend-row {
+      display: grid;
+      grid-template-columns: 9px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 9px;
+      font-size: 12px;
+      color: #3f4f68;
+      font-weight: 700;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .dot.red { background: var(--red); }
+    .dot.amber { background: var(--amber); }
+    .dot.green { background: var(--green); }
+
+    .source-badges {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .source-badge {
+      min-height: 46px;
+      padding: 8px 8px 7px;
+      border: 1px solid #dfe7f0;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 10px;
+      color: #64748b;
+      line-height: 1.35;
+      font-weight: 600;
+    }
+    .source-badge strong { color: #1f2f46; font-size: 11px; display: block; margin-bottom: 2px; }
+    .more { text-align: right; color: #0ea5a4; font-size: 11px; font-weight: 800; margin-bottom: 18px; }
+    .risk {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 14px;
+    }
+    .risk-title { font-size: 13px; font-weight: 850; margin-bottom: 9px; }
+    .risk-note { font-size: 12px; color: #475569; line-height: 1.55; font-weight: 600; }
+
+    .analysis-card {
+      margin-top: 18px;
+      padding: 17px 16px;
+      display: grid;
+      grid-template-columns: 98px 1.25fr 1.1fr 150px;
+      gap: 16px;
+      border: 2px solid #102d50;
+    }
+    .verdict-title { font-size: 17px; font-weight: 880; margin-bottom: 20px; color: #15243a; }
+    .verdict-badge { color: #d48600; font-size: 19px; font-weight: 890; line-height: 1.4; margin-bottom: 18px; }
+    .verdict-badge span { display: block; font-size: 30px; letter-spacing: -0.05em; }
+    .mini-meta { font-size: 12px; color: #475569; line-height: 1.8; font-weight: 700; }
+    .chart-wrap { padding-top: 10px; }
+    .chart-legend {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 5px;
+      font-size: 10px;
+      color: #475569;
+      font-weight: 750;
+    }
+    .legend-line { width: 22px; height: 2px; display: inline-block; margin-right: 5px; vertical-align: middle; background: #0b2b51; }
+    .legend-dash { width: 22px; height: 0; display: inline-block; margin-right: 5px; vertical-align: middle; border-top: 2px dashed #2f80ed; }
+    .legend-band { width: 22px; height: 8px; display: inline-block; margin-right: 5px; background: #dbeafe; border-radius: 3px; vertical-align: middle; }
+
+    .big-chart {
+      width: 100%;
+      height: 136px;
+      border-left: 1px solid #e2e8f0;
+      border-bottom: 1px solid #e2e8f0;
+      background-image: linear-gradient(#eff4fa 1px, transparent 1px);
+      background-size: 100% 27px;
+    }
+
+    .insights { padding-top: 9px; }
+    .insights h3, .calendar h3 { margin: 0 0 10px; font-size: 12px; font-weight: 880; color: #17243a; }
+    .insights ol { margin: 0 0 14px 16px; padding: 0; color: #334155; font-size: 11px; line-height: 1.58; font-weight: 620; }
+    .scenario-row { display: grid; grid-template-columns: 8px 1fr; gap: 8px; margin-bottom: 7px; font-size: 11px; color: #475569; line-height: 1.35; font-weight: 620; }
+
+    .calendar { border-left: 1px solid #e2e8f0; padding-left: 11px; }
+    .event {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 8px;
+      background: #fff;
+      font-size: 11px;
+      color: #475569;
+      font-weight: 650;
+      line-height: 1.45;
+    }
+    .event strong { color: #1e293b; display: block; margin-bottom: 4px; }
+    .calendar a { font-size: 11px; color: #2f80ed; text-decoration: none; font-weight: 850; }
+
+    .method-card {
+      margin-top: 14px;
+      min-height: 72px;
+      padding: 13px 18px;
+      display: grid;
+      grid-template-columns: 300px 1fr 300px;
+      gap: 18px;
+      align-items: center;
+    }
+    .method-title { font-size: 12px; color: #1e293b; font-weight: 880; margin-bottom: 5px; }
+    .method-desc { font-size: 11px; line-height: 1.45; color: #52637b; font-weight: 600; }
+    .steps { display: flex; align-items: center; justify-content: space-around; gap: 8px; }
+    .step { text-align: center; color: #475569; font-size: 10px; font-weight: 700; min-width: 84px; }
+    .step-icon { width: 38px; height: 38px; margin: 0 auto 5px; border-radius: 50%; border: 1px solid #dbe3ee; display: grid; place-items: center; color: #49617f; background: #fff; font-size: 17px; }
+    .weight-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px 16px; color: #475569; font-size: 10px; font-weight: 700; }
+    .disclaimer { margin-top: 13px; color: #8b99ac; font-size: 10px; }
+
+    .muted { color: #64748b; }
+
+    @media (max-width: 900px) {
+      .page { min-width: 0; }
+      .topbar, .tabs { padding-left: 18px; padding-right: 18px; }
+      .nav, .top-actions .icon-text, .command { display: none; }
+      .hero { padding-left: 18px; padding-right: 18px; }
+      .content { padding-left: 18px; padding-right: 18px; transform: translateY(-24px); }
+      .kpi-strip, .main-grid, .card-grid, .analysis-card, .method-card { grid-template-columns: 1fr; }
+      .filter-panel, .analyst-panel { min-height: auto; }
+      .source-badges { grid-template-columns: 1fr; }
+      .calendar { border-left: 0; padding-left: 0; }
+      .ship { opacity: .3; right: -40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark"></span>Logisight</div>
+      <nav class="nav">
+        <a href="#">홈</a>
+        <a href="#">뉴스</a>
+        <a href="#" class="active">전망</a>
+        <a href="#">산업별⌄</a>
+      </nav>
+      <div class="top-actions">
+        <div class="command"><span>⌕</span><span>검색 또는 명령어 입력 (예: WCI 전망)</span><span class="kbd">⌘K</span></div>
+        <div class="icon-text">☆ 즐겨찾기</div>
+        <div class="icon-text">⌂</div>
+        <div class="avatar">LS</div>
+      </div>
+    </header>
+
+    <div class="tabs">
+      <span class="tab active">종합</span>
+      <span class="tab">운임</span>
+      <span class="tab">무역</span>
+      <span class="tab">정책</span>
+      <span class="tab">유라시아</span>
+    </div>
+
+    <section class="hero">
+      <div class="ship">
+        <div class="containers">
+          <span class="container-box"></span><span class="container-box"></span><span class="container-box"></span><span class="container-box"></span>
+          <span class="container-box"></span><span class="container-box"></span><span class="container-box"></span><span class="container-box"></span>
+          <span class="container-box"></span><span class="container-box"></span><span class="container-box"></span><span class="container-box"></span>
+          <span class="container-box"></span><span class="container-box"></span><span class="container-box"></span><span class="container-box"></span>
+        </div>
+        <div class="hull"></div>
+      </div>
+      <div class="hero-content">
+        <h1>물류 시장 전망</h1>
+        <p>정량 모델(팩터 스코어)과 에디터 검토를 결합해 향후 2–4주간의 시장 방향성을 제시합니다.</p>
+        <div class="updated-chip"><strong>▣ 최종 업데이트</strong><span>2025. 05. 28 (수) 09:00 KST</span></div>
+      </div>
+    </section>
+
+    <main class="content">
+      <section class="kpi-strip">
+        <div class="kpi"><div><div class="kpi-label">적중률</div><div class="kpi-value">76% <small>(34/45)</small></div><div class="kpi-caption">최근 12주 · 방향 정확도</div></div><div class="kpi-icon">◎</div></div>
+        <div class="kpi"><div><div class="kpi-label">Published</div><div class="kpi-value">24 <small>건</small></div><div class="kpi-caption">이번 주 발간 전망</div></div><div class="kpi-icon">▤</div></div>
+        <div class="kpi"><div><div class="kpi-label">판정 대기</div><div class="kpi-value">8 <small>건</small></div><div class="kpi-caption">확인 대기 중인 전망</div></div><div class="kpi-icon">⌛</div></div>
+        <div class="kpi"><div><div class="kpi-label">평균 리드타임</div><div class="kpi-value">16.2 <small>일</small></div><div class="kpi-caption">모델 신호 → 발간</div></div><div class="kpi-icon">◷</div></div>
+        <div class="kpi"><div><div class="kpi-label">신뢰도 (Avg.)</div><div class="kpi-value">3.4 <small>/ 5</small></div><div class="kpi-caption">전체 전망 평균 근거</div></div><div class="kpi-icon">♢</div></div>
+      </section>
+
+      <section class="main-grid">
+        <aside class="panel filter-panel">
+          <h3 class="panel-title">필터</h3>
+          <div class="filter-group">
+            <div class="filter-label">기간</div>
+            <div class="segmented"><span class="active">주간</span><span>월간</span></div>
+          </div>
+          <div class="filter-group">
+            <div class="filter-label">상태</div>
+            <div class="status-row"><span class="status-ico up">↗</span>상승</div>
+            <div class="status-row"><span class="status-ico flat">→</span>보합</div>
+            <div class="status-row"><span class="status-ico down">↘</span>하락</div>
+          </div>
+          <div class="filter-group">
+            <div class="filter-label">출처</div>
+            <div class="source-row"><span class="checkbox"></span><span>관세청</span><span class="count">12</span></div>
+            <div class="source-row"><span class="checkbox"></span><span>Drewry</span><span class="count">12</span></div>
+            <div class="source-row"><span class="checkbox"></span><span>상하이해운거래소</span><span class="count">10</span></div>
+            <div class="source-row"><span class="checkbox"></span><span>Clarksons</span><span class="count">8</span></div>
+            <div class="source-row"><span class="checkbox"></span><span>기타</span><span class="count">6</span></div>
+          </div>
+          <div class="reset">⟳ 필터 초기화</div>
+        </aside>
+
+        <section>
+          <div class="center-head"><h2>전망 카드</h2><button class="sort-btn">정렬: 중요도 순⌄</button></div>
+          <div class="card-grid">
+            <article class="forecast-card selected"><div class="forecast-top"><div class="forecast-name">WCI_SHA_RTM</div><span class="badge up">상승 +1~4%</span></div><div class="evidence">근거 · 3 / 5</div><svg class="sparkline" viewBox="0 0 220 42"><polyline points="0,31 18,30 36,30 54,18 72,27 90,17 108,23 126,10 144,19 162,18 180,25 198,15 216,20" fill="none" stroke="#16a365" stroke-width="3" stroke-linecap="round"/></svg><div class="next">다음 확인 · 6/11 (수)</div><div class="thesis">단기 수요 회복과 운항 안정이 가격 하방 압력 완화</div></article>
+            <article class="forecast-card"><div class="forecast-top"><div class="forecast-name">WCI</div><span class="badge flat">보합권 0~2%</span></div><div class="evidence">근거 · 3 / 5</div><svg class="sparkline" viewBox="0 0 220 42"><polyline points="0,25 18,20 36,18 54,29 72,19 90,24 108,16 126,18 144,25 162,21 180,13 198,16 216,8" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/></svg><div class="next">다음 확인 · 6/11 (수)</div><div class="thesis">운임 박스권 지속, 성수기 전 제한적 반등</div></article>
+            <article class="forecast-card"><div class="forecast-top"><div class="forecast-name">SCFI</div><span class="badge hot">상승 +3~7%</span></div><div class="evidence">근거 · 4 / 5</div><svg class="sparkline" viewBox="0 0 220 42"><polyline points="0,32 18,20 36,26 54,18 72,28 90,15 108,23 126,13 144,21 162,16 180,20 198,11 216,5" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/></svg><div class="next">다음 확인 · 6/11 (수)</div><div class="thesis">아시아 수출 수요 개선과 선사 GRI 영향</div></article>
+            <article class="forecast-card"><div class="forecast-top"><div class="forecast-name">KCCI</div><span class="badge up">상승 +2~6%</span></div><div class="evidence">근거 · 3 / 5</div><svg class="sparkline" viewBox="0 0 220 42"><polyline points="0,34 18,24 36,18 54,29 72,23 90,16 108,22 126,12 144,18 162,25 180,17 198,21 216,11" fill="none" stroke="#16a365" stroke-width="3" stroke-linecap="round"/></svg><div class="next">다음 확인 · 6/11 (수)</div><div class="thesis">내수 부진 완화, 컨선 수급 타이트 지속</div></article>
+            <article class="forecast-card"><div class="forecast-top"><div class="forecast-name">부산 → 뉴욕</div><span class="badge hot">상승 +4~8%</span></div><div class="evidence">근거 · 4 / 5</div><svg class="sparkline" viewBox="0 0 220 42"><polyline points="0,34 18,28 36,24 54,14 72,20 90,16 108,19 126,12 144,18 162,12 180,15 198,9 216,13" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/></svg><div class="next">다음 확인 · 6/12 (목)</div><div class="thesis">북미 수요 강세 및 일정 차질로 운임 상승</div></article>
+            <article class="forecast-card"><div class="forecast-top"><div class="forecast-name">부산 → 로테르담</div><span class="badge flat">보합권 0~3%</span></div><div class="evidence">근거 · 2 / 5</div><svg class="sparkline" viewBox="0 0 220 42"><polyline points="0,24 18,18 36,25 54,22 72,29 90,21 108,24 126,17 144,26 162,20 180,24 198,17 216,14" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/></svg><div class="next">다음 확인 · 6/12 (목)</div><div class="thesis">수요 보합, 운항 안정으로 제한적 변동</div></article>
+          </div>
+
+          <article class="analysis-card">
+            <div><div class="verdict-title">WCI · 주간</div><div class="verdict-badge">보합권<span>0~2%</span></div><div class="mini-meta">근거 · 3 / 5<br/>● ● ● ○ ○<br/>▣ 다음 확인 · 6/11 (수)</div></div>
+            <div class="chart-wrap"><div class="chart-legend"><span><i class="legend-line"></i>실제</span><span><i class="legend-dash"></i>모델 전망</span><span><i class="legend-band"></i>예측 범위</span></div><svg class="big-chart" viewBox="0 0 360 150" preserveAspectRatio="none"><path d="M244,84 L272,71 L304,54 L334,67 L356,62 L356,101 L334,106 L304,93 L272,104 L244,113 Z" fill="#dbeafe" opacity=".95"/><polyline points="0,95 32,87 60,92 91,77 122,63 152,48 183,59 214,78 244,84" fill="none" stroke="#0b2b51" stroke-width="3"/><polyline points="244,84 272,71 304,54 334,67 356,62" fill="none" stroke="#2f80ed" stroke-width="3" stroke-dasharray="7 6"/><line x1="244" y1="8" x2="244" y2="144" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 4"/><text x="250" y="136" fill="#64748b" font-size="10">전망 구간</text><text x="0" y="146" fill="#64748b" font-size="10">Nov ’24</text><text x="75" y="146" fill="#64748b" font-size="10">Jan ’25</text><text x="150" y="146" fill="#64748b" font-size="10">Mar ’25</text><text x="225" y="146" fill="#64748b" font-size="10">May ’25</text><text x="304" y="146" fill="#64748b" font-size="10">Jun ’25(E)</text></svg></div>
+            <div class="insights"><h3>핵심 인사이트</h3><ol><li>아시아–유럽/미주 수요 회복 조짐이나 운항 안정으로 운임 박스권 지속.</li><li>선복량은 전주 대비 소폭 증가로 공급 부담 완화.</li><li>BAF 하향 안정 및 연료가격 하락으로 비용 압력 완화.</li></ol><h3>시나리오 코멘트</h3><div class="scenario-row"><span class="dot red"></span><span>상승 시나리오 35%: 성수기 앞둔 수요 가속, GRI 확대</span></div><div class="scenario-row"><span class="dot amber"></span><span>보합 시나리오 45%: 수급 균형 유지, 범위 내 등락</span></div><div class="scenario-row"><span class="dot green"></span><span>하락 시나리오 20%: 공급 과잉 확대, 수요 둔화 지속</span></div></div>
+            <div class="calendar"><h3>이벤트 캘린더</h3><div class="event"><strong>6/11 (수)</strong>관세청<br/>수출입 동향 (5월)</div><div class="event"><strong>6/12 (목)</strong>Drewry<br/>주간 운임 보고서</div><a href="#">전체 캘린더 보기 →</a></div>
+          </article>
+        </section>
+
+        <aside class="panel analyst-panel">
+          <h3 class="panel-title">분석자 패널</h3>
+          <div class="panel-tabs"><span class="active">모델 인사이트</span><span>에디터 코멘트</span></div>
+          <div class="subhead"><span>팩터 스코어 (WCI)</span><span>근거 · 3 / 5</span></div>
+          <div class="factor-row"><span>모멘텀</span><div class="factor-track"><span class="factor-fill pos" style="width: 22%"></span></div><span class="value pos">+0.6</span></div>
+          <div class="factor-row"><span>공급 (선복)</span><div class="factor-track"><span class="factor-fill neg" style="width: 9%"></span></div><span class="value neg">-0.2</span></div>
+          <div class="factor-row"><span>수요</span><div class="factor-track"><span class="factor-fill pos" style="width: 30%"></span></div><span class="value pos">+0.7</span></div>
+          <div class="factor-row"><span>비용</span><div class="factor-track"><span class="factor-fill pos" style="width: 7%"></span></div><span class="value pos">+0.1</span></div>
+          <div class="factor-row"><span>가격</span><div class="factor-track"><span class="factor-fill neg" style="width: 14%"></span></div><span class="value neg">-0.3</span></div>
+          <div class="scale"><span>-2</span><span>-1</span><span>0</span><span>+1</span><span>+2</span></div>
+          <div class="subhead"><span>시나리오 확률 (2~4주)</span></div>
+          <div class="donut-row"><div class="donut"></div><div><div class="legend-row"><span class="dot red"></span><span>상승</span><strong>35%</strong></div><div class="legend-row"><span class="dot amber"></span><span>보합</span><strong>45%</strong></div><div class="legend-row"><span class="dot green"></span><span>하락</span><strong>20%</strong></div></div></div>
+          <div class="subhead"><span>주요 데이터 출처</span></div>
+          <div class="source-badges"><div class="source-badge"><strong>관세청</strong>업데이트 5/28</div><div class="source-badge"><strong>Drewry</strong>업데이트 5/27</div><div class="source-badge"><strong>상하이해운거래소</strong>업데이트 5/28</div></div>
+          <div class="more">더보기 →</div>
+          <div class="risk"><div class="risk-title">리스크 노트</div><div class="risk-note">⚠ 미중 관세 협상 변동성, 홍해/파나마 운항 차질 재발, 연료가격 급등 시 방향성 왜곡 가능.</div></div>
+        </aside>
+      </section>
+
+      <section class="method-card">
+        <div><div class="method-title">모델 방법론</div><div class="method-desc">5개 핵심 팩터를 표준화하여 가중 합산한 스코어와 시나리오 분석을 통해 2–4주간의 방향성을 산출합니다.</div></div>
+        <div class="steps"><div class="step"><div class="step-icon">⚙</div>데이터 수집<br/><span class="muted">50+ 지표</span></div><div class="step"><div class="step-icon">⌕</div>팩터 변환<br/><span class="muted">Z-Score</span></div><div class="step"><div class="step-icon">◔</div>가중 스코어링<br/><span class="muted">-2 ~ +2</span></div><div class="step"><div class="step-icon">▱</div>시나리오 분석<br/><span class="muted">확률 산출</span></div><div class="step"><div class="step-icon">✓</div>에디터 검토<br/><span class="muted">최종 발간</span></div></div>
+        <div><div class="method-title">가중치 안내 (WCI 기준)</div><div class="weight-list"><span><span class="dot amber"></span> 모멘텀 · 25%</span><span><span class="dot red"></span> 비용 · 15%</span><span><span class="dot green"></span> 공급 · 20%</span><span><span class="dot"></span> 가격 · 15%</span><span><span class="dot amber"></span> 수요 · 25%</span></div></div>
+      </section>
+      <div class="disclaimer">본 전망은 정보 제공을 목적으로 하며, 투자 권유가 아닙니다. 실제 시장은 다양한 요인에 의해 달라질 수 있습니다.</div>
+    </main>
+  </div>
+</body>
+</html>
