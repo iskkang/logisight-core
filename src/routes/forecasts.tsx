@@ -6,6 +6,9 @@ import { ForecastFilters } from "@/components/forecasts/ForecastFilters";
 import { ForecastCardGrid } from "@/components/forecasts/ForecastCardGrid";
 import { ForecastDetailPanel } from "@/components/forecasts/ForecastDetailPanel";
 import { ForecastAnalystPanel } from "@/components/forecasts/ForecastAnalystPanel";
+import { ForecastHero } from "@/components/forecasts/ForecastHero";
+import { ForecastMethodology } from "@/components/forecasts/ForecastMethodology";
+import { MODULE_LABEL } from "@/lib/api/forecasts";
 import {
   applyFilter,
   computeKpis,
@@ -28,6 +31,7 @@ type Search = {
   dir: string[];
   series: string[];
   sel?: string;
+  mod?: string;
 };
 
 export const Route = createFileRoute("/forecasts")({
@@ -46,6 +50,7 @@ export const Route = createFileRoute("/forecasts")({
     dir: arr(s.dir),
     series: arr(s.series),
     sel: typeof s.sel === "string" ? s.sel : undefined,
+    mod: typeof s.mod === "string" ? s.mod : undefined,
   }),
   loader: async ({ context }) => {
     await Promise.all([
@@ -67,8 +72,14 @@ function ForecastsPage() {
   const navigate = Route.useNavigate();
 
   const kpis = computeKpis(forecasts);
-  const open = forecasts.filter((f) => f.status === "published");
+  const allOpen = forecasts.filter((f) => f.status === "published");
+  const lastUpdated = forecasts.reduce<string | null>(
+    (m, f) => (f.published_at && (!m || f.published_at > m) ? f.published_at : m),
+    null,
+  );
+  const modules = [...new Set(allOpen.map((f) => f.module))].map((k) => ({ key: k, label: MODULE_LABEL[k] }));
 
+  const open = search.mod ? allOpen.filter((f) => f.module === search.mod) : allOpen;
   const filter: ForecastFilter = { cadence: search.cadence, dir: search.dir, series: search.series };
   const filtered = applyFilter(open, filter);
   const selectedId = search.sel ?? filtered[0]?.id ?? null;
@@ -85,17 +96,17 @@ function ForecastsPage() {
     navigate({ search: (prev: Search) => ({ ...prev, ...next }), replace: true });
   const setSel = (id: string) =>
     navigate({ search: (prev: Search) => ({ ...prev, sel: id }), replace: true });
+  const setMod = (key: string | null) =>
+    navigate({ search: (prev: Search) => ({ ...prev, mod: key ?? undefined, sel: undefined }), replace: true });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
-      <header>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-observe">AI 인텔리전스</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-heading">물류 시장 전망</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          정량 모델(팩터 채점)과 에디터 검수를 결합해 향후 2~4주 방향을 제시합니다. 모든 전망은 단정이
-          아닌 확률 표현이며, 판정일에 실측값으로 사후 적중을 매깁니다.
-        </p>
-      </header>
+      <ForecastHero
+        lastUpdated={lastUpdated}
+        modules={modules}
+        activeModule={search.mod ?? null}
+        onModule={setMod}
+      />
 
       <div className="mt-5">
         <ForecastKpiStrip kpis={kpis} />
@@ -123,11 +134,7 @@ function ForecastsPage() {
         </div>
       )}
 
-      <p className="mt-10 border-t border-border pt-4 text-[11px] leading-relaxed text-muted-foreground">
-        방법론: 팩터(모멘텀·공급·수요·비용·가격)를 −2~+2로 채점해 가중 합산한 종합 점수로 방향·예상
-        범위를 산출합니다. 결측 팩터는 가중치를 재분배하며, 인과 단정 없이 상관·정합·추정으로만
-        기술합니다. 적중률은 발행된 전망 전수를 분모로 합니다.
-      </p>
+      <ForecastMethodology />
     </div>
   );
 }
