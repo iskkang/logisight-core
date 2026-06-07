@@ -21,8 +21,9 @@ import {
 import { eurasiaDisruptionsActiveQueryOptions } from "@/lib/api/eurasia-disruptions";
 import { eurasiaDelaysQueryOptions } from "@/lib/api/eurasia";
 import { latestExchangeRateQueryOptions } from "@/lib/api/exchange-rates";
-import { publishedForecastsQueryOptions } from "@/lib/api/forecasts";
-import { ForecastItem, HitRateChip } from "@/components/dashboard/ForecastPanel";
+import { publishedForecastsQueryOptions, forecastSeriesQueryOptions } from "@/lib/api/forecasts";
+import { HitRateChip } from "@/components/dashboard/ForecastPanel";
+import { DashboardJudgmentCard } from "@/components/dashboard/DashboardJudgmentCard";
 
 export const Route = createFileRoute("/dashboard")({
   loader: ({ context }) => {
@@ -34,6 +35,7 @@ export const Route = createFileRoute("/dashboard")({
     context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
     context.queryClient.ensureQueryData(latestExchangeRateQueryOptions());
     context.queryClient.ensureQueryData(publishedForecastsQueryOptions());
+    context.queryClient.ensureQueryData(forecastSeriesQueryOptions());
   },
   head: () => ({
     meta: [
@@ -125,7 +127,8 @@ function DashboardPage() {
   const { data: delays } = useSuspenseQuery(eurasiaDelaysQueryOptions());
   const { data: exRate } = useSuspenseQuery(latestExchangeRateQueryOptions());
   const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
-  const openForecasts = forecasts.filter((f) => f.status === "published").slice(0, 4);
+  const { data: series } = useSuspenseQuery(forecastSeriesQueryOptions());
+  const openForecasts = forecasts.filter((f) => f.status === "published");
 
   // --- 주요 노선 현황 (MTL 선정) — code-defined, same for every visitor ---
   const keyLaneRows = useMemo(() => {
@@ -249,6 +252,7 @@ function DashboardPage() {
 
   // KPI ② 종합 판단 = 대표 전망(KCCI)의 방향 + 밴드.
   const kcciForecast = forecasts.find((f) => f.status === "published" && f.metric_ref === "KCCI");
+  const repForecast = kcciForecast ?? openForecasts[0] ?? null;
   const judgment =
     kcciForecast?.direction != null
       ? {
@@ -300,23 +304,19 @@ function DashboardPage() {
         )}
       </section>
 
-      {/* 오늘의 종합 판단 (검수된 전망) */}
-      <section>
-        <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          오늘의 종합 판단
-        </h2>
-        {openForecasts.length === 0 ? (
+      {/* 오늘의 종합 판단 — 대표 전망 1건(KCCI 우선) */}
+      {repForecast ? (
+        <DashboardJudgmentCard f={repForecast} series={series[repForecast.id]} />
+      ) : (
+        <section>
+          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            오늘의 종합 판단
+          </h2>
           <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
             발행된 전망 없음 — 검수 후 게재됩니다.
           </div>
-        ) : (
-          <div className="space-y-2">
-            {openForecasts.map((f) => (
-              <ForecastItem key={f.id} f={f} showModule />
-            ))}
-          </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* 2-col: 주요 노선 현황 + Top rising rates */}
       <div className="grid gap-4 lg:grid-cols-2">
