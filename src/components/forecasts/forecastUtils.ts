@@ -1,6 +1,6 @@
 import type { Forecast } from "@/lib/api/forecasts";
 
-// 방향 — 목업 팔레트: 상승=적·하락=녹·보합=황. 색은 항상 글리프(▲▼▬) 동반.
+// 방향 — 서구식: 상승=녹·하락=적·보합=회. 색은 항상 글리프(▲▼▬) 동반.
 export const DIR_META: Record<string, { glyph: string; label: string }> = {
   up: { glyph: "▲", label: "상승" },
   down: { glyph: "▼", label: "하락" },
