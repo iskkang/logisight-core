@@ -1,19 +1,21 @@
 import { useState } from "react";
 
 import type { Forecast, RiskNote, DataUpdate } from "@/lib/api/forecasts";
-import { FACTOR_LABEL, missingNames, routeName, mdLabel } from "./forecastUtils";
+import { FACTOR_LABEL, missingNames, displayLabelOf, mdLabel } from "./forecastUtils";
 
 // composite −2~+2 게이지(시나리오 확률 도넛 대체 — 모델은 확률 미산출이라 % 표기 금지).
+// 바늘 색 = 방향 구간(≥+0.4 상승=적 / ≤−0.4 하락=청 / 그 외 보합=중립).
 function CompositeGauge({ score }: { score: number | null | undefined }) {
   const s = score ?? 0;
   const pct = ((Math.max(-2, Math.min(2, s)) + 2) / 4) * 100; // 0~100
+  const needle = s >= 0.4 ? "bg-direction-up" : s <= -0.4 ? "bg-direction-down" : "bg-direction-flat";
   return (
     <div>
       <div className="relative h-2 rounded-full bg-muted">
         {/* 보합 구간 음영(중립) */}
         <div className="absolute inset-y-0 rounded-full bg-foreground/5" style={{ left: "40%", right: "40%" }} />
         {score != null && (
-          <div className="absolute top-1/2 h-3.5 w-1 -translate-x-1/2 -translate-y-1/2 rounded bg-status-observe" style={{ left: `${pct}%` }} />
+          <div className={`absolute top-1/2 h-3.5 w-1 -translate-x-1/2 -translate-y-1/2 rounded ${needle}`} style={{ left: `${pct}%` }} />
         )}
       </div>
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
@@ -37,13 +39,15 @@ function FactorBars({ f }: { f: Forecast }) {
       {factors.map((x) => {
         const sc = x.score as number;
         const w = (Math.min(Math.abs(sc), 2) / 2) * 50; // 한쪽 최대 50%
+        // 부호별 방향색: 양(+)=상승 적 / 음(−)=하락 청.
+        const barCls = sc >= 0 ? "bg-direction-up" : "bg-direction-down";
         return (
           <div key={x.factor} className="flex items-center gap-2 text-xs">
             <span className="w-24 shrink-0 text-muted-foreground">{FACTOR_LABEL[x.factor] ?? x.factor}</span>
             <span className="relative h-2 flex-1 rounded bg-muted">
               <span className="absolute inset-y-0 left-1/2 w-px bg-border" />
               <span
-                className="absolute inset-y-0 rounded bg-status-observe"
+                className={`absolute inset-y-0 rounded ${barCls}`}
                 style={sc >= 0 ? { left: "50%", width: `${w}%` } : { right: "50%", width: `${w}%` }}
               />
             </span>
@@ -87,7 +91,7 @@ export function ForecastAnalystPanel({ forecast, dataUpdates, riskNotes }: Props
             <>
               <div>
                 <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  팩터 스코어 · {routeName(forecast)}
+                  팩터 스코어 · {displayLabelOf(forecast)}
                 </div>
                 <FactorBars f={forecast} />
               </div>
