@@ -2,10 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { DashboardShell } from "@/components/dashboard/DashboardShell";
-import { StatusStrip, type StatusItem } from "@/components/dashboard/StatusStrip";
+import type { StatusItem } from "@/components/dashboard/StatusStrip";
+import { DashboardTicker } from "@/components/dashboard/DashboardTicker";
+import { DashboardHero } from "@/components/dashboard/DashboardHero";
+import { DashboardKpis, type DashboardKpiData } from "@/components/dashboard/DashboardKpis";
 import { FreshnessBadge } from "@/components/dashboard/FreshnessBadge";
 import { DataQualityBar } from "@/components/dashboard/DataQualityBar";
+import { DIR_META } from "@/components/forecasts/forecastUtils";
 
 import { alertCandidatesQueryOptions, type AlertCandidate } from "@/lib/api/alerts";
 import {
@@ -233,10 +236,51 @@ function DashboardPage() {
   );
 
   const today = new Date().toISOString().slice(0, 10);
+  const asOf = kcciStat?.latest_date?.slice(0, 10) ?? "—";
+
+  // 티커 — freight_indices 실데이터만(가공 라벨 금지).
+  const tickerItems = stats
+    .filter((s) => s.latest_value != null)
+    .map((s) => ({
+      code: s.index_code,
+      value: s.latest_value!.toLocaleString("en-US"),
+      changePct: s.change_pct,
+    }));
+
+  // KPI ② 종합 판단 = 대표 전망(KCCI)의 방향 + 밴드.
+  const kcciForecast = forecasts.find((f) => f.status === "published" && f.metric_ref === "KCCI");
+  const judgment =
+    kcciForecast?.direction != null
+      ? {
+          glyph: DIR_META[kcciForecast.direction].glyph,
+          label: DIR_META[kcciForecast.direction].label,
+          range: kcciForecast.expected_range_pct ?? null,
+          dir: kcciForecast.direction,
+        }
+      : null;
+  const awaiting = forecasts.filter(
+    (f) => f.status === "published" && f.horizon_date && f.horizon_date > today,
+  ).length;
+  const kpiData: DashboardKpiData = {
+    alertCount: highAlerts + medAlerts,
+    alertState: highAlerts > 0 ? "alert" : medAlerts > 0 ? "caution" : "normal",
+    judgment,
+    awaiting,
+    laneCount: KEY_LANES.length,
+    indexCount: tickerItems.length,
+  };
 
   return (
-    <DashboardShell title="종합 Control Tower" subtitle={`${today} 집계`}>
-      <StatusStrip items={statusItems} />
+    <>
+      <DashboardTicker items={tickerItems} />
+      <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 lg:px-6">
+        <DashboardHero
+          title="종합 Control Tower"
+          subtitle={`기준일 ${asOf} · ${today} 집계`}
+          chips={statusItems}
+        />
+
+        <DashboardKpis data={kpiData} />
 
       {/* Today's alerts */}
       <section>
@@ -478,6 +522,7 @@ function DashboardPage() {
         <span>전망 적중률 · published 전수 기준 (표본 제외 없음)</span>
         <HitRateChip forecasts={forecasts} />
       </div>
-    </DashboardShell>
+      </main>
+    </>
   );
 }
