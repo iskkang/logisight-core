@@ -1,6 +1,6 @@
 import type { Forecast } from "@/lib/api/forecasts";
 
-// 방향 — 한국 금융 관습: 상승=적·하락=청·보합=중립회색. 색은 항상 글리프(▲▼▬) 동반.
+// 방향 — 목업 팔레트: 상승=적·하락=녹·보합=황. 색은 항상 글리프(▲▼▬) 동반.
 export const DIR_META: Record<string, { glyph: string; label: string }> = {
   up: { glyph: "▲", label: "상승" },
   down: { glyph: "▼", label: "하락" },
