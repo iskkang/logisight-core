@@ -4,6 +4,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { ForecastKpiStrip } from "@/components/forecasts/ForecastKpiStrip";
 import { ForecastFilters } from "@/components/forecasts/ForecastFilters";
 import { ForecastCardGrid } from "@/components/forecasts/ForecastCardGrid";
+import { ForecastDetailPanel } from "@/components/forecasts/ForecastDetailPanel";
 import {
   applyFilter,
   computeKpis,
@@ -63,6 +64,8 @@ function ForecastsPage() {
 
   const filter: ForecastFilter = { cadence: search.cadence, dir: search.dir, series: search.series };
   const filtered = applyFilter(open, filter);
+  const selectedId = search.sel ?? filtered[0]?.id ?? null;
+  const selected = open.find((f) => f.id === selectedId) ?? filtered[0] ?? null;
 
   // 지표 계열별 건수(필터 전 기준)
   const seriesCounts: Record<string, number> = {};
@@ -99,9 +102,12 @@ function ForecastsPage() {
       ) : (
         <div className="mt-7 grid gap-6 lg:grid-cols-[180px_1fr]">
           <ForecastFilters value={filter} onChange={setFilter} seriesCounts={seriesCounts} />
-          <div>
-            <div className="mb-3 text-sm font-semibold text-foreground">전망 카드</div>
-            <ForecastCardGrid forecasts={filtered} series={series} selectedId={search.sel ?? filtered[0]?.id ?? null} onSelect={setSel} />
+          <div className="space-y-5">
+            <div>
+              <div className="mb-3 text-sm font-semibold text-foreground">전망 카드</div>
+              <ForecastCardGrid forecasts={filtered} series={series} selectedId={selectedId} onSelect={setSel} />
+            </div>
+            {selected && <ForecastDetailPanel f={selected} series={series[selected.id]} />}
           </div>
         </div>
       )}
