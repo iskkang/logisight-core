@@ -84,7 +84,7 @@ export function computeOceanPressureSignal(
   return {
     label: "해상 운임 압력",
     state,
-    basis: `KCCI 3주 평균 ${Math.round(avgLast).toLocaleString()} — 52주 백분위 ${pct}%, WoW ${wow >= 0 ? "+" : ""}${wow.toFixed(1)}%`,
+    basis: `KCCI 3주 평균 ${Math.round(avgLast).toLocaleString()} — 52주 백분위 ${pct}%, 직전 3주 평균比 ${wow >= 0 ? "+" : ""}${wow.toFixed(1)}%`,
     sources: ["KCCI"],
     asOf: resolvedAsOf,
     confidence: valid.length >= 12 ? "high" : "medium",

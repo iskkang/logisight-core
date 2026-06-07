@@ -21,11 +21,13 @@ export const getAlertCandidates = createServerFn({ method: "GET" }).handler(
     const prevDay = new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10);
 
     // 1. KCCI history → ocean pressure signal
+    // 최신 60주를 가져온다(내림차순+limit). 과거 오름차순+limit은 가장 오래된 60행을
+    // 집어 기준일·3주평균·변화율이 전부 stale(2024년)이 되는 버그였음. 신호 내부에서 다시 오름차순 정렬.
     const { data: kcciData } = await supabasePublicServer
       .from("freight_indices")
       .select("index_code,value,change_pct,week_date")
       .eq("index_code", "KCCI")
-      .order("week_date", { ascending: true })
+      .order("week_date", { ascending: false })
       .limit(60);
     const kcciSeries = (kcciData ?? []) as FreightIndexPoint[];
     const oceanSig = computeOceanPressureSignal(kcciSeries);
