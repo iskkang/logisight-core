@@ -1,8 +1,72 @@
 import { Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 
 import { NewsletterForm } from "./NewsletterForm";
 
-export function Footer() {
+export function Footer({ compact = false }: { compact?: boolean }) {
+  if (compact) {
+    return (
+      <footer className="mt-0 bg-[#102036] text-white">
+        <div className="mx-auto max-w-[1540px] px-4 py-7 lg:px-12">
+          <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1.8fr]">
+            <div>
+              <Link to="/" className="inline-block text-xl font-bold tracking-normal">
+                <span className="text-white">Logi</span>
+                <span style={{ color: "var(--color-cyan)" }}>sight</span>
+              </Link>
+              <p className="mt-2 text-xs leading-6 text-white/68">
+                MTL Shipping Agency가 운영하는 해상·무역·물류 인텔리전스 플랫폼.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <a href="https://mtlship.com" target="_blank" rel="noopener noreferrer" className="rounded-md border border-white/18 px-3 py-1 text-xs font-semibold text-white/80 hover:text-white">
+                  회사 소개
+                </a>
+                <a href="#newsletter" className="rounded-md border border-white/18 px-3 py-1 text-xs font-semibold text-white/80 hover:text-white">
+                  이용 약관
+                </a>
+              </div>
+            </div>
+
+            <FooterCol title="서비스" compact>
+              <li><Link to="/rates" className={linkCls}>운임 대시보드</Link></li>
+              <li><Link to="/eurasia" className={linkCls}>유라시아 모니터링</Link></li>
+              <li><Link to="/industries" className={linkCls}>산업별 리포트</Link></li>
+            </FooterCol>
+
+            <FooterCol title="뉴스" compact>
+              {(["해상 뉴스", "항공 뉴스", "경제·정책", "물류 브리핑"] as const).map((label) => (
+                <li key={label}>
+                  <Link to="/news" className={linkCls}>{label}</Link>
+                </li>
+              ))}
+            </FooterCol>
+
+            <FooterCol title="MTL" compact>
+              <li><a href="https://mtlship.com" target="_blank" rel="noopener noreferrer" className={linkCls}>회사 소개</a></li>
+              <li><a href="#newsletter" className={linkCls}>뉴스레터 구독</a></li>
+              <li><a href="mailto:sales@mtlship.com" className={linkCls}>영업 문의</a></li>
+            </FooterCol>
+
+            <div id="newsletter" className="rounded-lg border border-white/12 bg-white/[0.05] p-4">
+              <h3 className="text-sm font-black text-white">매주 한 번의 물류 브리핑</h3>
+              <p className="mt-1 text-xs leading-5 text-white/62">
+                운임, 시황, 정책, 대외 동향을 한눈에 정리해 드립니다.
+              </p>
+              <div className="mt-3">
+                <NewsletterForm />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-2 border-t border-white/10 pt-4 text-[11px] text-white/45 sm:flex-row sm:items-center sm:justify-between">
+            <p>© 2026 MTL Shipping Agency · 상호명(주)엠티엘 · 공공데이터 기반</p>
+            <p>logisight.mtlship.com</p>
+          </div>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer
       className="mt-20 text-white"
@@ -122,16 +186,18 @@ export function Footer() {
 function FooterCol({
   title,
   children,
+  compact = false,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
+  compact?: boolean;
 }) {
   return (
     <div>
-      <h4 className="text-sm font-semibold uppercase tracking-wider text-white/90">
+      <h4 className={`${compact ? "text-xs font-black" : "text-sm font-semibold uppercase tracking-wider"} text-white/90`}>
         {title}
       </h4>
-      <ul className="mt-4 space-y-2 text-sm text-white/70">{children}</ul>
+      <ul className={`${compact ? "mt-3 space-y-1.5 text-xs" : "mt-4 space-y-2 text-sm"} text-white/70`}>{children}</ul>
     </div>
   );
 }

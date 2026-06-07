@@ -178,7 +178,7 @@ function SiteShell({ children }: { children: React.ReactNode }) {
       <Navigation />
       {!hideGlobalTicker && <IndexBar />}
       <main className="flex-1">{children}</main>
-      <Footer />
+      <Footer compact={hideGlobalTicker} />
     </div>
   );
 }

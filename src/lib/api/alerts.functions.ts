@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import ws from "ws";
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import { computeOceanPressureSignal, type FreightIndexPoint } from "@/server/signals";
 import type { AlertCandidate } from "@/server/alerts";
@@ -118,7 +119,10 @@ export const getAlertCandidates = createServerFn({ method: "GET" }).handler(
     const serviceKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
     if (serviceKey && candidates.length > 0) {
       const { createClient } = await import("@supabase/supabase-js");
-      const svc = createClient(process.env["SUPABASE_URL"]!, serviceKey);
+      const svc = createClient(process.env["SUPABASE_URL"]!, serviceKey, {
+        auth: { persistSession: false },
+        realtime: { transport: ws },
+      });
       void svc.from("alert_snapshots").upsert(
         candidates.map((c) => {
           const parts = c.key.split(":");

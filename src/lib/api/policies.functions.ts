@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import ws from "ws";
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { PolicyRow } from "./policies";
 
@@ -42,6 +43,10 @@ export const upsertPolicy = createServerFn({ method: "POST" })
     const supabase = createClient(
       process.env["SUPABASE_URL"]!,
       process.env["SUPABASE_SERVICE_ROLE_KEY"]!,
+      {
+        auth: { persistSession: false },
+        realtime: { transport: ws },
+      },
     );
     const { error } = await supabase.from("policies").upsert(data);
     if (error) throw new Error(error.message);

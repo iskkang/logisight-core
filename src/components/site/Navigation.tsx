@@ -32,7 +32,7 @@ export function Navigation() {
       className="sticky top-0 z-50 border-b border-white/10"
       style={{ background: "var(--color-navy-900)" }}
     >
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 lg:px-6">
+      <div className="mx-auto flex h-14 max-w-[1540px] items-center gap-4 px-4 lg:px-12">
         <Logo className="text-lg lg:text-xl" />
 
         <nav className="hidden flex-1 items-center gap-0.5 lg:flex">
@@ -77,7 +77,7 @@ export function Navigation() {
 
         <button
           type="button"
-          className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-md text-white lg:hidden"
+          className="absolute right-4 top-2.5 inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/30 bg-white/15 text-white lg:hidden"
           onClick={() => setOpen((v) => !v)}
           aria-label="메뉴 열기"
         >

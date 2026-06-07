@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import ws from "ws";
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { Forecast } from "./forecasts";
 
@@ -12,7 +13,10 @@ async function serviceClient() {
   return createClient(
     process.env["SUPABASE_URL"]!,
     process.env["SUPABASE_SERVICE_ROLE_KEY"]!,
-    { auth: { persistSession: false } },
+    {
+      auth: { persistSession: false },
+      realtime: { transport: ws },
+    },
   );
 }
 
