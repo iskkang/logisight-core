@@ -86,6 +86,10 @@
   --color-status-observe: var(--status-observe);
   --color-status-caution: var(--status-caution);
   --color-status-alert: var(--status-alert);
+  /* Direction tokens (한국 금융 관습: 상승=적·하락=청·보합=중립). 글리프 동반 필수. */
+  --color-direction-up: var(--direction-up);
+  --color-direction-down: var(--direction-down);
+  --color-direction-flat: var(--direction-flat);
 
   /* Demand heatmap tokens */
   --color-demand-0: var(--demand-0);
@@ -135,6 +139,10 @@
   --status-observe: oklch(0.58 0.13 248);   /* blue */
   --status-caution: oklch(0.78 0.16 75);    /* amber */
   --status-alert: oklch(0.703 0.18 22);     /* red */
+  /* Direction (방향) — 위험 적색과 hue 분리(up은 약간 따뜻한 적, down은 청, flat 중립회색) */
+  --direction-up: oklch(0.6 0.2 28);        /* 상승 = 적 */
+  --direction-down: oklch(0.58 0.13 248);   /* 하락 = 청 */
+  --direction-flat: oklch(0.55 0.02 250);   /* 보합 = 중립 회색 */
 
   /* Demand heatmap */
   --demand-0: oklch(0.96 0.007 247);        /* neutral */
@@ -239,6 +247,9 @@
   --status-observe: oklch(0.68 0.14 248);
   --status-caution: oklch(0.82 0.16 75);
   --status-alert: oklch(0.75 0.18 22);
+  --direction-up: oklch(0.68 0.19 28);
+  --direction-down: oklch(0.68 0.14 248);
+  --direction-flat: oklch(0.7 0.02 250);
 
   /* Demand heatmap (dark) */
   --demand-0: oklch(0.279 0.041 260.031);
@@ -267,6 +278,9 @@
   --status-observe: oklch(0.58 0.13 248);
   --status-caution: oklch(0.78 0.16 75);
   --status-alert: oklch(0.703 0.18 22);
+  --direction-up: oklch(0.6 0.2 28);
+  --direction-down: oklch(0.58 0.13 248);
+  --direction-flat: oklch(0.55 0.02 250);
 
   --demand-0: oklch(0.96 0.007 247);
   --demand-1: oklch(0.93 0.06 230);

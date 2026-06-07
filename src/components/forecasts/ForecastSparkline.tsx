@@ -8,13 +8,14 @@ type Props = {
   rangeLowPct: number | null | undefined;
   rangeHighPct: number | null | undefined;
   mini?: boolean; // 카드용: 축·라벨·값·구분선 생략, 라인+콘만
+  colorClass?: string; // 방향 토큰(text-direction-up/down/flat). 기본 청색.
   className?: string;
 };
 
 const ms = (d: string) => Date.parse(d.length <= 7 ? `${d}-01` : d);
 const monthLabel = (d: string) => `${Number(d.slice(5, 7))}월`;
 
-export function ForecastSparkline({ series, valueAtPublish, rangeLowPct, rangeHighPct, mini, className }: Props) {
+export function ForecastSparkline({ series, valueAtPublish, rangeLowPct, rangeHighPct, mini, colorClass, className }: Props) {
   const points = series?.points ?? [];
   const actuals = series?.actuals ?? [];
   const horizon = series?.horizon_date ?? null;
@@ -69,17 +70,17 @@ export function ForecastSparkline({ series, valueAtPublish, rangeLowPct, rangeHi
   const ticks = points.filter((_, i) => i % labelEvery === 0);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className={`w-full text-status-observe ${className ?? ""}`} role="img" aria-label="운임 시계열과 예측 범위" preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${W} ${H}`} className={`w-full ${colorClass ?? "text-status-observe"} ${className ?? ""}`} role="img" aria-label="운임 시계열과 예측 범위" preserveAspectRatio="none">
       {conePath && <path d={conePath} fill="currentColor" opacity={0.16} />}
       {hasCone && pubY != null && hi != null && lo != null && (
         <>
           <line x1={pubX} y1={pubY} x2={hx} y2={toY(hi)} stroke="currentColor" strokeWidth={1} strokeDasharray="3 3" opacity={0.5} />
           <line x1={pubX} y1={pubY} x2={hx} y2={toY(lo)} stroke="currentColor" strokeWidth={1} strokeDasharray="3 3" opacity={0.5} />
           {!mini && rangeHighPct != null && (
-            <text x={hx + 6} y={toY(hi) + 4} className="fill-status-observe text-[11px]">{rangeHighPct > 0 ? "+" : ""}{rangeHighPct}%</text>
+            <text x={hx + 6} y={toY(hi) + 4} className="fill-current text-[11px]">{rangeHighPct > 0 ? "+" : ""}{rangeHighPct}%</text>
           )}
           {!mini && rangeLowPct != null && (
-            <text x={hx + 6} y={toY(lo) + 4} className="fill-status-observe text-[11px]">{rangeLowPct > 0 ? "+" : ""}{rangeLowPct}%</text>
+            <text x={hx + 6} y={toY(lo) + 4} className="fill-current text-[11px]">{rangeLowPct > 0 ? "+" : ""}{rangeLowPct}%</text>
           )}
         </>
       )}
@@ -107,7 +108,7 @@ export function ForecastSparkline({ series, valueAtPublish, rangeLowPct, rangeHi
 
       {/* 발행 후 실측 점 — 청색 링(이력 점과 구분) */}
       {actuals.map((p) => (
-        <circle key={p.date} cx={toX(ms(p.date))} cy={toY(p.value)} r={mini ? 2.5 : 3.5} className="fill-card stroke-status-observe" strokeWidth={2} />
+        <circle key={p.date} cx={toX(ms(p.date))} cy={toY(p.value)} r={mini ? 2.5 : 3.5} className="fill-card stroke-current" strokeWidth={2} />
       ))}
 
       {!mini &&

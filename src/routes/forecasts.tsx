@@ -13,6 +13,7 @@ import {
   applyFilter,
   computeKpis,
   seriesClassOf,
+  displayOrderOf,
   type ForecastFilter,
   type SeriesClass,
 } from "@/components/forecasts/forecastUtils";
@@ -81,7 +82,8 @@ function ForecastsPage() {
 
   const open = search.mod ? allOpen.filter((f) => f.module === search.mod) : allOpen;
   const filter: ForecastFilter = { cadence: search.cadence, dir: search.dir, series: search.series };
-  const filtered = applyFilter(open, filter);
+  // 기본 정렬: displayOrder(중요도 순) — 보드·카드·상세 공통 단일 소스.
+  const filtered = applyFilter(open, filter).sort((a, b) => displayOrderOf(a) - displayOrderOf(b));
   const selectedId = search.sel ?? filtered[0]?.id ?? null;
   const selected = open.find((f) => f.id === selectedId) ?? filtered[0] ?? null;
 

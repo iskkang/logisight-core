@@ -1,11 +1,34 @@
 import type { Forecast } from "@/lib/api/forecasts";
 
-// 방향 — 글리프만(중립). 적·녹 금지(위험 상태 전용 + 한국 증시 빨강=상승 관습 충돌).
+// 방향 — 한국 금융 관습: 상승=적·하락=청·보합=중립회색. 색은 항상 글리프(▲▼▬) 동반.
 export const DIR_META: Record<string, { glyph: string; label: string }> = {
   up: { glyph: "▲", label: "상승" },
   down: { glyph: "▼", label: "하락" },
   flat: { glyph: "▬", label: "보합권" },
 };
+// 방향 토큰 클래스(리터럴 — Tailwind JIT 스캔 대상). text=글리프/수치, badge=배지, spark=스파크라인 currentColor.
+export const DIR_CLS: Record<string, { text: string; badge: string; spark: string }> = {
+  up: { text: "text-direction-up", badge: "bg-direction-up/10 text-direction-up", spark: "text-direction-up" },
+  down: { text: "text-direction-down", badge: "bg-direction-down/10 text-direction-down", spark: "text-direction-down" },
+  flat: { text: "text-direction-flat", badge: "bg-direction-flat/10 text-direction-flat", spark: "text-direction-flat" },
+};
+export const dirCls = (dir: string | null | undefined) => DIR_CLS[dir ?? "flat"] ?? DIR_CLS.flat;
+
+// 표시 라벨·순서 단일 소스(보드·카드·상세·admin 공통). metric_ref 불변 — 표시 레이어만.
+// baseLabel 있는 권역 라벨 카드만 "기준 지표:" 캡션 의무(권역 일반화 근거 공개).
+export type TargetMeta = { metric_ref: string; displayLabel: string; displayOrder: number; baseLabel?: string };
+export const TARGET_META: TargetMeta[] = [
+  { metric_ref: "WCI", displayLabel: "WCI", displayOrder: 1 },
+  { metric_ref: "SCFI", displayLabel: "SCFI", displayOrder: 2 },
+  { metric_ref: "KCCI", displayLabel: "KCCI", displayOrder: 3 },
+  { metric_ref: "kita_sea_rates:부산-뉴욕", displayLabel: "부산 → 미동부", displayOrder: 4, baseLabel: "KITA 부산–뉴욕 (USD/FEU)" },
+  { metric_ref: "kita_sea_rates:부산-로테르담", displayLabel: "부산 → 유럽", displayOrder: 5, baseLabel: "KITA 부산–로테르담 (USD/FEU)" },
+  { metric_ref: "WCI_SHA_RTM", displayLabel: "상해 → 유럽", displayOrder: 6, baseLabel: "Drewry WCI 상하이–로테르담" },
+  { metric_ref: "kita_sea_rates:부산-로스앤젤레스", displayLabel: "부산 → 미서부", displayOrder: 7, baseLabel: "KITA 부산–로스앤젤레스 (USD/FEU)" },
+  { metric_ref: "WCI_SHA_LAX", displayLabel: "상해 → 미서부", displayOrder: 8, baseLabel: "Drewry WCI 상하이–로스앤젤레스" },
+  { metric_ref: "kita_sea_rates:부산-함부르크", displayLabel: "부산 → 함부르크", displayOrder: 9, baseLabel: "KITA 부산–함부르크 (USD/FEU)" },
+];
+const META_BY_REF = new Map(TARGET_META.map((m) => [m.metric_ref, m]));
 
 export const FACTOR_LABEL: Record<string, string> = {
   momentum: "모멘텀",
@@ -48,6 +71,19 @@ export function routeName(f: Forecast): string {
     return i >= 0 ? `${lane.slice(0, i)} → ${lane.slice(i + 1)}` : lane;
   }
   return ref || f.module;
+}
+
+// 표시 라벨(단일 소스). 미등록 metric_ref는 routeName 폴백.
+export function displayLabelOf(f: Forecast): string {
+  return META_BY_REF.get(f.metric_ref ?? "")?.displayLabel ?? routeName(f);
+}
+export function displayOrderOf(f: Forecast): number {
+  return META_BY_REF.get(f.metric_ref ?? "")?.displayOrder ?? 999;
+}
+// 권역 라벨 카드 기준지표 캡션(지수 자체 WCI/SCFI/KCCI는 라벨=지표라 null).
+export function baseIndexCaption(f: Forecast): string | null {
+  const b = META_BY_REF.get(f.metric_ref ?? "")?.baseLabel;
+  return b ? `기준 지표: ${b}` : null;
 }
 
 // 필터 적용(URL 쿼리 상태 → 카드 필터). 순수 함수.

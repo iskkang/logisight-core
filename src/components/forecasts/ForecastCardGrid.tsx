@@ -2,7 +2,9 @@ import type { Forecast, ForecastSeries } from "@/lib/api/forecasts";
 import { ForecastSparkline } from "./ForecastSparkline";
 import {
   DIR_META,
-  routeName,
+  dirCls,
+  displayLabelOf,
+  baseIndexCaption,
   sentences,
   evidenceCount,
   nearestWatch,
@@ -28,9 +30,11 @@ export function ForecastCardGrid({ forecasts, series, selectedId, onSelect }: Pr
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {forecasts.map((f) => {
         const d = f.direction ? DIR_META[f.direction] : null;
+        const dc = dirCls(f.direction);
         const { present, total } = evidenceCount(f);
         const watch = nearestWatch(f);
         const lead = sentences(f.statement || "")[0] ?? "";
+        const caption = baseIndexCaption(f);
         const selected = f.id === selectedId;
         return (
           <button
@@ -42,9 +46,9 @@ export function ForecastCardGrid({ forecasts, series, selectedId, onSelect }: Pr
             }`}
           >
             <div className="flex items-start justify-between gap-2">
-              <span className="truncate text-sm font-semibold text-heading">{routeName(f)}</span>
+              <span className="truncate text-sm font-semibold text-heading">{displayLabelOf(f)}</span>
               {d && (
-                <span className="shrink-0 rounded bg-status-observe/10 px-1.5 py-0.5 text-xs font-medium text-status-observe">
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${dc.badge}`}>
                   {d.glyph} {f.direction === "flat" ? "보합권" : ""}
                   {f.expected_range_pct ? ` ${f.expected_range_pct}%` : ""}
                 </span>
@@ -55,7 +59,7 @@ export function ForecastCardGrid({ forecasts, series, selectedId, onSelect }: Pr
               근거 {present}/{total}
               <span className="flex gap-0.5" aria-hidden>
                 {Array.from({ length: total }).map((_, i) => (
-                  <span key={i} className={`h-1.5 w-1.5 rounded-full ${i < present ? "bg-status-observe" : "bg-muted-foreground/30"}`} />
+                  <span key={i} className={`h-1.5 w-1.5 rounded-full ${i < present ? "bg-foreground/60" : "bg-muted-foreground/30"}`} />
                 ))}
               </span>
             </div>
@@ -66,6 +70,7 @@ export function ForecastCardGrid({ forecasts, series, selectedId, onSelect }: Pr
                 valueAtPublish={f.metric_value_at_publish}
                 rangeLowPct={f.range_low_pct}
                 rangeHighPct={f.range_high_pct}
+                colorClass={dc.spark}
                 mini
               />
             </div>
@@ -76,6 +81,7 @@ export function ForecastCardGrid({ forecasts, series, selectedId, onSelect }: Pr
               </div>
             )}
             {lead && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{lead}</p>}
+            {caption && <p className="mt-1.5 text-[10px] text-muted-foreground/70">{caption}</p>}
           </button>
         );
       })}
