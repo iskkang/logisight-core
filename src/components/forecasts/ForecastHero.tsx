@@ -28,8 +28,8 @@ export function ForecastHero({
     >
       {/* 배경 선박 이미지(public/forecast-hero.jpg) — 부재 시 아래 그라데이션이 폴백 */}
       <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url(/forecast-hero.png)" }}
+        className="absolute inset-0 bg-cover"
+        style={{ backgroundImage: "url(/forecast-hero.png)", backgroundPosition: "75% 30%" }}
         aria-hidden
       />
       {/* 좌→우 어두운 오버레이: 좌측 텍스트 가독성, 우측 이미지 노출(선박이 우측) */}
