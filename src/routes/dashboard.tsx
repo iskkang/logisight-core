@@ -50,7 +50,18 @@ import {
   type ForecastSeries,
 } from "@/lib/api/forecasts";
 
+const JUDGMENT_TAB_CODES = ["KCCI", "WCI", "SCFI"] as const;
+type JudgmentTabCode = (typeof JUDGMENT_TAB_CODES)[number];
+type DashboardSearch = { judgment?: JudgmentTabCode };
+
+function parseJudgmentMetric(value: unknown): JudgmentTabCode | undefined {
+  return JUDGMENT_TAB_CODES.includes(value as JudgmentTabCode) ? (value as JudgmentTabCode) : undefined;
+}
+
 export const Route = createFileRoute("/dashboard")({
+  validateSearch: (s: Record<string, unknown>): DashboardSearch => ({
+    judgment: parseJudgmentMetric(s.judgment),
+  }),
   loader: ({ context }) => {
     context.queryClient.ensureQueryData(alertCandidatesQueryOptions());
     context.queryClient.ensureQueryData(indexStatsQueryOptions());
@@ -122,7 +133,6 @@ const STATUS_LABEL: Record<AlertCandidate["status"], string> = {
 };
 
 const INDEX_ORDER = ["SCFI", "KCCI", "CCFI", "FBX", "WCI", "BDI"];
-const JUDGMENT_SUMMARY_ORDER = ["WCI", "SCFI", "KCCI", "CCFI", "FBX", "BDI"];
 
 // MTL 고정 모니터링 노선. 값은 아래 실제 KITA/유라시아 데이터로만 채운다.
 const KEY_LANES: KeyLane[] = [
@@ -315,26 +325,6 @@ function orderedStats(stats: IndexStats[]): IndexStats[] {
   return [...stats]
     .filter((s) => s.latest_value != null)
     .sort((a, b) => (rank.get(a.index_code) ?? 99) - (rank.get(b.index_code) ?? 99));
-}
-
-function judgmentSummaryStats(stats: IndexStats[], forecast: Forecast | null): IndexStats[] {
-  const preferred = [forecast?.metric_ref, ...JUDGMENT_SUMMARY_ORDER].filter((x): x is string => Boolean(x));
-  const seen = new Set<string>();
-  const rows: IndexStats[] = [];
-  for (const code of preferred) {
-    if (seen.has(code)) continue;
-    const row = statByCode(stats, code);
-    if (row?.latest_value != null) {
-      seen.add(code);
-      rows.push(row);
-    }
-    if (rows.length >= 4) return rows;
-  }
-  for (const row of orderedStats(stats)) {
-    if (!seen.has(row.index_code)) rows.push(row);
-    if (rows.length >= 4) break;
-  }
-  return rows;
 }
 
 function HeroChip({ label, value, tone = "blue" }: { label: string; value: string; tone?: Tone }) {
@@ -655,26 +645,40 @@ function DataBasisCard({
 }
 
 function ForecastJudgmentPanel({
-  forecast,
-  series,
-  stats,
+  forecasts,
+  seriesMap,
+  selectedMetric,
 }: {
-  forecast: Forecast | null;
-  series: ForecastSeries | undefined;
-  stats: IndexStats[];
+  forecasts: Forecast[];
+  seriesMap: Record<string, ForecastSeries>;
+  selectedMetric?: JudgmentTabCode;
 }) {
+  const forecastByMetric = useMemo(() => {
+    const rows = new Map<JudgmentTabCode, Forecast>();
+    for (const forecast of forecasts.filter((f) => f.status === "published")) {
+      const metric = forecast.metric_ref as JudgmentTabCode | null;
+      if (metric && JUDGMENT_TAB_CODES.includes(metric) && !rows.has(metric)) {
+        rows.set(metric, forecast);
+      }
+    }
+    return rows;
+  }, [forecasts]);
+  const fallbackMetric = JUDGMENT_TAB_CODES.find((code) => forecastByMetric.has(code));
+  const activeMetric = selectedMetric && forecastByMetric.has(selectedMetric) ? selectedMetric : fallbackMetric;
+  const forecast = activeMetric ? forecastByMetric.get(activeMetric) ?? null : null;
+  const series = forecast ? seriesMap[forecast.id] : undefined;
+
   if (!forecast) {
     return (
       <Panel>
         <SectionTitle>오늘의 종합 판단</SectionTitle>
-        <p className="text-sm font-semibold text-slate-500">발행된 전망이 없습니다. 검수 후 공개됩니다.</p>
+        <p className="text-sm font-semibold text-slate-500">KCCI, WCI, SCFI 중 발행된 전망이 없습니다. 검수 후 공개됩니다.</p>
       </Panel>
     );
   }
 
   const direction = forecast.direction ? DIR_META[forecast.direction] : null;
   const directionClasses = dirCls(forecast.direction);
-  const summaryRows = judgmentSummaryStats(stats, forecast);
   const leadSentences = sentences(forecast.statement);
   const lead = leadSentences[0] ?? forecast.statement;
   const transition = leadSentences.length > 1 ? leadSentences[leadSentences.length - 1] : "";
@@ -711,8 +715,40 @@ function ForecastJudgmentPanel({
         </div>
       </div>
 
-      <div className="grid gap-3 2xl:grid-cols-[minmax(0,1.35fr)_210px_210px]">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.45fr)_280px]">
         <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap items-center gap-1.5" role="tablist" aria-label="전망 지표 선택">
+            {JUDGMENT_TAB_CODES.map((code) => {
+              const hasForecast = forecastByMetric.has(code);
+              const active = code === activeMetric;
+              const className = [
+                "inline-flex min-h-8 items-center rounded-md border px-3 py-1.5 text-xs font-black transition",
+                active
+                  ? "border-blue-400 bg-blue-50 text-blue-700 ring-1 ring-blue-300"
+                  : "border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-200 hover:bg-white hover:text-blue-700",
+                hasForecast ? "" : "cursor-not-allowed opacity-45",
+              ].join(" ");
+              if (!hasForecast) {
+                return (
+                  <span key={code} role="tab" aria-selected={false} aria-disabled="true" className={className}>
+                    {code}
+                  </span>
+                );
+              }
+              return (
+                <Link
+                  key={code}
+                  to="/dashboard"
+                  search={{ judgment: code }}
+                  role="tab"
+                  aria-selected={active}
+                  className={className}
+                >
+                  {code}
+                </Link>
+              );
+            })}
+          </div>
           <div className="mb-1 text-xs font-black text-slate-700">
             {displayLabelOf(forecast)} 추이
             {baseIndexCaption(forecast) && <span className="ml-1 font-semibold text-slate-400">({baseIndexCaption(forecast)})</span>}
@@ -726,20 +762,6 @@ function ForecastJudgmentPanel({
               colorClass={directionClasses.spark}
               className="h-[172px]"
             />
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-lg border border-slate-100 bg-slate-50/80">
-          <h3 className="border-b border-slate-100 px-3 py-2 text-xs font-black text-slate-700">핵심 요약</h3>
-          <div className="divide-y divide-slate-100">
-            {summaryRows.map((row) => (
-              <div key={row.index_code} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-3 py-2 text-xs font-extrabold">
-                <span className="text-slate-500">{row.index_code}</span>
-                <span className="tabular-nums text-slate-900">{formatNumber(row.latest_value, row.index_code === "SCFI" || row.index_code === "CCFI" ? 2 : 0)}</span>
-                <span className={`tabular-nums ${dirTextClass(row.change_pct)}`}>{pctText(row.change_pct)}</span>
-              </div>
-            ))}
-            {summaryRows.length === 0 && <p className="px-3 py-3 text-xs font-semibold text-slate-500">지수 데이터 수집 중</p>}
           </div>
         </div>
 
@@ -1015,6 +1037,7 @@ function EurasiaPanel({
 }
 
 function DashboardPage() {
+  const search = Route.useSearch();
   const { data: alerts } = useSuspenseQuery(alertCandidatesQueryOptions());
   const { data: stats } = useSuspenseQuery(indexStatsQueryOptions());
   const { data: seaRates } = useSuspenseQuery(kitaSeaRatesQueryOptions());
@@ -1082,9 +1105,9 @@ function DashboardPage() {
 
           <section className="min-w-0 space-y-3">
             <ForecastJudgmentPanel
-              forecast={repForecast}
-              series={repForecast ? series[repForecast.id] : undefined}
-              stats={stats}
+              forecasts={openForecasts}
+              seriesMap={series}
+              selectedMetric={search.judgment}
             />
             <ForecastMiniCards forecasts={forecasts} series={series} />
             <LaneGrid rows={laneRows} />

@@ -1,6 +1,48 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { getTradeProvisional, getTradeByCountry, getTradeByItem } from "./trade.functions";
+import {
+  getTradeProvisional,
+  getTradeByCountry,
+  getTradeByItem,
+  getTradeStatisticsBundle,
+} from "./trade.functions";
+
+export type TradeStatType =
+  | "country"
+  | "provisional_exp"
+  | "provisional_imp"
+  | "continent"
+  | "item"
+  | "item_country"
+  | "newnature";
+
+export type TradeStatRow = {
+  id?: string;
+  period: string;
+  priod_dt: string | null;
+  direction: string | null;
+  stat_type: TradeStatType | string;
+  hs_code: string | null;
+  hs_name: string | null;
+  country_code: string | null;
+  country_name: string | null;
+  export_usd: number | null;
+  export_weight: number | null;
+  import_usd: number | null;
+  import_weight: number | null;
+  trade_balance: number | null;
+  data_source: string | null;
+  fetched_at?: string | null;
+};
+
+export type TradeStatisticsBundle = {
+  country: TradeStatRow[];
+  provisional: TradeStatRow[];
+  continent: TradeStatRow[];
+  item: TradeStatRow[];
+  itemCountry: TradeStatRow[];
+  newnature: TradeStatRow[];
+};
 
 export type TradeProvisionalRow = {
   period: string; // YYYYMM
@@ -78,6 +120,13 @@ export const tradeByItemQueryOptions = () =>
     queryKey: ["trade_statistics", "item"],
     queryFn: () => getTradeByItem(),
     staleTime: 60 * 60 * 1000,
+  });
+
+export const tradeStatisticsBundleQueryOptions = () =>
+  queryOptions({
+    queryKey: ["trade_statistics", "bundle"],
+    queryFn: () => getTradeStatisticsBundle(),
+    staleTime: 30 * 60 * 1000,
   });
 
 export function pctChange(curr: number | null, prev: number | null): number | null {
