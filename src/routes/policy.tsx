@@ -428,7 +428,7 @@ function MacroIndexGrid({ macro }: { macro: MacroRiskRow[] }) {
                   {fmtNum(m.value, 2)}
                 </p>
               </div>
-              {m.spark.length > 1 && (
+              {(m.spark?.length ?? 0) > 1 && (
                 <Sparkline
                   values={m.spark}
                   color={isNeg ? "var(--color-status-alert)" : "var(--color-status-normal)"}
