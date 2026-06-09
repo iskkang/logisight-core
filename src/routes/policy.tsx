@@ -503,7 +503,7 @@ function HormuzPanel({ hormuz }: { hormuz: HormuzRisk }) {
               Shipfinder 뉴스 데이터를 가져오지 못했습니다.
             </p>
           ) : (
-            hormuz.news.map((news) => (
+            hormuz.news.slice(0, 3).map((news) => (
               <a
                 key={`${news.url}-${news.title}`}
                 href={news.url ?? "#"}
