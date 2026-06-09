@@ -33,9 +33,11 @@ import {
   computeMoM,
   formatNumber,
   indexStatsQueryOptions,
+  kitaAirRatesQueryOptions,
   kitaSeaRatesQueryOptions,
   latestByRoute,
   type IndexStats,
+  type KitaAirRateRow,
   type KitaSeaRateRow,
 } from "@/lib/api/rates";
 import { eurasiaDisruptionsActiveQueryOptions } from "@/lib/api/eurasia-disruptions";
@@ -66,6 +68,7 @@ export const Route = createFileRoute("/dashboard")({
     context.queryClient.ensureQueryData(alertCandidatesQueryOptions());
     context.queryClient.ensureQueryData(indexStatsQueryOptions());
     context.queryClient.ensureQueryData(kitaSeaRatesQueryOptions());
+    context.queryClient.ensureQueryData(kitaAirRatesQueryOptions());
     context.queryClient.ensureQueryData(eurasiaDisruptionsActiveQueryOptions());
     context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
     context.queryClient.ensureQueryData(latestExchangeRateQueryOptions());
@@ -920,6 +923,91 @@ function LaneGrid({ rows }: { rows: KeyLaneRow[] }) {
   );
 }
 
+type AirLaneRow = {
+  origin: string;
+  dest: string;
+  region: string | null;
+  value: string | null;
+  mom: number | null;
+  values: number[];
+  asOf: string | null;
+};
+
+function buildAirLaneRows(airRates: KitaAirRateRow[]): AirLaneRow[] {
+  const incheon = airRates.filter(
+    (r) => r.origin.includes("인천") || r.origin.toUpperCase().includes("ICN"),
+  );
+  return latestByRoute(incheon)
+    .map((row) => {
+      const tier = row.kg300 != null ? "kg300" : row.kg100 != null ? "kg100" : "kg500";
+      const series = incheon
+        .filter((x) => x.origin === row.origin && x.dest === row.dest)
+        .sort((a, b) => a.year_mon.localeCompare(b.year_mon));
+      const values = series.map((x) => x[tier]).filter((v): v is number => v != null);
+      const rateVal = row[tier];
+      return {
+        origin: row.origin,
+        dest: row.dest,
+        region: row.region,
+        value: rateVal != null ? `₩${rateVal.toLocaleString("ko-KR")}/kg` : null,
+        mom: computeMoM(series.map((x) => ({ year_mon: x.year_mon, value: x[tier] ?? null }))),
+        values,
+        asOf: row.year_mon,
+      };
+    })
+    .filter((r) => r.value != null)
+    .slice(0, 6);
+}
+
+function AirLaneCard({ row }: { row: AirLaneRow }) {
+  return (
+    <article className="flex min-h-[132px] flex-col rounded-lg border border-[#cfdceb] bg-white p-3">
+      <div className="flex items-center justify-between gap-2 text-xs font-black text-slate-700">
+        <span className="min-w-0 truncate">
+          항공 · {row.origin} → {row.dest}
+        </span>
+        <Globe2 className="h-3.5 w-3.5 text-slate-400" />
+      </div>
+      {row.region && (
+        <span className="mt-0.5 text-[10px] font-semibold text-slate-400">{row.region}</span>
+      )}
+      <div className="mt-2 text-[22px] font-black leading-tight tracking-normal text-slate-900">
+        {row.value ?? "수집 중"}
+      </div>
+      <div className="mt-auto grid grid-cols-[auto_auto_64px] items-end gap-2 text-[11px] font-bold text-slate-500">
+        <span className={`whitespace-nowrap ${dirTextClass(row.mom)}`}>{pctText(row.mom)}</span>
+        <span className="whitespace-nowrap">{row.asOf ? yyyymmLabel(row.asOf) : "—"}</span>
+        <span className="w-16 justify-self-end text-sky-500">
+          <Sparkline values={row.values.slice(-8)} width={64} height={22} color="currentColor" />
+        </span>
+      </div>
+    </article>
+  );
+}
+
+function AirLaneGrid({ rows }: { rows: AirLaneRow[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <Panel>
+      <SectionTitle
+        badge={<ToneBadge tone="blue">인천발</ToneBadge>}
+        link={
+          <Link to="/rates" className="text-[11px] font-black text-blue-700 hover:underline">
+            전체 보기
+          </Link>
+        }
+      >
+        항공 노선 현황
+      </SectionTitle>
+      <div className="grid auto-rows-fr gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {rows.map((row) => (
+          <AirLaneCard key={`${row.origin}-${row.dest}`} row={row} />
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
 function IndexSnapshot({ stats, asOf }: { stats: IndexStats[]; asOf: string }) {
   const rows = orderedStats(stats).slice(0, 5);
   return (
@@ -1122,6 +1210,7 @@ function DashboardPage() {
   const { data: alerts } = useSuspenseQuery(alertCandidatesQueryOptions());
   const { data: stats } = useSuspenseQuery(indexStatsQueryOptions());
   const { data: seaRates } = useSuspenseQuery(kitaSeaRatesQueryOptions());
+  const { data: airRates } = useSuspenseQuery(kitaAirRatesQueryOptions());
   const { data: disruptions } = useSuspenseQuery(eurasiaDisruptionsActiveQueryOptions());
   const { data: delays } = useSuspenseQuery(eurasiaDelaysQueryOptions());
   const { data: exRate } = useSuspenseQuery(latestExchangeRateQueryOptions());
@@ -1140,6 +1229,7 @@ function DashboardPage() {
   const repForecast = openForecasts.find((f) => f.metric_ref === "KCCI") ?? openForecasts[0] ?? null;
   const modelVersion = forecasts.find((f) => f.model_version)?.model_version ?? "미입력";
   const laneRows = useMemo(() => buildLaneRows(seaRates, delays), [seaRates, delays]);
+  const airLaneRows = useMemo(() => buildAirLaneRows(airRates), [airRates]);
   const topSeaMovers = useMemo(() => buildTopSeaMovers(seaRates), [seaRates]);
   const latestUpdate = latestDataUpdate(dataUpdates);
   const latestUpdateLabel = latestUpdate ? latestUpdate.slice(0, 16).replace("T", " ") : "수집 이력 확인 중";
@@ -1192,6 +1282,7 @@ function DashboardPage() {
               selectedMetric={search.judgment}
             />
             <LaneGrid rows={laneRows} />
+            <AirLaneGrid rows={airLaneRows} />
           </section>
 
           <aside className="space-y-3">
