@@ -933,30 +933,39 @@ type AirLaneRow = {
   asOf: string | null;
 };
 
+// 고정 6개 노선 우선순위 (부분 문자열 매칭)
+const AIR_PRIORITY_DESTS = ["로스", "시카고", "하노이", "프랑크", "두바이", "홍콩"];
+
 function buildAirLaneRows(airRates: KitaAirRateRow[]): AirLaneRow[] {
   const incheon = airRates.filter(
     (r) => r.origin.includes("인천") || r.origin.toUpperCase().includes("ICN"),
   );
-  return latestByRoute(incheon)
-    .map((row) => {
-      const tier = row.kg300 != null ? "kg300" : row.kg100 != null ? "kg100" : "kg500";
-      const series = incheon
-        .filter((x) => x.origin === row.origin && x.dest === row.dest)
-        .sort((a, b) => a.year_mon.localeCompare(b.year_mon));
-      const values = series.map((x) => x[tier]).filter((v): v is number => v != null);
-      const rateVal = row[tier];
-      return {
-        origin: row.origin,
-        dest: row.dest,
-        region: row.region,
-        value: rateVal != null ? `₩${rateVal.toLocaleString("ko-KR")}/kg` : null,
-        mom: computeMoM(series.map((x) => ({ year_mon: x.year_mon, value: x[tier] ?? null }))),
-        values,
-        asOf: row.year_mon,
-      };
-    })
-    .filter((r) => r.value != null)
-    .slice(0, 6);
+  const latest = latestByRoute(incheon);
+
+  function toRow(row: KitaAirRateRow): AirLaneRow {
+    const tier = row.kg300 != null ? "kg300" : row.kg100 != null ? "kg100" : "kg500";
+    const series = incheon
+      .filter((x) => x.origin === row.origin && x.dest === row.dest)
+      .sort((a, b) => a.year_mon.localeCompare(b.year_mon));
+    const values = series.map((x) => x[tier]).filter((v): v is number => v != null);
+    const rateVal = row[tier];
+    return {
+      origin: row.origin,
+      dest: row.dest,
+      region: row.region,
+      value: rateVal != null ? `₩${rateVal.toLocaleString("ko-KR")}/kg` : null,
+      mom: computeMoM(series.map((x) => ({ year_mon: x.year_mon, value: x[tier] ?? null }))),
+      values,
+      asOf: row.year_mon,
+    };
+  }
+
+  const rows: AirLaneRow[] = [];
+  for (const keyword of AIR_PRIORITY_DESTS) {
+    const match = latest.find((r) => r.dest.includes(keyword));
+    if (match) rows.push(toRow(match));
+  }
+  return rows.filter((r) => r.value != null);
 }
 
 function AirLaneCard({ row }: { row: AirLaneRow }) {
