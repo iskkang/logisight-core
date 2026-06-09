@@ -4,6 +4,8 @@ import { getLatestExchangeRate, getExchangeRateHistory } from "./exchange-rates.
 export type ExchangeRateRow = {
   rate_date: string;
   usd_krw: number;
+  eur_krw: number | null;
+  cny_krw: number | null;
   source: string;
   fetched_at: string;
 };

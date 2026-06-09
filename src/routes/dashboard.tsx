@@ -1037,22 +1037,35 @@ function EurasiaPanel({
 }
 
 function ExchangeRateMiniPanel({ exRate }: { exRate: ExchangeRateRow | null }) {
+  const rows = exRate
+    ? [
+        { label: "USD", value: exRate.usd_krw },
+        { label: "EUR", value: exRate.eur_krw },
+        { label: "CNY", value: exRate.cny_krw },
+      ]
+    : [];
   return (
     <Panel>
-      <SectionTitle>환율 현황</SectionTitle>
-      {exRate ? (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-end justify-between">
-            <span className="text-[11px] font-black text-slate-400">USD / KRW</span>
-            <span className="text-[11px] text-slate-400">{exRate.rate_date.slice(0, 10)}</span>
-          </div>
-          <div className="rounded-md bg-blue-50 px-3 py-2.5">
-            <div className="text-[11px] font-semibold text-blue-500">1 USD</div>
-            <div className="mt-0.5 text-xl font-black tracking-tight text-blue-900">
-              ₩{exRate.usd_krw.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}
+      <SectionTitle
+        link={
+          exRate ? (
+            <span className="text-[10px] text-slate-400">{exRate.rate_date.slice(0, 10)}</span>
+          ) : undefined
+        }
+      >
+        환율 현황
+      </SectionTitle>
+      {rows.length > 0 ? (
+        <div className="space-y-1.5">
+          {rows.map(({ label, value }) => (
+            <div key={label} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-1.5">
+              <span className="text-[11px] font-black text-slate-500">1 {label}</span>
+              <span className="text-sm font-black text-slate-800">
+                {value != null ? `₩${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}` : "-"}
+              </span>
             </div>
-          </div>
-          <p className="text-right text-[10px] text-slate-400">출처: {exRate.source}</p>
+          ))}
+          <p className="text-right text-[10px] text-slate-400">출처: {exRate!.source}</p>
         </div>
       ) : (
         <div className="rounded-md bg-slate-50 px-3 py-3 text-center text-[11px] text-slate-400">
