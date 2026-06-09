@@ -1036,12 +1036,15 @@ function EurasiaPanel({
   );
 }
 
+const HANA_LOGO = "https://cdn.brandfetch.io/id32Zgea2w/w/400/h/400/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX&t=1778049584773";
+
 function ExchangeRateMiniPanel({ exRate }: { exRate: ExchangeRateRow | null }) {
   const rows = exRate
     ? [
-        { label: "USD", value: exRate.usd_krw },
-        { label: "EUR", value: exRate.eur_krw },
-        { label: "CNY", value: exRate.cny_krw },
+        { label: "USD", sublabel: null, value: exRate.usd_krw },
+        { label: "EUR", sublabel: null, value: exRate.eur_krw },
+        { label: "JPY", sublabel: "100엔", value: exRate.jpy_krw },
+        { label: "CNY", sublabel: null, value: exRate.cny_krw },
       ]
     : [];
   return (
@@ -1057,15 +1060,20 @@ function ExchangeRateMiniPanel({ exRate }: { exRate: ExchangeRateRow | null }) {
       </SectionTitle>
       {rows.length > 0 ? (
         <div className="space-y-1.5">
-          {rows.map(({ label, value }) => (
+          {rows.map(({ label, sublabel, value }) => (
             <div key={label} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-1.5">
-              <span className="text-[11px] font-black text-slate-500">1 {label}</span>
+              <span className="text-[11px] font-black text-slate-500">
+                {sublabel ? `${sublabel} ${label}` : `1 ${label}`}
+              </span>
               <span className="text-sm font-black text-slate-800">
                 {value != null ? `₩${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}` : "-"}
               </span>
             </div>
           ))}
-          <p className="text-right text-[10px] text-slate-400">출처: {exRate!.source}</p>
+          <div className="flex items-center justify-end gap-1 pt-0.5">
+            <img src={HANA_LOGO} alt="하나은행" className="h-3.5 w-3.5 rounded-sm object-cover" />
+            <span className="text-[10px] text-slate-400">하나은행 고시환율</span>
+          </div>
         </div>
       ) : (
         <div className="rounded-md bg-slate-50 px-3 py-3 text-center text-[11px] text-slate-400">

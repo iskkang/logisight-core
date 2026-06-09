@@ -6,6 +6,7 @@ export type ExchangeRateRow = {
   usd_krw: number;
   eur_krw: number | null;
   cny_krw: number | null;
+  jpy_krw: number | null;
   source: string;
   fetched_at: string;
 };

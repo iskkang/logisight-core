@@ -18,7 +18,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-const CURRENCIES = ["FX_USDKRW", "FX_EURKRW", "FX_CNYKRW"];
+const CURRENCIES = ["FX_USDKRW", "FX_EURKRW", "FX_CNYKRW", "FX_JPYKRW"];
 const BASE_URL = "https://api.stock.naver.com/marketindex/exchange";
 const HEADERS = { "User-Agent": "Mozilla/5.0 (compatible; logisight-collector/1.0)" };
 
@@ -66,6 +66,7 @@ async function main() {
     usd_krw: usd.value,
     eur_krw: results["FX_EURKRW"]?.value ?? null,
     cny_krw: results["FX_CNYKRW"]?.value ?? null,
+    jpy_krw: results["FX_JPYKRW"]?.value ?? null,
     source: "naver_finance",
   };
 
