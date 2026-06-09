@@ -4,9 +4,7 @@ import { useMemo, useState } from "react";
 
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { StatusStrip, type StatusItem } from "@/components/dashboard/StatusStrip";
-import { IntelTable, type ColDef } from "@/components/dashboard/IntelTable";
 import { DetailDrawer } from "@/components/dashboard/DetailDrawer";
-import { DataQualityBar } from "@/components/dashboard/DataQualityBar";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 
 import { policiesQueryOptions, type PolicyRow } from "@/lib/api/policies";
@@ -575,27 +573,6 @@ function PolicyPage() {
   const [hsInput, setHsInput] = useState("");
   const [regionInput, setRegionInput] = useState("");
 
-  const today = new Date();
-  const horizon = new Date(today.getTime() + 180 * 86400000);
-  const horizonMs = horizon.getTime() - today.getTime();
-
-  // Timeline policies: effective_date within 180 days from today
-  const timelinePolicies = useMemo(
-    () =>
-      policies.filter((p) => {
-        if (!p.effective_date) return false;
-        const d = new Date(p.effective_date);
-        return d >= today && d <= horizon;
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [policies],
-  );
-
-  function timelinePct(dateStr: string): number {
-    const ms = new Date(dateStr).getTime() - today.getTime();
-    return Math.max(0, Math.min(97, (ms / horizonMs) * 100));
-  }
-
   // StatusStrip
   const highCount = policies.filter((p) => p.severity === "high").length;
   const unverified = policies.filter((p) => !p.last_verified_at).length;
@@ -647,19 +624,6 @@ function PolicyPage() {
     ],
   );
 
-  // 대응 체크리스트 — 향후 90일 이벤트 (실데이터)
-  const imminentPolicies = useMemo(
-    () =>
-      policies
-        .filter((p) => {
-          if (!p.effective_date) return false;
-          const d = daysUntil(p.effective_date);
-          return d >= 0 && d <= 90;
-        })
-        .sort((a, b) => a.effective_date!.localeCompare(b.effective_date!)),
-    [policies],
-  );
-
   // 내 화물 영향 분석 — HS 챕터·지역으로 DB 리스크 이벤트 필터
   const impactChapters = useMemo(() => parseChapters(hsInput), [hsInput]);
   const regionQuery = regionInput.trim().toLowerCase();
@@ -679,76 +643,6 @@ function PolicyPage() {
       })
       .sort((a, b) => (SEV_RANK[b.severity] ?? 0) - (SEV_RANK[a.severity] ?? 0));
   }, [policies, impactChapters, regionQuery]);
-
-  // Exposure matrix columns
-  const COLS: ColDef<PolicyRow>[] = [
-    {
-      key: "title_ko",
-      header: "리스크 이벤트",
-      cell: (r) => (
-        <div>
-          <span className="font-medium text-foreground">{r.title_ko}</span>
-          {!r.last_verified_at && (
-            <span className="ml-1.5 rounded bg-status-caution/10 px-1 py-0.5 text-[10px] text-status-caution">
-              검증 전
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: "region",
-      header: "지역·국가",
-      cell: (r) => (
-        <span className="text-muted-foreground">
-          {[r.region, r.country_code].filter(Boolean).join(" · ") || "—"}
-        </span>
-      ),
-    },
-    {
-      key: "policy_type",
-      header: "유형",
-      cell: (r) => <span className="text-muted-foreground text-[11px]">{r.policy_type}</span>,
-    },
-    {
-      key: "affected_hs_chapters",
-      header: "영향 HS",
-      cell: (r) =>
-        r.affected_hs_chapters && r.affected_hs_chapters.length > 0
-          ? r.affected_hs_chapters.slice(0, 3).join(", ")
-          : "—",
-    },
-    {
-      key: "effective_date",
-      header: "발효일",
-      cell: (r) => {
-        if (!r.effective_date) return <span className="text-muted-foreground">—</span>;
-        const d = daysUntil(r.effective_date);
-        return (
-          <div suppressHydrationWarning className="tabular-nums">
-            <span>{r.effective_date}</span>
-            {d >= 0 && d <= 90 && (
-              <span
-                className={[
-                  "ml-1.5 rounded px-1 py-0.5 text-[10px] font-medium",
-                  d <= 30
-                    ? "bg-status-alert/10 text-status-alert"
-                    : "bg-status-caution/10 text-status-caution",
-                ].join(" ")}
-              >
-                D−{d}
-              </span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      key: "severity",
-      header: "심각도",
-      cell: (r) => <SevBadge sev={r.severity} />,
-    },
-  ];
 
   return (
     <DashboardShell
@@ -914,163 +808,6 @@ function PolicyPage() {
           )}
         </section>
       )}
-
-      {/* Timeline — 180일 */}
-      <section>
-        <h2 className="mb-3 text-[13px] font-semibold">리스크 타임라인 — 향후 180일</h2>
-        <div className="relative h-16 overflow-hidden rounded-lg border border-border bg-card px-5">
-          {/* Axis line */}
-          <div className="absolute bottom-4 left-5 right-5 h-px bg-border" />
-          {/* Axis labels */}
-          <span className="absolute bottom-1 left-5 text-[10px] text-muted-foreground">오늘</span>
-          <span
-            className="absolute bottom-1 text-[10px] text-muted-foreground"
-            style={{ left: "calc(16.7% + 1.25rem)" }}
-          >
-            30일
-          </span>
-          <span
-            className="absolute bottom-1 text-[10px] text-muted-foreground"
-            style={{ left: "calc(50% + 1.25rem)" }}
-          >
-            90일
-          </span>
-          <span className="absolute bottom-1 right-5 text-[10px] text-muted-foreground">180일</span>
-
-          {timelinePolicies.length === 0 ? (
-            <p className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-              DB에 입력된 180일 이내 예정 이벤트 없음
-            </p>
-          ) : (
-            timelinePolicies.map((p) => {
-              const pct = timelinePct(p.effective_date!);
-              const color = SEV_COLOR[p.severity] ?? SEV_COLOR.info;
-              const d = daysUntil(p.effective_date!);
-              return (
-                <div
-                  key={p.id}
-                  className="absolute bottom-3 flex cursor-pointer flex-col items-center"
-                  style={{ left: `calc(${pct}% + 1.25rem)`, transform: "translateX(-50%)" }}
-                  onClick={() => setSelected(p)}
-                  title={p.title_ko}
-                >
-                  <span className="mb-0.5 whitespace-nowrap text-[10px] text-muted-foreground">
-                    {p.title_ko.length > 10 ? `${p.title_ko.slice(0, 10)}…` : p.title_ko} D−{d}
-                  </span>
-                  <span
-                    className="h-3 w-3 rounded-full border-2"
-                    style={{ background: color, borderColor: color }}
-                  />
-                </div>
-              );
-            })
-          )}
-        </div>
-      </section>
-
-      {/* 대응 체크리스트 */}
-      <section>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-[13px] font-semibold">
-            대응 체크리스트{" "}
-            <span className="text-[11px] font-normal text-muted-foreground">
-              향후 90일 예정 이벤트
-            </span>
-          </h2>
-          {checkedIds.size > 0 && (
-            <button
-              type="button"
-              onClick={() => setCheckedIds(new Set())}
-              className="text-[11px] text-muted-foreground hover:underline"
-            >
-              체크 초기화
-            </button>
-          )}
-        </div>
-        <PolicyChecklist
-          items={imminentPolicies}
-          checkedIds={checkedIds}
-          onToggle={toggleChecked}
-          onSelect={setSelected}
-          emptyText="DB에 입력된 90일 이내 예정 이벤트 없음"
-        />
-        <p className="mt-1.5 text-[11px] text-muted-foreground">
-          실제 리스크 이벤트 행에서 생성 · 체크 상태는 저장되지 않는 점검용 보조 기능
-        </p>
-      </section>
-
-      {/* Exposure matrix */}
-      <section>
-        <h2 className="mb-2 text-[13px] font-semibold">
-          입력된 리스크 이벤트{" "}
-          <span className="text-[11px] font-normal text-muted-foreground">행 클릭 시 상세</span>
-        </h2>
-        {policies.length === 0 ? (
-          <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-            리스크 이벤트 데이터 수집 중 — 어드민에서 입력하세요
-          </div>
-        ) : (
-          <IntelTable
-            cols={COLS}
-            rows={policies}
-            rowKey={(r) => r.id}
-            onRowClick={(r) => setSelected(r)}
-          />
-        )}
-        <p className="mt-1.5 text-[11px] text-muted-foreground">
-          현재 {policies.length}건 입력 · 검증 전 이벤트는 "검증 전" 배지 표시 · 출처 확인 후
-          last_verified_at 갱신 필요
-        </p>
-      </section>
-
-      <section>
-        <h2 className="mb-2 text-[13px] font-semibold">API 수집 상태</h2>
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-          {risk.sourceHealth.map((source) => (
-            <div
-              key={source.source}
-              className={[
-                "rounded border px-3 py-2 text-xs",
-                source.ok
-                  ? "border-status-normal/30 bg-status-normal/10"
-                  : "border-status-caution/35 bg-status-caution/10",
-              ].join(" ")}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-foreground">{source.source}</span>
-                <span
-                  className={
-                    source.ok ? "text-[11px] text-status-normal" : "text-[11px] text-status-caution"
-                  }
-                >
-                  {source.ok ? "OK" : "WARN"}
-                </span>
-              </div>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {source.ok ? `기준 ${source.asOf ?? risk.fetchedAt.slice(0, 10)}` : source.message}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <DataQualityBar
-        sources={[
-          {
-            label: "리스크 DB",
-            asOf: policies.at(0)?.updated_at?.slice(0, 10) ?? null,
-            expectedDays: 30,
-          },
-          ...risk.sourceHealth
-            .filter((source) => source.ok)
-            .slice(0, 8)
-            .map((source) => ({
-              label: source.source,
-              asOf: source.asOf ?? risk.fetchedAt.slice(0, 10),
-              expectedDays: 14,
-            })),
-        ]}
-      />
 
       {/* Detail Drawer */}
       <DetailDrawer
