@@ -40,7 +40,7 @@ import {
 } from "@/lib/api/rates";
 import { eurasiaDisruptionsActiveQueryOptions } from "@/lib/api/eurasia-disruptions";
 import { eurasiaDelaysQueryOptions, type DelayWeeklyRow } from "@/lib/api/eurasia";
-import { latestExchangeRateQueryOptions } from "@/lib/api/exchange-rates";
+import { latestExchangeRateQueryOptions, type ExchangeRateRow } from "@/lib/api/exchange-rates";
 import {
   dataUpdatesQueryOptions,
   forecastSeriesQueryOptions,
@@ -1036,6 +1036,63 @@ function EurasiaPanel({
   );
 }
 
+function ExchangeRateMiniPanel({ exRate }: { exRate: ExchangeRateRow | null }) {
+  if (!exRate) return null;
+  const krw = exRate.usd_krw.toLocaleString("ko-KR", { maximumFractionDigits: 2 });
+  const dateLabel = exRate.rate_date.slice(0, 10);
+  return (
+    <Panel>
+      <SectionTitle>환율 현황</SectionTitle>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-end justify-between">
+          <span className="text-[11px] font-black text-slate-400">USD / KRW</span>
+          <span className="text-[11px] text-slate-400">{dateLabel}</span>
+        </div>
+        <div className="rounded-md bg-blue-50 px-3 py-2.5">
+          <div className="text-[11px] font-semibold text-blue-500">1 USD</div>
+          <div className="mt-0.5 text-xl font-black tracking-tight text-blue-900">
+            ₩{krw}
+          </div>
+        </div>
+        <p className="text-right text-[10px] text-slate-400">출처: {exRate.source}</p>
+      </div>
+    </Panel>
+  );
+}
+
+function IndexChangeHeatmap({ stats }: { stats: IndexStats[] }) {
+  const CODES = ["SCFI", "KCCI", "CCFI", "FBX", "WCI", "BDI"];
+  const rows = CODES.map((c) => stats.find((s) => s.index_code === c)).filter(Boolean) as IndexStats[];
+  if (rows.length === 0) return null;
+  return (
+    <Panel>
+      <SectionTitle>지수 변화 히트맵</SectionTitle>
+      <div className="grid grid-cols-2 gap-1.5">
+        {rows.map((s) => {
+          const pct = s.change_pct;
+          const isUp = pct !== null && pct >= 0;
+          const isDown = pct !== null && pct < 0;
+          const bg = isUp ? "bg-emerald-50" : isDown ? "bg-red-50" : "bg-slate-50";
+          const pctColor = isUp ? "text-emerald-700" : isDown ? "text-red-600" : "text-slate-400";
+          return (
+            <div key={s.index_code} className={`rounded-md px-2.5 py-2 ${bg}`}>
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] font-black text-slate-600">{s.index_code}</span>
+                <span className={`text-[11px] font-black ${pctColor}`}>
+                  {pct === null ? "-" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`}
+                </span>
+              </div>
+              <div className="mt-0.5 text-sm font-black text-slate-800">
+                {s.latest_value?.toLocaleString("en-US", { maximumFractionDigits: 1 }) ?? "-"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
+
 function DashboardPage() {
   const search = Route.useSearch();
   const { data: alerts } = useSuspenseQuery(alertCandidatesQueryOptions());
@@ -1101,6 +1158,7 @@ function DashboardPage() {
               exRateDate={exRate?.rate_date}
               modelVersion={modelVersion}
             />
+            <ExchangeRateMiniPanel exRate={exRate ?? null} />
           </aside>
 
           <section className="min-w-0 space-y-3">
@@ -1117,6 +1175,7 @@ function DashboardPage() {
             <IndexSnapshot stats={stats} asOf={asOf} />
             <TopSeaMovers movers={topSeaMovers} />
             <EurasiaPanel disruptions={disruptions} />
+            <IndexChangeHeatmap stats={stats} />
           </aside>
         </section>
 
