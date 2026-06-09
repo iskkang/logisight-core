@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type {
+  AiRiskBriefing,
   ChokepointRiskRow,
   HormuzRisk,
   MacroRiskRow,
@@ -21,6 +22,7 @@ const GLOBAL_LIFTINGS_URL = "https://www.econdb.com/widgets/global-seasonal/data
 const GULF_STATS_URL = "https://www.shipfinder.com/Special/ShipsInPersianGulfStats";
 const HORMUZ_NEWS_URL = "https://www.shipfinder.com/Special/GetHormuzNewsRecent?skip=0&limit=6";
 const MACRO_INDEX_URL = "https://www.shipfinder.com/Special/GetMacroIndexLatest";
+const AI_JUDGE_URL = "https://www.shipfinder.com/Special/CallAiToJudge";
 const CHOKEPOINTS = ["Suez", "Panama", "Cape", "Malacca", "Hormuz"] as const;
 const ECONDB_HEADERS = {
   accept: "application/json, text/plain, */*",
@@ -304,7 +306,21 @@ function parseMacroIndex(data: unknown): MacroRiskRow[] {
       asOf: dateOnly(row.DataDate),
       value: num(row.IndicatorValue),
       change: str(row.ChangeRate),
+      spark: [],
     }));
+}
+
+function parseAiRiskBriefing(data: unknown): AiRiskBriefing | null {
+  const d = obj(obj(data).data);
+  const report = str(d.analysis_report);
+  if (!report) return null;
+  return {
+    analysisReport: report,
+    coreTags: arr(d.core_tags)
+      .map((t) => str(t))
+      .filter((t): t is string => t !== null),
+    generatedAt: str(obj(data).generatedAt),
+  };
 }
 
 function parseHormuzNews(data: unknown): NewsRiskRow[] {
@@ -322,11 +338,12 @@ function parseHormuzNews(data: unknown): NewsRiskRow[] {
 async function getHormuzRisk(): Promise<{ row: HormuzRisk; health: SourceHealth[] }> {
   const crossingDate = yesterdayIso();
   const crossingUrl = `https://www.shipfinder.com/Special/CrossStraitOfHormuzDetail?date=${crossingDate}`;
-  const [gulfResult, crossingResult, macroResult, newsResult] = await Promise.all([
+  const [gulfResult, crossingResult, macroResult, newsResult, aiJudgeResult] = await Promise.all([
     fetchJson<unknown>(GULF_STATS_URL),
     fetchJson<unknown>(crossingUrl),
     fetchJson<unknown>(MACRO_INDEX_URL),
     fetchJson<unknown>(HORMUZ_NEWS_URL),
+    fetchJson<unknown>(AI_JUDGE_URL),
   ]);
 
   const gulf = gulfResult.ok
@@ -345,6 +362,7 @@ async function getHormuzRisk(): Promise<{ row: HormuzRisk; health: SourceHealth[
       };
   const macro = macroResult.ok ? parseMacroIndex(macroResult.data) : [];
   const news = newsResult.ok ? parseHormuzNews(newsResult.data) : [];
+  const aiRiskBriefing = aiJudgeResult.ok ? parseAiRiskBriefing(aiJudgeResult.data) : null;
 
   return {
     row: {
@@ -352,12 +370,14 @@ async function getHormuzRisk(): Promise<{ row: HormuzRisk; health: SourceHealth[
       ...crossings,
       macro,
       news,
+      aiRiskBriefing,
     },
     health: [
       health("Persian Gulf ship count", gulfResult, gulf.asOf),
       health("Hormuz crossing detail", crossingResult, crossingDate),
       health("Shipfinder macro index", macroResult, macro[0]?.asOf ?? null),
       health("Hormuz recent news", newsResult, news[0]?.publishedAt ?? null),
+      health("Shipfinder AI briefing", aiJudgeResult, aiRiskBriefing?.generatedAt ?? null),
     ],
   };
 }

@@ -56,6 +56,13 @@ export type MacroRiskRow = {
   asOf: string | null;
   value: number | null;
   change: string | null;
+  spark: (number | null)[];
+};
+
+export type AiRiskBriefing = {
+  analysisReport: string;
+  coreTags: string[];
+  generatedAt: string | null;
 };
 
 export type NewsRiskRow = {
@@ -80,6 +87,7 @@ export type HormuzRisk = {
   totalDwt: number | null;
   macro: MacroRiskRow[];
   news: NewsRiskRow[];
+  aiRiskBriefing?: AiRiskBriefing | null;
 };
 
 export type MacroTrend = {

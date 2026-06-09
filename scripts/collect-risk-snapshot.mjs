@@ -35,6 +35,7 @@ const GLOBAL_LIFTINGS_URL = "https://www.econdb.com/widgets/global-seasonal/data
 const GULF_STATS_URL = "https://www.shipfinder.com/Special/ShipsInPersianGulfStats";
 const HORMUZ_NEWS_URL = "https://www.shipfinder.com/Special/GetHormuzNewsRecent?skip=0&limit=6";
 const MACRO_INDEX_URL = "https://www.shipfinder.com/Special/GetMacroIndexLatest";
+const AI_JUDGE_URL = "https://www.shipfinder.com/Special/CallAiToJudge";
 const CHOKEPOINTS = ["Suez", "Panama", "Cape", "Malacca", "Hormuz"];
 const ECONDB_HEADERS = {
   accept: "application/json, text/plain, */*",
@@ -266,7 +267,19 @@ function parseMacroIndex(data) {
       asOf: dateOnly(row.DataDate),
       value: num(row.IndicatorValue),
       change: str(row.ChangeRate),
+      spark: [],
     }));
+}
+
+function parseAiRiskBriefing(data) {
+  const d = obj(obj(data).data);
+  const report = str(d.analysis_report);
+  if (!report) return null;
+  return {
+    analysisReport: report,
+    coreTags: arr(d.core_tags).map(str).filter(Boolean),
+    generatedAt: str(obj(data).generatedAt),
+  };
 }
 
 function parseHormuzNews(data) {
@@ -284,11 +297,12 @@ function parseHormuzNews(data) {
 async function getHormuzRisk() {
   const crossingDate = yesterdayIso();
   const crossingUrl = `https://www.shipfinder.com/Special/CrossStraitOfHormuzDetail?date=${crossingDate}`;
-  const [gulfResult, crossingResult, macroResult, newsResult] = await Promise.all([
+  const [gulfResult, crossingResult, macroResult, newsResult, aiJudgeResult] = await Promise.all([
     fetchJson(GULF_STATS_URL),
     fetchJson(crossingUrl),
     fetchJson(MACRO_INDEX_URL),
     fetchJson(HORMUZ_NEWS_URL),
+    fetchJson(AI_JUDGE_URL),
   ]);
   const gulf = gulfResult.ok
     ? parseGulfStats(gulfResult.data)
@@ -306,13 +320,15 @@ async function getHormuzRisk() {
       };
   const macro = macroResult.ok ? parseMacroIndex(macroResult.data) : [];
   const news = newsResult.ok ? parseHormuzNews(newsResult.data) : [];
+  const aiRiskBriefing = aiJudgeResult.ok ? parseAiRiskBriefing(aiJudgeResult.data) : null;
   return {
-    row: { ...gulf, ...crossings, macro, news },
+    row: { ...gulf, ...crossings, macro, news, aiRiskBriefing },
     health: [
       health("Persian Gulf ship count", gulfResult, gulf.asOf),
       health("Hormuz crossing detail", crossingResult, crossingDate),
       health("Shipfinder macro index", macroResult, macro[0]?.asOf ?? null),
       health("Hormuz recent news", newsResult, news[0]?.publishedAt ?? null),
+      health("Shipfinder AI briefing", aiJudgeResult, aiRiskBriefing?.generatedAt ?? null),
     ],
   };
 }
@@ -389,6 +405,31 @@ async function collectRiskSnapshot() {
   };
 }
 
+async function upsertMacroHistory(macroRows) {
+  const inserts = macroRows
+    .filter((r) => r.asOf && r.value != null)
+    .map((r) => ({ indicator: r.label, as_of: r.asOf, value: r.value, change_rate: r.change }));
+  if (!inserts.length) return {};
+
+  const { error } = await supabase
+    .from("macro_index_history")
+    .upsert(inserts, { onConflict: "indicator,as_of" });
+  if (error) console.warn("macro_index_history upsert warn:", error.message);
+
+  const indicators = [...new Set(inserts.map((r) => r.indicator))];
+  const sparkMap = {};
+  for (const indicator of indicators) {
+    const { data } = await supabase
+      .from("macro_index_history")
+      .select("value")
+      .eq("indicator", indicator)
+      .order("as_of", { ascending: true })
+      .limit(30);
+    sparkMap[indicator] = (data ?? []).map((r) => r.value);
+  }
+  return sparkMap;
+}
+
 async function main() {
   console.log("Collecting maritime risk snapshot...");
   const snapshot = await collectRiskSnapshot();
@@ -400,6 +441,14 @@ async function main() {
       `${source.ok ? "OK" : "WARN"} ${source.source}${source.ok ? "" : ` - ${source.message}`}`,
     );
   }
+
+  // Upsert macro index history and inject spark arrays into snapshot
+  const sparkMap = await upsertMacroHistory(snapshot.hormuz.macro);
+  snapshot.hormuz.macro = snapshot.hormuz.macro.map((row) => ({
+    ...row,
+    spark: sparkMap[row.label] ?? [],
+  }));
+  console.log(`Macro history updated: ${Object.keys(sparkMap).join(", ")} (spark lengths: ${Object.values(sparkMap).map((s) => s.length).join(", ")})`);
 
   const { error } = await supabase.from("risk_snapshots").upsert({
     id: "latest",

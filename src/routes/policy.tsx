@@ -12,8 +12,10 @@ import { Sparkline } from "@/components/dashboard/Sparkline";
 import { policiesQueryOptions, type PolicyRow } from "@/lib/api/policies";
 import {
   riskSnapshotQueryOptions,
+  type AiRiskBriefing,
   type ChokepointRiskRow,
   type HormuzRisk,
+  type MacroRiskRow,
   type MacroTrend,
   type PortRiskRow,
 } from "@/lib/api/risk";
@@ -381,6 +383,76 @@ function PortsHeatmap({ ports }: { ports: PortRiskRow[] }) {
   );
 }
 
+function AiRiskBriefingPanel({ briefing }: { briefing: AiRiskBriefing | null | undefined }) {
+  if (!briefing?.analysisReport) return null;
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="size-1.5 shrink-0 rounded-full bg-[var(--color-cyan)]" />
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
+          AI 해상 리스크 브리핑
+        </p>
+        <span className="ml-auto text-[10px] text-muted-foreground">
+          {briefing.generatedAt ?? "—"} · Shipfinder AI
+        </span>
+      </div>
+      <p className="text-xs leading-relaxed text-foreground/80">{briefing.analysisReport}</p>
+      {briefing.coreTags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {briefing.coreTags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MacroIndexGrid({ macro }: { macro: MacroRiskRow[] }) {
+  if (!macro.length) return null;
+  return (
+    <div className="mt-4 grid grid-cols-2 gap-2">
+      {macro.map((m) => {
+        const isNeg = m.change?.startsWith("-") ?? false;
+        return (
+          <div key={m.label} className="rounded border border-border bg-background/60 p-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground">{m.label}</p>
+                <p className="text-sm font-semibold tabular-nums text-foreground">
+                  {fmtNum(m.value, 2)}
+                </p>
+              </div>
+              {m.spark.length > 1 && (
+                <Sparkline
+                  values={m.spark}
+                  color={isNeg ? "var(--color-status-alert)" : "var(--color-status-normal)"}
+                />
+              )}
+            </div>
+            {m.change && (
+              <p
+                className={[
+                  "mt-0.5 text-[11px] font-medium tabular-nums",
+                  isNeg ? "text-status-alert" : "text-status-normal",
+                ].join(" ")}
+              >
+                {m.change}
+              </p>
+            )}
+            <p className="text-[10px] text-muted-foreground">{m.asOf ?? "—"}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function HormuzPanel({ hormuz }: { hormuz: HormuzRisk }) {
   return (
     <div className="grid gap-3 lg:grid-cols-[1fr_1.3fr]">
@@ -422,17 +494,7 @@ function HormuzPanel({ hormuz }: { hormuz: HormuzRisk }) {
             </p>
           </div>
         </div>
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          {hormuz.macro.map((macro) => (
-            <span
-              key={`${macro.label}-${macro.asOf}`}
-              className="rounded border border-border px-2 py-1 text-[11px] text-muted-foreground"
-            >
-              {macro.label} {fmtNum(macro.value, 2)} {macro.change ? `(${macro.change})` : ""} ·{" "}
-              {macro.asOf ?? "—"}
-            </span>
-          ))}
-        </div>
+        <MacroIndexGrid macro={hormuz.macro} />
       </div>
 
       <div className="rounded-lg border border-border bg-card p-4">
@@ -760,6 +822,8 @@ function PolicyPage() {
           />
         </div>
       </section>
+
+      <AiRiskBriefingPanel briefing={risk.hormuz.aiRiskBriefing} />
 
       <section>
         <div className="mb-2">
