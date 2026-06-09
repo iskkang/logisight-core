@@ -734,9 +734,11 @@ function PolicyPage() {
         </div>
       </section>
 
+      <HormuzPanel hormuz={risk.hormuz} />
+
       <section>
         <div className="mb-2">
-          <h2 className="text-[13px] font-semibold">전세계 항만 Top 20 혼잡 히트맵</h2>
+          <h2 className="text-[13px] font-semibold">전세계 항만 Top 20</h2>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             지연율 75% 이상은 alert, 60% 이상은 caution으로 표시합니다. dwell time과 TEU MoM은 같은
             항만 행에서 비교합니다.
@@ -744,8 +746,6 @@ function PolicyPage() {
         </div>
         <PortsHeatmap ports={risk.ports} />
       </section>
-
-      <HormuzPanel hormuz={risk.hormuz} />
 
       <section>
         <div className="mb-2">
