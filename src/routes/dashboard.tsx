@@ -1037,25 +1037,28 @@ function EurasiaPanel({
 }
 
 function ExchangeRateMiniPanel({ exRate }: { exRate: ExchangeRateRow | null }) {
-  if (!exRate) return null;
-  const krw = exRate.usd_krw.toLocaleString("ko-KR", { maximumFractionDigits: 2 });
-  const dateLabel = exRate.rate_date.slice(0, 10);
   return (
     <Panel>
       <SectionTitle>환율 현황</SectionTitle>
-      <div className="flex flex-col gap-1">
-        <div className="flex items-end justify-between">
-          <span className="text-[11px] font-black text-slate-400">USD / KRW</span>
-          <span className="text-[11px] text-slate-400">{dateLabel}</span>
-        </div>
-        <div className="rounded-md bg-blue-50 px-3 py-2.5">
-          <div className="text-[11px] font-semibold text-blue-500">1 USD</div>
-          <div className="mt-0.5 text-xl font-black tracking-tight text-blue-900">
-            ₩{krw}
+      {exRate ? (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-end justify-between">
+            <span className="text-[11px] font-black text-slate-400">USD / KRW</span>
+            <span className="text-[11px] text-slate-400">{exRate.rate_date.slice(0, 10)}</span>
           </div>
+          <div className="rounded-md bg-blue-50 px-3 py-2.5">
+            <div className="text-[11px] font-semibold text-blue-500">1 USD</div>
+            <div className="mt-0.5 text-xl font-black tracking-tight text-blue-900">
+              ₩{exRate.usd_krw.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}
+            </div>
+          </div>
+          <p className="text-right text-[10px] text-slate-400">출처: {exRate.source}</p>
         </div>
-        <p className="text-right text-[10px] text-slate-400">출처: {exRate.source}</p>
-      </div>
+      ) : (
+        <div className="rounded-md bg-slate-50 px-3 py-3 text-center text-[11px] text-slate-400">
+          데이터 수집 중
+        </div>
+      )}
     </Panel>
   );
 }

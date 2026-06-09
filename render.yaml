@@ -12,3 +12,19 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+
+  - type: cron
+    name: logisight-exchange-rate-collector
+    runtime: node
+    plan: starter
+    region: singapore
+    schedule: "0 2 * * *"
+    buildCommand: npm ci
+    startCommand: npm run collect:exchange-rate
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: KOREAEXIM_API_KEY
+        sync: false

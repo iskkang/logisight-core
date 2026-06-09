@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "collect:risk-snapshot": "node scripts/collect-risk-snapshot.mjs",
+    "collect:exchange-rate": "node scripts/collect-exchange-rate.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
