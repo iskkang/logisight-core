@@ -1,5 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Outlet, Link, createRootRouteWithContext, useRouter, useRouterState, HeadContent, Scripts } from "@tanstack/react-router";
+import {
+  Outlet,
+  Link,
+  createRootRouteWithContext,
+  useRouter,
+  useRouterState,
+  HeadContent,
+  Scripts,
+} from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
 import { Navigation } from "@/components/site/Navigation";
@@ -24,7 +32,9 @@ function NotFoundComponent() {
         <div className="max-w-md text-center">
           <h1 className="text-6xl font-bold text-foreground">404</h1>
           <h2 className="mt-4 text-lg font-semibold">페이지를 찾을 수 없습니다</h2>
-          <p className="mt-2 text-sm text-muted-foreground">요청하신 페이지가 존재하지 않거나 이동되었습니다.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            요청하신 페이지가 존재하지 않거나 이동되었습니다.
+          </p>
           <Link
             to="/"
             className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
@@ -91,9 +101,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:site_name", content: "Logisight" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Logisight — 물류를 읽는 새로운 시선" },
-      { name: "twitter:description", content: "운임 지수와 시장 뉴스, 정책 변화. 매주 한 편의 분석으로 정리합니다." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0eb7d306-970c-4458-ac80-4b0e08c4bec3" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0eb7d306-970c-4458-ac80-4b0e08c4bec3" },
+      {
+        name: "twitter:description",
+        content: "운임 지수와 시장 뉴스, 정책 변화. 매주 한 편의 분석으로 정리합니다.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0eb7d306-970c-4458-ac80-4b0e08c4bec3",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0eb7d306-970c-4458-ac80-4b0e08c4bec3",
+      },
     ],
     links: [
       {
@@ -166,9 +187,13 @@ function SiteShell({ children }: { children: React.ReactNode }) {
   const isDashboard = DASHBOARD_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
-  // 종합(/dashboard)은 freight_indices 전용 자체 티커(DashboardTicker)를 그리므로
+  // 종합(/dashboard)과 운임(/rates)은 freight_indices 전용 자체 티커(DashboardTicker)를 그리므로
   // 전역 NYFI IndexBar는 숨긴다(이중 티커·가공 NYFI 라벨 방지).
-  const hideGlobalTicker = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+  const hideGlobalTicker =
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname === "/rates" ||
+    pathname.startsWith("/rates/");
 
   return (
     <div
