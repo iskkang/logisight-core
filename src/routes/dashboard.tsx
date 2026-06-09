@@ -1191,7 +1191,6 @@ function DashboardPage() {
               seriesMap={series}
               selectedMetric={search.judgment}
             />
-            <ForecastMiniCards forecasts={forecasts} series={series} />
             <LaneGrid rows={laneRows} />
           </section>
 
