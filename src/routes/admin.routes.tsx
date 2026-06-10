@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
+import { triggerMtlLinkSync, type SyncResult } from "@/lib/api/mtl-link-sync";
 
 export const Route = createFileRoute("/admin/routes")({
   head: () => ({
@@ -55,6 +56,8 @@ function AdminRoutesPage() {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
 
   // Auth gate
   useEffect(() => {
@@ -114,6 +117,18 @@ function AdminRoutesPage() {
 
   function updateDraft(id: string, patch: Partial<Draft>) {
     setDrafts((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+  }
+
+  async function runSync() {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const result = await triggerMtlLinkSync();
+      setSyncResult(result);
+    } catch (err) {
+      setSyncResult({ ok: false, stats_upserted: 0, snapshot_date: "", error: String(err) });
+    }
+    setSyncing(false);
   }
 
   async function save(id: string) {
@@ -211,6 +226,39 @@ function AdminRoutesPage() {
         >
           로그아웃
         </button>
+      </div>
+
+      {/* MTL Link sync */}
+      <div className="mt-6 rounded-lg border border-[var(--color-line)] bg-white px-4 py-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-[var(--color-ink)]">MTL Link → 유라시아 데이터 동기화</p>
+            <p className="mt-0.5 text-[11px] text-[var(--color-ink-muted)]">
+              MTL Link TCR 회랑 지연 통계를 가져와 delay_index_weekly · tcr_snapshots에 저장합니다.
+            </p>
+          </div>
+          <button
+            onClick={runSync}
+            disabled={syncing || !session}
+            className="rounded-md px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+            style={{ background: "var(--color-navy-900)" }}
+          >
+            {syncing ? "동기화 중…" : "지금 동기화"}
+          </button>
+        </div>
+        {syncResult && (
+          <div
+            className={`mt-3 rounded-md px-3 py-2 text-[11px] ${
+              syncResult.ok
+                ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border border-rose-200 bg-rose-50 text-rose-700"
+            }`}
+          >
+            {syncResult.ok
+              ? `완료 — ${syncResult.stats_upserted}개 주간 통계 저장, 스냅샷 날짜: ${syncResult.snapshot_date} (computed_at: ${syncResult.computed_at?.slice(0, 19) ?? "—"})`
+              : `오류: ${syncResult.error}`}
+          </div>
+        )}
       </div>
 
       {error && (
