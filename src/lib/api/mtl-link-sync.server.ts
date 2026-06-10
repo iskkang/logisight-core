@@ -1,9 +1,6 @@
 // MTL Link → logisight corridor stats sync
-// Calls MTL Link's /api/tcr?action=corridor-stats
-// and upserts the result into delay_index_weekly + tcr_snapshots.
-//
-// Usage from admin UI: call triggerMtlLinkSync() (createServerFn)
-// Usage from CLI: MTL_LINK_URL=... MTL_LINK_API_KEY=... npx tsx scripts/sync-mtl-link.ts
+// Calls MTL Link's TCR and FESCO corridor-stats endpoints
+// and upserts results into delay_index_weekly + tcr_snapshots.
 
 import { createServerFn } from "@tanstack/react-start"
 import { supabaseAdmin } from "@/integrations/supabase/client.server"
@@ -25,7 +22,7 @@ type WeeklyStat = {
 type CorridorResponse = {
   ok:          boolean
   computed_at: string
-  snapshot: {
+  snapshot?: {
     total:          number
     in_transit:     number
     arrived:        number
@@ -38,41 +35,16 @@ type CorridorResponse = {
 }
 
 export type SyncResult = {
-  ok:             boolean
-  stats_upserted: number
-  snapshot_date:  string
-  computed_at?:   string
-  error?:         string
+  ok:              boolean
+  tcr_upserted:    number
+  fesco_upserted:  number
+  snapshot_date:   string
+  computed_at?:    string
+  error?:          string
 }
 
-async function runMtlLinkSync(): Promise<SyncResult> {
-  const headers: Record<string, string> = {}
-  if (MTL_LINK_API_KEY) headers["Authorization"] = `Bearer ${MTL_LINK_API_KEY}`
-
-  let data: CorridorResponse
-  try {
-    const res = await fetch(`${MTL_LINK_BASE}/api/tcr?action=corridor-stats`, { headers })
-    if (!res.ok) return { ok: false, stats_upserted: 0, snapshot_date: "", error: `HTTP ${res.status}` }
-    data = (await res.json()) as CorridorResponse
-  } catch (err) {
-    return { ok: false, stats_upserted: 0, snapshot_date: "", error: String(err) }
-  }
-
-  if (!data.ok) return { ok: false, stats_upserted: 0, snapshot_date: "", error: data.error ?? "ok=false" }
-
-  // Use any-typed client since delay_index_weekly / tcr_snapshots may not be in the generated types
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabaseAdmin as any
-
-  // Remove stale weekly-format rows (YYYY-Wxx) from the previous schema before upserting monthly rows
-  await db
-    .from("delay_index_weekly")
-    .delete()
-    .eq("methodology_version", "mtl-v1")
-    .like("week_iso", "%-W%")
-
-  // Upsert monthly delay stats (only rows that have actual delay measurements)
-  const statsRows = data.weekly_stats
+function buildStatRows(stats: WeeklyStat[], methodology: string) {
+  return stats
     .filter((s) => s.median_delay_h !== null)
     .map((s) => ({
       lane_id:             s.lane_id,
@@ -84,22 +56,74 @@ async function runMtlLinkSync(): Promise<SyncResult> {
       on_time_rate:        s.on_time_rate,
       otp_pct:             s.on_time_rate != null ? Math.round(s.on_time_rate * 100) : null,
       data_quality:        s.data_quality,
-      methodology_version: "mtl-v1",
+      methodology_version: methodology,
     }))
+}
 
-  if (statsRows.length > 0) {
-    const { error: statsErr } = await db
-      .from("delay_index_weekly")
-      .upsert(statsRows, { onConflict: "lane_id,week_iso,milestone" })
-    if (statsErr) return { ok: false, stats_upserted: 0, snapshot_date: "", error: statsErr.message }
+async function runMtlLinkSync(): Promise<SyncResult> {
+  const headers: Record<string, string> = {}
+  if (MTL_LINK_API_KEY) headers["Authorization"] = `Bearer ${MTL_LINK_API_KEY}`
+
+  const today = new Date().toISOString().split("T")[0]
+
+  // Fetch TCR and FESCO stats in parallel
+  const [tcrRes, fescoRes] = await Promise.allSettled([
+    fetch(`${MTL_LINK_BASE}/api/tcr?action=corridor-stats`, { headers }),
+    fetch(`${MTL_LINK_BASE}/api/tcr?action=fesco-corridor-stats`, { headers }),
+  ])
+
+  let tcrData: CorridorResponse | null = null
+  let fescoData: CorridorResponse | null = null
+
+  if (tcrRes.status === "fulfilled" && tcrRes.value.ok) {
+    tcrData = (await tcrRes.value.json()) as CorridorResponse
+    if (!tcrData.ok) tcrData = null
+  }
+  if (fescoRes.status === "fulfilled" && fescoRes.value.ok) {
+    fescoData = (await fescoRes.value.json()) as CorridorResponse
+    if (!fescoData.ok) fescoData = null
   }
 
-  // Upsert today's snapshot
-  const snap  = data.snapshot
-  const today = new Date().toISOString().split("T")[0]
-  const { error: snapErr } = await db
-    .from("tcr_snapshots")
-    .upsert(
+  if (!tcrData && !fescoData) {
+    return { ok: false, tcr_upserted: 0, fesco_upserted: 0, snapshot_date: today, error: "both endpoints failed" }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabaseAdmin as any
+
+  // Remove stale weekly-format (YYYY-Wxx) rows for both methodology versions
+  await Promise.all([
+    db.from("delay_index_weekly").delete().eq("methodology_version", "mtl-v1").like("week_iso", "%-W%"),
+    db.from("delay_index_weekly").delete().eq("methodology_version", "fesco-mtl-v1").like("week_iso", "%-W%"),
+  ])
+
+  let tcrUpserted = 0
+  let fescoUpserted = 0
+
+  // Upsert TCR stats
+  if (tcrData) {
+    const rows = buildStatRows(tcrData.weekly_stats, "mtl-v1")
+    if (rows.length > 0) {
+      const { error } = await db.from("delay_index_weekly").upsert(rows, { onConflict: "lane_id,week_iso,milestone" })
+      if (error) return { ok: false, tcr_upserted: 0, fesco_upserted: 0, snapshot_date: today, error: `TCR upsert: ${error.message}` }
+      tcrUpserted = rows.length
+    }
+  }
+
+  // Upsert FESCO stats
+  if (fescoData) {
+    const rows = buildStatRows(fescoData.weekly_stats, "fesco-mtl-v1")
+    if (rows.length > 0) {
+      const { error } = await db.from("delay_index_weekly").upsert(rows, { onConflict: "lane_id,week_iso,milestone" })
+      if (error) return { ok: false, tcr_upserted: tcrUpserted, fesco_upserted: 0, snapshot_date: today, error: `FESCO upsert: ${error.message}` }
+      fescoUpserted = rows.length
+    }
+  }
+
+  // Upsert today's TCR snapshot
+  if (tcrData?.snapshot) {
+    const snap = tcrData.snapshot
+    await db.from("tcr_snapshots").upsert(
       {
         snapshot_date:  today,
         total:          snap.total,
@@ -111,9 +135,15 @@ async function runMtlLinkSync(): Promise<SyncResult> {
       },
       { onConflict: "snapshot_date" },
     )
-  if (snapErr) return { ok: false, stats_upserted: statsRows.length, snapshot_date: today, error: snapErr.message }
+  }
 
-  return { ok: true, stats_upserted: statsRows.length, snapshot_date: today, computed_at: data.computed_at }
+  return {
+    ok:             true,
+    tcr_upserted:   tcrUpserted,
+    fesco_upserted: fescoUpserted,
+    snapshot_date:  today,
+    computed_at:    tcrData?.computed_at ?? fescoData?.computed_at,
+  }
 }
 
 export const triggerMtlLinkSync = createServerFn({ method: "POST" }).handler(runMtlLinkSync)

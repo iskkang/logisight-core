@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
-import { triggerMtlLinkSync, type SyncResult } from "@/lib/api/mtl-link-sync";
+import { triggerMtlLinkSync, type SyncResult } from "@/lib/api/mtl-link-sync.server";
 
 export const Route = createFileRoute("/admin/routes")({
   head: () => ({
@@ -255,7 +255,7 @@ function AdminRoutesPage() {
             }`}
           >
             {syncResult.ok
-              ? `완료 — ${syncResult.stats_upserted}개 주간 통계 저장, 스냅샷 날짜: ${syncResult.snapshot_date} (computed_at: ${syncResult.computed_at?.slice(0, 19) ?? "—"})`
+              ? `완료 — TCR ${(syncResult as any).tcr_upserted ?? syncResult.stats_upserted ?? 0}개 · FESCO ${(syncResult as any).fesco_upserted ?? 0}개 저장, 스냅샷: ${syncResult.snapshot_date}`
               : `오류: ${syncResult.error}`}
           </div>
         )}
