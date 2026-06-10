@@ -1142,6 +1142,7 @@ function ExchangeRateMiniPanel({ exRate }: { exRate: ExchangeRateRow | null }) {
         { label: "EUR", sublabel: null, value: exRate.eur_krw },
         { label: "JPY", sublabel: "100엔", value: exRate.jpy_krw },
         { label: "CNY", sublabel: null, value: exRate.cny_krw },
+        { label: "RUB", sublabel: null, value: exRate.rub_krw },
       ]
     : [];
   return (
