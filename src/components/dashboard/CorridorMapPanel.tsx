@@ -27,8 +27,8 @@ function delayLabel(days: number | null | undefined): string {
 }
 
 // ── Corridor route polylines [lng, lat][] ───────────────────────────
-// KR routes: Busan → Sea → Vladivostok → Trans-Sib → destination
-// CN routes: Qingdao → land → Khorgos → destination
+// KR routes: Busan → Sea → Vladivostok → Trans-Sib → Novosibirsk → Semey → Almaty → destination
+// CN routes: Qingdao → Urumqi → Khorgos → Almaty → destination
 
 const KR_SHARED = [
   [129.07, 35.18] as [number, number],  // Busan
@@ -42,31 +42,44 @@ const CN_SHARED = [
   [80.19,  44.21] as [number, number],  // Khorgos
 ]
 
+// Shared trunk from Novosibirsk south to Almaty via Semey (Trans-Kazakhstan railway)
+const KR_CENTRAL_ASIA: [number, number][] = [
+  ...KR_SHARED,
+  [80.23,  50.41],  // Semey (Semipalatinsk)
+  [76.90,  43.25],  // Almaty
+]
+// Shared trunk from Khorgos to Almaty (direct west)
+const CN_CENTRAL_ASIA: [number, number][] = [
+  ...CN_SHARED,
+  [76.90,  43.25],  // Almaty
+]
+
 type LngLat = [number, number]
 
 const CORRIDORS: {
   id: string
   coords: LngLat[]
 }[] = [
-  {
-    id: "KR-CHUKURSAY",
-    coords: [...KR_SHARED, [71.45, 51.19], [63.60, 43.00], [69.30, 41.30]],
-  },
+  // KR routes (Trans-Siberian → Semey → Almaty → branch)
   {
     id: "KR-ALMATY",
-    coords: [...KR_SHARED, [76.90, 43.25]],
+    coords: [...KR_CENTRAL_ASIA],
   },
   {
     id: "KR-BISHKEK",
-    coords: [...KR_SHARED, [74.59, 42.87]],
-  },
-  {
-    id: "KR-ANDIJAN",
-    coords: [...KR_SHARED, [71.45, 51.19], [72.34, 40.78]],
+    coords: [...KR_CENTRAL_ASIA, [74.59, 42.87]],
   },
   {
     id: "KR-OSH",
-    coords: [...KR_SHARED, [72.80, 40.53]],
+    coords: [...KR_CENTRAL_ASIA, [74.59, 42.87], [72.80, 40.53]],
+  },
+  {
+    id: "KR-CHUKURSAY",
+    coords: [...KR_CENTRAL_ASIA, [69.60, 42.32], [69.30, 41.30]],  // via Shymkent → Tashkent
+  },
+  {
+    id: "KR-ANDIJAN",
+    coords: [...KR_CENTRAL_ASIA, [69.60, 42.32], [69.30, 41.30], [72.34, 40.78]],
   },
   {
     id: "KR-MALASZEWICZE",
@@ -77,25 +90,26 @@ const CORRIDORS: {
       [23.69, 52.11],  // Malaszewicze
     ],
   },
+  // CN routes (Khorgos → Almaty → branch)
   {
-    id: "CN-ANDIJAN",
-    coords: [...CN_SHARED, [76.90, 43.25], [72.34, 40.78]],
+    id: "CN-ALMATY",
+    coords: [...CN_CENTRAL_ASIA],
   },
   {
     id: "CN-BISHKEK",
-    coords: [...CN_SHARED, [74.59, 42.87]],
-  },
-  {
-    id: "CN-ALMATY",
-    coords: [...CN_SHARED, [76.90, 43.25]],
-  },
-  {
-    id: "CN-CHUKURSAY",
-    coords: [...CN_SHARED, [76.90, 43.25], [69.30, 41.30]],
+    coords: [...CN_CENTRAL_ASIA, [74.59, 42.87]],
   },
   {
     id: "CN-OSH",
-    coords: [...CN_SHARED, [72.80, 40.53]],
+    coords: [...CN_CENTRAL_ASIA, [74.59, 42.87], [72.80, 40.53]],
+  },
+  {
+    id: "CN-CHUKURSAY",
+    coords: [...CN_CENTRAL_ASIA, [69.60, 42.32], [69.30, 41.30]],
+  },
+  {
+    id: "CN-ANDIJAN",
+    coords: [...CN_CENTRAL_ASIA, [69.60, 42.32], [69.30, 41.30], [72.34, 40.78]],
   },
 ]
 
@@ -103,6 +117,7 @@ const CORRIDORS: {
 const TRANSIT_NODES: { coords: LngLat; label: string }[] = [
   { coords: [132.95, 42.83], label: "Vladivostok" },
   { coords: [82.92,  55.00], label: "Novosibirsk" },
+  { coords: [80.23,  50.41], label: "Semey" },
   { coords: [80.19,  44.21], label: "Khorgos" },
   { coords: [37.62,  55.75], label: "Moscow" },
 ]
@@ -268,13 +283,22 @@ export function CorridorMapPanel({ lanesWithDelay, selectedLaneId, onLaneSelect 
           </Marker>
         ))}
 
-        {/* Destination city badges */}
+        {/* Destination city badges — only show when data exists or lane is selected */}
         {DEST_CITIES.map((city) => {
-          const delay = cityDelay(city.laneIds)
-          const color  = delayColor(delay)
-          const label  = delayLabel(delay)
-          const hasData = delay != null
+          const delay    = cityDelay(city.laneIds)
+          const color    = delayColor(delay)
+          const label    = delayLabel(delay)
+          const hasData  = delay != null
           const isActive = city.laneIds.some((id) => id === selectedLaneId)
+
+          // Show a minimal dot for cities with no data (unless selected)
+          if (!hasData && !isActive) {
+            return (
+              <Marker key={city.key} coordinates={city.coords}>
+                <circle r={4} fill="#334155" stroke="#475569" strokeWidth={1} />
+              </Marker>
+            )
+          }
 
           return (
             <Marker
@@ -290,7 +314,7 @@ export function CorridorMapPanel({ lanesWithDelay, selectedLaneId, onLaneSelect 
               {/* Glow ring for selected/active */}
               {isActive && (
                 <circle
-                  r={20}
+                  r={16}
                   fill={color}
                   fillOpacity={0.15}
                   stroke={color}
@@ -300,11 +324,11 @@ export function CorridorMapPanel({ lanesWithDelay, selectedLaneId, onLaneSelect 
               )}
               {/* Main badge circle */}
               <circle
-                r={13}
+                r={10}
                 fill={hasData ? color : "#1e293b"}
                 stroke={hasData ? color : "#475569"}
                 strokeWidth={1.5}
-                fillOpacity={0.85}
+                fillOpacity={0.9}
                 style={{ cursor: "pointer" }}
               />
               {/* Delay value */}
@@ -312,28 +336,30 @@ export function CorridorMapPanel({ lanesWithDelay, selectedLaneId, onLaneSelect 
                 textAnchor="middle"
                 dominantBaseline="middle"
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  fill: hasData ? "#fff" : "#64748b",
+                  fill: "#fff",
                   fontFamily: "system-ui",
                   pointerEvents: "none",
                 }}
               >
-                {hasData ? label : "—"}
+                {label}
               </text>
-              {/* City label below */}
-              <text
-                textAnchor="middle"
-                y={22}
-                style={{
-                  fontSize: 8,
-                  fill: "#94a3b8",
-                  fontFamily: "system-ui",
-                  pointerEvents: "none",
-                }}
-              >
-                {city.label}
-              </text>
+              {/* City label — only shown for selected or sparse-area cities */}
+              {(isActive || city.key === "malaszewicze") && (
+                <text
+                  textAnchor="middle"
+                  y={19}
+                  style={{
+                    fontSize: 8,
+                    fill: "#94a3b8",
+                    fontFamily: "system-ui",
+                    pointerEvents: "none",
+                  }}
+                >
+                  {city.label}
+                </text>
+              )}
             </Marker>
           )
         })}
