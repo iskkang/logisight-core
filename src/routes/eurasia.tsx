@@ -17,7 +17,8 @@ import {
   tcrSnapshotsQueryOptions,
   type LaneRow,
   type DelayWeeklyRow,
-} from "@/lib/api/eurasia";
+} from "@/lib/api/eurasia"
+import { CorridorMapPanel } from "@/components/dashboard/CorridorMapPanel";
 import {
   eurasiaDisruptionsActiveQueryOptions,
   upsertEurasiaDisruption,
@@ -796,12 +797,24 @@ function EurasiaPage() {
         </div>
       )}
 
+      {/* Corridor map */}
+      <section>
+        <CorridorMapPanel
+          lanesWithDelay={lanesWithDelay}
+          selectedLaneId={focusLaneId}
+          onLaneSelect={(id) => {
+            const lane = lanesWithDelay.find((l) => l.id === id)
+            if (lane) { setSelectedLane(lane); setFocusLaneId(id) }
+          }}
+        />
+      </section>
+
       {/* Corridor board */}
       <section>
         <h2 className="mb-2 text-[13px] font-semibold">
           회랑 운영 현황{" "}
           <span className="text-[11px] font-normal text-muted-foreground">
-            delay_index_weekly (FESCO TSR 자동) · 주간
+            delay_index_weekly · 현재 기준
           </span>
         </h2>
         {lanesWithDelay.length === 0 ? (

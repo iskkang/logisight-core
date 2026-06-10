@@ -1,9 +1,4 @@
-// MTL Link → logisight corridor stats sync
-// Calls MTL Link's TCR and FESCO corridor-stats endpoints
-// and upserts results into delay_index_weekly + tcr_snapshots.
-
-import { createServerFn } from "@tanstack/react-start"
-import { supabaseAdmin } from "@/integrations/supabase/client.server"
+import { createServerFn } from "@tanstack/react-start";
 
 const MTL_LINK_BASE    = (process.env.MTL_LINK_URL    ?? "https://link.mtlship.com").replace(/\/$/, "")
 const MTL_LINK_API_KEY = process.env.MTL_LINK_API_KEY ?? ""
@@ -61,12 +56,19 @@ function buildStatRows(stats: WeeklyStat[], methodology: string) {
 }
 
 async function runMtlLinkSync(): Promise<SyncResult> {
+  const { default: ws } = await import("ws");
+  const { createClient } = await import("@supabase/supabase-js");
+  const db = createClient(
+    process.env["SUPABASE_URL"]!,
+    process.env["SUPABASE_SERVICE_ROLE_KEY"]!,
+    { auth: { persistSession: false }, realtime: { transport: ws } },
+  );
+
   const headers: Record<string, string> = {}
   if (MTL_LINK_API_KEY) headers["Authorization"] = `Bearer ${MTL_LINK_API_KEY}`
 
   const today = new Date().toISOString().split("T")[0]
 
-  // Fetch TCR and FESCO stats in parallel
   const [tcrRes, fescoRes] = await Promise.allSettled([
     fetch(`${MTL_LINK_BASE}/api/tcr?action=corridor-stats`, { headers }),
     fetch(`${MTL_LINK_BASE}/api/tcr?action=fesco-corridor-stats`, { headers }),
@@ -88,9 +90,6 @@ async function runMtlLinkSync(): Promise<SyncResult> {
     return { ok: false, tcr_upserted: 0, fesco_upserted: 0, snapshot_date: today, error: "both endpoints failed" }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabaseAdmin as any
-
   // Remove stale weekly-format (YYYY-Wxx) rows for both methodology versions
   await Promise.all([
     db.from("delay_index_weekly").delete().eq("methodology_version", "mtl-v1").like("week_iso", "%-W%"),
@@ -100,7 +99,6 @@ async function runMtlLinkSync(): Promise<SyncResult> {
   let tcrUpserted = 0
   let fescoUpserted = 0
 
-  // Upsert TCR stats
   if (tcrData) {
     const rows = buildStatRows(tcrData.weekly_stats, "mtl-v1")
     if (rows.length > 0) {
@@ -110,7 +108,6 @@ async function runMtlLinkSync(): Promise<SyncResult> {
     }
   }
 
-  // Upsert FESCO stats
   if (fescoData) {
     const rows = buildStatRows(fescoData.weekly_stats, "fesco-mtl-v1")
     if (rows.length > 0) {
@@ -120,7 +117,6 @@ async function runMtlLinkSync(): Promise<SyncResult> {
     }
   }
 
-  // Upsert today's TCR snapshot
   if (tcrData?.snapshot) {
     const snap = tcrData.snapshot
     await db.from("tcr_snapshots").upsert(
