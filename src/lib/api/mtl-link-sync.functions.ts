@@ -90,11 +90,9 @@ async function runMtlLinkSync(): Promise<SyncResult> {
     return { ok: false, tcr_upserted: 0, fesco_upserted: 0, snapshot_date: today, error: "both endpoints failed" }
   }
 
-  // Remove stale weekly-format (YYYY-Wxx) rows for both methodology versions
-  await Promise.all([
-    db.from("delay_index_weekly").delete().eq("methodology_version", "mtl-v1").like("week_iso", "%-W%"),
-    db.from("delay_index_weekly").delete().eq("methodology_version", "fesco-mtl-v1").like("week_iso", "%-W%"),
-  ])
+  // Remove ALL stale weekly-format (YYYY-Wxx) rows regardless of methodology version.
+  // Old rows may have null or legacy methodology values that a versioned filter would miss.
+  await db.from("delay_index_weekly").delete().like("week_iso", "%-W%")
 
   let tcrUpserted = 0
   let fescoUpserted = 0
