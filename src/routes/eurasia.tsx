@@ -25,6 +25,24 @@ import {
   type EurasiaDisruptionRow,
 } from "@/lib/api/eurasia-disruptions";
 
+// Converts "2026-W23" or "2026-06" to a comparable timestamp so that
+// monthly (YYYY-MM) and weekly (YYYY-Wxx) rows sort correctly by real date.
+function weekIsoToTs(s: string): number {
+  if (/^\d{4}-W\d{2}$/.test(s)) {
+    const year = parseInt(s.slice(0, 4), 10)
+    const week = parseInt(s.slice(6), 10)
+    // ISO week 1 contains Jan 4; Monday of week N = Jan4 + (N-1)*7 - (dayOfWeek(Jan4)-1)
+    const jan4 = new Date(Date.UTC(year, 0, 4))
+    const dow  = jan4.getUTCDay() || 7
+    return jan4.getTime() - (dow - 1) * 86_400_000 + (week - 1) * 7 * 86_400_000
+  }
+  if (/^\d{4}-\d{2}$/.test(s)) {
+    // Treat as the 15th of the month (mid-month representative)
+    return Date.UTC(parseInt(s.slice(0, 4), 10), parseInt(s.slice(5, 7), 10) - 1, 15)
+  }
+  return new Date(s).getTime()
+}
+
 export const Route = createFileRoute("/eurasia")({
   loader: ({ context }) => {
     context.queryClient.ensureQueryData(eurasiaLanesQueryOptions());
@@ -286,7 +304,7 @@ function EurasiaPage() {
     return lanes.map((lane) => {
       const laneDelays = delays
         .filter((d) => d.lane_id === lane.id)
-        .sort((a, b) => a.week_iso.localeCompare(b.week_iso));
+        .sort((a, b) => weekIsoToTs(a.week_iso) - weekIsoToTs(b.week_iso));
       const latestDelay = laneDelays.at(-1) ?? null;
       const activeDisruptions = disruptions.filter((d) => d.lane_id === lane.id);
       return { ...lane, latestDelay, delayHistory: laneDelays, activeDisruptions };
@@ -305,8 +323,8 @@ function EurasiaPage() {
   // --- Aggregate metrics ---
   const latestTcr = tcrSnapshots.at(0) ?? null;
   const latestWeek = useMemo(() => {
-    const weeks = delays.map((d) => d.week_iso).filter(Boolean).sort();
-    return weeks.at(-1) ?? null;
+    const weeks = delays.map((d) => d.week_iso).filter((w): w is string => !!w)
+    return weeks.length ? weeks.reduce((best, w) => weekIsoToTs(w) > weekIsoToTs(best) ? w : best) : null
   }, [delays]);
 
   const avgDelay = useMemo(() => {
