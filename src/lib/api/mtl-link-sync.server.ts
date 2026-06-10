@@ -82,6 +82,7 @@ async function runMtlLinkSync(): Promise<SyncResult> {
       median_delay_h:      s.median_delay_h,
       p90_delay_h:         s.p90_delay_h,
       on_time_rate:        s.on_time_rate,
+      otp_pct:             s.on_time_rate != null ? Math.round(s.on_time_rate * 100) : null,
       data_quality:        s.data_quality,
       methodology_version: "mtl-v1",
     }))

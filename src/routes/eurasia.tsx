@@ -384,7 +384,7 @@ function EurasiaPage() {
                 : "text-status-normal"
             }
           >
-            {r.latestDelay.median_delay_d}일
+            {Math.round(r.latestDelay.median_delay_d * 10) / 10}일
           </span>
         ) : (
           <span className="text-muted-foreground">—</span>
@@ -397,7 +397,7 @@ function EurasiaPage() {
       header: "P90 지연",
       cell: (r) =>
         r.latestDelay?.p90_delay_d !== null && r.latestDelay?.p90_delay_d !== undefined
-          ? `${r.latestDelay.p90_delay_d}일`
+          ? `${Math.round(r.latestDelay.p90_delay_d * 10) / 10}일`
           : "—",
       className: "text-right text-muted-foreground",
       headerClassName: "text-right",
@@ -490,9 +490,9 @@ function EurasiaPage() {
           </h3>
           <div className="grid grid-cols-2 gap-y-2 text-xs">
             <span className="text-muted-foreground">중위 지연</span>
-            <span>{selectedLane.latestDelay.median_delay_d !== null ? `${selectedLane.latestDelay.median_delay_d}일` : "—"}</span>
+            <span>{selectedLane.latestDelay.median_delay_d !== null ? `${Math.round(selectedLane.latestDelay.median_delay_d * 10) / 10}일` : "—"}</span>
             <span className="text-muted-foreground">P90 지연</span>
-            <span>{selectedLane.latestDelay.p90_delay_d !== null ? `${selectedLane.latestDelay.p90_delay_d}일` : "—"}</span>
+            <span>{selectedLane.latestDelay.p90_delay_d !== null ? `${Math.round(selectedLane.latestDelay.p90_delay_d * 10) / 10}일` : "—"}</span>
             <span className="text-muted-foreground">정시율</span>
             <span>{selectedLane.latestDelay.otp_pct !== null ? `${selectedLane.latestDelay.otp_pct}%` : "—"}</span>
             <span className="text-muted-foreground">샘플 수</span>
