@@ -14,6 +14,18 @@ type WeeklyStat = {
   data_quality:   string
 }
 
+type CorridorHotspot = {
+  lane_id:                 string
+  segment:                 string
+  location:                string | null
+  reason:                  string
+  severity:                "high" | "medium" | "low"
+  delay_contribution_days: number
+  sample_count:            number
+  confidence:              "high" | "medium" | "low"
+  source:                  string
+}
+
 type CorridorResponse = {
   ok:          boolean
   computed_at: string
@@ -26,6 +38,7 @@ type CorridorResponse = {
     by_segment:     Record<string, number>
   }
   weekly_stats: WeeklyStat[]
+  hotspots?: CorridorHotspot[]
   error?: string
 }
 
@@ -33,6 +46,7 @@ export type SyncResult = {
   ok:              boolean
   tcr_upserted:    number
   fesco_upserted:  number
+  hotspots_upserted?: number
   snapshot_date:   string
   computed_at?:    string
   error?:          string
@@ -52,6 +66,35 @@ function buildStatRows(stats: WeeklyStat[], methodology: string) {
       // otp_pct is a GENERATED ALWAYS column in Postgres — never insert
       data_quality:        s.data_quality,
       methodology_version: methodology,
+    }))
+}
+
+function buildHotspotTitle(h: CorridorHotspot) {
+  const reason = h.reason.trim()
+  const location = h.location?.trim()
+  if (!location) return reason
+
+  const lowerReason = reason.toLocaleLowerCase()
+  const lowerLocation = location.toLocaleLowerCase()
+  if (lowerReason === lowerLocation || lowerReason.startsWith(`${lowerLocation} `) || lowerReason.startsWith(`${lowerLocation}:`)) {
+    return reason
+  }
+
+  return `${location}: ${reason}`
+}
+
+function buildHotspotRows(hotspots: CorridorHotspot[]) {
+  return hotspots
+    .filter((h) => h.lane_id && h.segment && h.reason)
+    .map((h) => ({
+      lane_id:                 h.lane_id,
+      segment:                 h.segment,
+      title:                   buildHotspotTitle(h),
+      severity:                h.severity,
+      delay_contribution_days: h.delay_contribution_days,
+      status:                  "active",
+      source:                  h.source,
+      confidence:              h.confidence,
     }))
 }
 
@@ -96,6 +139,7 @@ async function runMtlLinkSync(): Promise<SyncResult> {
 
   let tcrUpserted = 0
   let fescoUpserted = 0
+  let hotspotsUpserted = 0
 
   if (tcrData) {
     const rows = buildStatRows(tcrData.weekly_stats, "mtl-v1")
@@ -139,10 +183,33 @@ async function runMtlLinkSync(): Promise<SyncResult> {
     )
   }
 
+  const hotspotSources = [
+    ...(tcrData ? ["MTL-Link TCR"] : []),
+    ...(fescoData ? ["MTL-Link FESCO"] : []),
+  ]
+  if (hotspotSources.length > 0) {
+    const { error } = await db
+      .from("eurasia_disruptions")
+      .delete()
+      .in("source", hotspotSources)
+    if (error) return { ok: false, tcr_upserted: tcrUpserted, fesco_upserted: fescoUpserted, hotspots_upserted: 0, snapshot_date: today, error: `Hotspot cleanup: ${error.message}` }
+
+    const hotspotRows = buildHotspotRows([
+      ...(tcrData?.hotspots ?? []),
+      ...(fescoData?.hotspots ?? []),
+    ])
+    if (hotspotRows.length > 0) {
+      const { error } = await db.from("eurasia_disruptions").insert(hotspotRows)
+      if (error) return { ok: false, tcr_upserted: tcrUpserted, fesco_upserted: fescoUpserted, hotspots_upserted: 0, snapshot_date: today, error: `Hotspot insert: ${error.message}` }
+      hotspotsUpserted = hotspotRows.length
+    }
+  }
+
   return {
     ok:             true,
     tcr_upserted:   tcrUpserted,
     fesco_upserted: fescoUpserted,
+    hotspots_upserted: hotspotsUpserted,
     snapshot_date:  today,
     computed_at:    tcrData?.computed_at ?? fescoData?.computed_at,
   }

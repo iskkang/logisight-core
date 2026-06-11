@@ -255,7 +255,7 @@ function AdminRoutesPage() {
             }`}
           >
             {syncResult.ok
-              ? `완료 — TCR ${syncResult.tcr_upserted}개 · FESCO ${syncResult.fesco_upserted}개 저장, 스냅샷: ${syncResult.snapshot_date}`
+              ? `완료 — TCR ${syncResult.tcr_upserted}개 · FESCO ${syncResult.fesco_upserted}개 · 병목 ${syncResult.hotspots_upserted ?? 0}개 저장, 스냅샷: ${syncResult.snapshot_date}`
               : `오류: ${syncResult.error}`}
           </div>
         )}
