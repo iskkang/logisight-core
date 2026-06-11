@@ -396,6 +396,7 @@ function LdHeroSection({
   kcciStat,
   disruptions,
   aiSummary,
+  airRate,
 }: {
   today: string;
   highAlerts: number;
@@ -403,72 +404,72 @@ function LdHeroSection({
   kcciStat: IndexStats | undefined;
   disruptions: number;
   aiSummary: string;
+  airRate: { value: string | null; mom: number | null } | null;
 }) {
   const pressureUp = (kcciStat?.change_pct ?? 0) > 0;
   const alertCount = highAlerts + medAlerts;
+  const kcciTrend = kcciStat?.change_pct == null ? "flat" : kcciStat.change_pct > 0 ? "up" : "down";
+  const airTrend = airRate?.mom == null ? "flat" : airRate.mom > 0 ? "up" : "down";
 
   return (
-    <section className="ld-hero-card ld-shell">
-      <div className="ld-hero-content">
-        <h1>오늘의 물류 브리핑</h1>
-        <p>{aiSummary}</p>
-        <div className="ld-hero-pills">
-          <span className={`ld-pill ${pressureUp ? "ld-pill--red" : "ld-pill--green"}`}>
-            {pressureUp ? "↗ 운임 압력 상승" : "↘ 운임 안정"}
-          </span>
-          {disruptions > 0 && (
-            <span className="ld-pill ld-pill--amber">⚠ 유라시아 리스크 {disruptions}건</span>
-          )}
-          {alertCount > 0 && (
-            <span className="ld-pill ld-pill--blue">▣ 경보 {alertCount}건</span>
-          )}
-          <span className="ld-pill ld-pill--slate">◷ 기준일 {today}</span>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ── KPI Grid ──────────────────────────────────────────────────────────────────
-
-function LdKpiCard({
-  icon,
-  title,
-  value,
-  sub,
-  change,
-  trend,
-  tone,
-  spark,
-}: {
-  icon: string;
-  title: string;
-  value: string;
-  sub: string;
-  change?: string;
-  trend?: "up" | "down" | "flat";
-  tone: "blue" | "green" | "red" | "amber" | "gray";
-  spark?: number[];
-}) {
-  return (
-    <article className="ld-kpi-card ld-panel-card">
-      <div className={`ld-kpi-icon ld-tone-${tone}`}>{icon}</div>
-      <div className="ld-kpi-copy">
-        <div className="ld-card-eyebrow">{title}</div>
-        <div className="ld-kpi-value-row">
-          <strong>{value}</strong>
-          {change && (
-            <span className={`ld-trend ${trend ? `ld-trend--${trend}` : ""}`}>
-              {trend === "up" ? "▲" : trend === "down" ? "▼" : ""} {change}
+    <div className="ld-hero-wrap">
+      <section className="ld-hero-card ld-shell">
+        <div className="ld-hero-content">
+          <h1>오늘의 물류 브리핑</h1>
+          <p>{aiSummary}</p>
+          <div className="ld-hero-pills">
+            <span className={`ld-pill ${pressureUp ? "ld-pill--red" : "ld-pill--green"}`}>
+              {pressureUp ? "↗ 운임 압력 상승" : "↘ 운임 안정"}
             </span>
-          )}
+            {disruptions > 0 && (
+              <span className="ld-pill ld-pill--amber">⚠ 유라시아 리스크 {disruptions}건</span>
+            )}
+            {alertCount > 0 && (
+              <span className="ld-pill ld-pill--blue">▣ 경보 {alertCount}건</span>
+            )}
+            <span className="ld-pill ld-pill--slate">◷ 기준일 {today}</span>
+          </div>
+
+          {/* Embedded KPI strip */}
+          <div className="ld-hero-kpi-strip">
+            <div className="ld-hero-kpi-item">
+              <span className="ld-hero-kpi-label">KCCI</span>
+              <span className="ld-hero-kpi-val">
+                {kcciStat?.latest_value != null
+                  ? kcciStat.latest_value.toLocaleString("en-US", { maximumFractionDigits: 0 })
+                  : "—"}
+                <em>pt</em>
+              </span>
+              <span className={`ld-hero-kpi-chg ld-trend--${kcciTrend}`}>
+                {trendSym(kcciStat?.change_pct)} {pctText(kcciStat?.change_pct)}
+              </span>
+            </div>
+            <div className="ld-hero-kpi-item">
+              <span className="ld-hero-kpi-label">항공 운임 (ICN)</span>
+              <span className="ld-hero-kpi-val">
+                {airRate?.value ?? "수집 중"}
+              </span>
+              {airRate?.mom != null ? (
+                <span className={`ld-hero-kpi-chg ld-trend--${airTrend}`}>
+                  {trendSym(airRate.mom)} {pctText(airRate.mom)}
+                </span>
+              ) : (
+                <span className="ld-hero-kpi-chg ld-trend--flat">—</span>
+              )}
+            </div>
+            <div className="ld-hero-kpi-item">
+              <span className="ld-hero-kpi-label">경보 현황</span>
+              <span className="ld-hero-kpi-val">
+                {alertCount}<em>건</em>
+              </span>
+              <span className={`ld-hero-kpi-chg ld-trend--${alertCount > 0 ? "down" : "flat"}`}>
+                {alertCount > 0 ? `고위험 ${highAlerts}건` : "정상"}
+              </span>
+            </div>
+          </div>
         </div>
-        <p>{sub}</p>
-      </div>
-      {spark && spark.length > 1 && (
-        <LdSparkline points={spark.slice(-9)} trend={trend} />
-      )}
-    </article>
+      </section>
+    </div>
   );
 }
 
@@ -891,7 +892,7 @@ function LdRouteCard({
 
 function LdSeaRouteMonitor({ laneRows }: { laneRows: KeyLaneRow[] }) {
   const seaRows = laneRows.filter((r) => r.lane.mode === "ocean" && r.value != null);
-  const gridCls = seaRows.length >= 4 ? "ld-route-grid ld-route-grid--4" : "ld-route-grid";
+  const gridCls = "ld-route-grid ld-route-grid--5";
   return (
     <section className="ld-panel-card ld-route-section">
       <div className="ld-side-title-row">
@@ -1163,19 +1164,14 @@ function DashboardPage() {
     changePct: s.change_pct,
   }));
 
-  // KPI values
-  const kcciChange = kcciStat?.change_pct;
-  const kcciTrend: "up" | "down" | "flat" =
-    kcciChange == null || kcciChange === 0 ? "flat" : kcciChange > 0 ? "up" : "down";
-  const kcciSeries = orderedIndexRows.find((s) => s.index_code === "KCCI");
-  const firstAirRow = airLaneRows[0];
+  const firstAirRow = airLaneRows[0] ?? null;
 
   return (
     <div className="ld-dash">
       {/* Ticker */}
       <LdTickerBar items={tickerItems} asOf={asOf} />
 
-      {/* Hero */}
+      {/* Hero — flush against ticker, KPI strip embedded */}
       <LdHeroSection
         today={today}
         highAlerts={highAlerts}
@@ -1183,65 +1179,8 @@ function DashboardPage() {
         kcciStat={kcciStat}
         disruptions={disruptions.length}
         aiSummary={heroSummary}
+        airRate={firstAirRow ? { value: firstAirRow.value, mom: firstAirRow.mom } : null}
       />
-
-      {/* KPI Grid — 4 cards */}
-      <section className="ld-kpi-grid ld-shell">
-        <LdKpiCard
-          icon="↗"
-          title="운임 압력"
-          value={kcciTrend === "up" ? "상승" : kcciTrend === "down" ? "하락" : "보합"}
-          sub={kcciChange != null ? `KCCI WoW ${pctText(kcciChange)}` : "KCCI 수집 중"}
-          tone={kcciTrend === "up" ? "red" : kcciTrend === "down" ? "green" : "gray"}
-          trend={kcciTrend}
-        />
-        <LdKpiCard
-          icon="K"
-          title="한국발 해상 (KCCI)"
-          value={
-            kcciStat?.latest_value != null
-              ? kcciStat.latest_value.toLocaleString("en-US", { maximumFractionDigits: 0 })
-              : "수집 중"
-          }
-          sub={kcciStat?.latest_date ? `기준 ${kcciStat.latest_date.slice(0, 10)}` : "데이터 수집 중"}
-          change={kcciChange != null ? pctText(kcciChange) : undefined}
-          trend={kcciTrend}
-          tone="blue"
-          spark={kcciSeries?.normal_range != null ? [
-            kcciSeries.normal_range[0],
-            kcciSeries.latest_value ?? kcciSeries.normal_range[1],
-          ] : undefined}
-        />
-        <LdKpiCard
-          icon="✈"
-          title="항공 운임 (KITA)"
-          value={firstAirRow?.value ?? "수집 중"}
-          sub={
-            firstAirRow
-              ? `${firstAirRow.origin} → ${firstAirRow.dest}`
-              : "인천발 데이터 수집 중"
-          }
-          change={firstAirRow?.mom != null ? pctText(firstAirRow.mom) : undefined}
-          trend={
-            firstAirRow?.mom == null
-              ? undefined
-              : firstAirRow.mom > 0
-                ? "up"
-                : firstAirRow.mom < 0
-                  ? "down"
-                  : "flat"
-          }
-          tone="green"
-          spark={firstAirRow?.values}
-        />
-        <LdKpiCard
-          icon="⚠"
-          title="리스크 알림"
-          value={`${alertCount}건`}
-          sub={alertCount > 0 ? `경고 ${highAlerts} · 주의 ${medAlerts}` : "활성 경보 없음"}
-          tone={highAlerts > 0 ? "red" : medAlerts > 0 ? "amber" : "gray"}
-        />
-      </section>
 
       {/* Main grid: Intelligence Panel + Right Sidebar */}
       <section className="ld-main-grid ld-shell">
