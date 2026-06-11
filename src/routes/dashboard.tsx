@@ -1187,9 +1187,17 @@ function ExchangeRateMiniPanel({ exRate }: { exRate: ExchangeRateRow | null }) {
 }
 
 function JetFuelChartCard({ rows }: { rows: BunkerPriceRow[] }) {
+  const grades = useMemo(() => [...new Set(rows.map((r) => r.grade))].sort(), [rows]);
+
+  const jetGrade = useMemo(
+    () => grades.find((g) => /jet|kerosene|atf|avgas/i.test(g)) ?? grades[0] ?? null,
+    [grades],
+  );
+
   const chartData = useMemo(() => {
+    const filtered = jetGrade ? rows.filter((r) => r.grade === jetGrade) : [];
     const byDate = new Map<string, { sum: number; count: number }>();
-    for (const r of rows) {
+    for (const r of filtered) {
       if (r.price_usd == null) continue;
       const entry = byDate.get(r.obs_date) ?? { sum: 0, count: 0 };
       entry.sum += r.price_usd;
@@ -1202,7 +1210,7 @@ function JetFuelChartCard({ rows }: { rows: BunkerPriceRow[] }) {
         date: date.slice(5),
         price: Math.round(sum / count),
       }));
-  }, [rows]);
+  }, [rows, jetGrade]);
 
   const latest = chartData.at(-1);
   const prev = chartData.at(-2);
@@ -1214,10 +1222,12 @@ function JetFuelChartCard({ rows }: { rows: BunkerPriceRow[] }) {
 
   return (
     <Panel>
-      <SectionTitle>항공유 가격 (Jet-A1)</SectionTitle>
+      <SectionTitle>항공유 가격 {jetGrade ? `(${jetGrade})` : ""}</SectionTitle>
       {chartData.length === 0 ? (
         <div className="rounded-md bg-slate-50 px-3 py-3 text-center text-[11px] text-slate-400">
-          데이터 수집 중
+          {grades.length > 0
+            ? `수집 등급: ${grades.join(", ")}`
+            : "데이터 수집 중"}
         </div>
       ) : (
         <>

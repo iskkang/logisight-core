@@ -260,7 +260,6 @@ export const getBunkerHistory = createServerFn({ method: "GET" }).handler(
     const { data, error } = await supabasePublicServer
       .from("bunker_prices")
       .select("grade,port,price_usd,obs_date,source,source_url")
-      .ilike("grade", "%jet%")
       .gte("obs_date", cutoff.toISOString().split("T")[0])
       .order("obs_date", { ascending: true })
       .limit(500);
