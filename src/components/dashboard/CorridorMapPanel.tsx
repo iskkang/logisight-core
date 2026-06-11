@@ -82,6 +82,18 @@ const CORRIDORS: {
     coords: [...KR_CENTRAL_ASIA, [69.60, 42.32], [69.30, 41.30], [72.34, 40.78]],
   },
   {
+    id: "KR-VLADIVOSTOK-CHUKURSAY",
+    coords: [[129.07, 35.18], [132.95, 42.83], [69.30, 41.30]],
+  },
+  {
+    id: "KR-VLADIVOSTOK-SILIKATNAJA",
+    coords: [[129.07, 35.18], [132.95, 42.83], [37.45, 55.50]],
+  },
+  {
+    id: "KR-VLADIVOSTOK-MOSCOW",
+    coords: [[129.07, 35.18], [132.95, 42.83], [37.62, 55.75]],
+  },
+  {
     id: "KR-MALASZEWICZE",
     coords: [
       ...KR_SHARED,
@@ -129,6 +141,9 @@ const ORIGIN_NODES: { coords: LngLat; label: string }[] = [
 
 const DEST_NODES: { laneId: string; coords: LngLat; label: string }[] = [
   { laneId: "KR-CHUKURSAY",    coords: [69.30, 41.30],  label: "Chukursay" },
+  { laneId: "KR-VLADIVOSTOK-CHUKURSAY", coords: [69.30, 41.30], label: "FESCO Chukursay" },
+  { laneId: "KR-VLADIVOSTOK-SILIKATNAJA", coords: [37.45, 55.50], label: "Silikatnaja" },
+  { laneId: "KR-VLADIVOSTOK-MOSCOW", coords: [37.62, 55.75], label: "Moscow" },
   { laneId: "KR-ALMATY",       coords: [76.90, 43.25],  label: "Almaty" },
   { laneId: "KR-BISHKEK",      coords: [74.59, 42.87],  label: "Bishkek" },
   { laneId: "KR-ANDIJAN",      coords: [72.34, 40.78],  label: "Andijan" },
@@ -149,6 +164,9 @@ const DEST_CITIES: {
   laneIds: string[]
 }[] = [
   { key: "chukursay",    coords: [69.30, 41.30],  label: "Chukursay",    laneIds: ["KR-CHUKURSAY", "CN-CHUKURSAY"] },
+  { key: "fesco-chukursay", coords: [69.30, 41.30], label: "FESCO Chukursay", laneIds: ["KR-VLADIVOSTOK-CHUKURSAY"] },
+  { key: "silikatnaja", coords: [37.45, 55.50], label: "Silikatnaja", laneIds: ["KR-VLADIVOSTOK-SILIKATNAJA"] },
+  { key: "moscow", coords: [37.62, 55.75], label: "Moscow", laneIds: ["KR-VLADIVOSTOK-MOSCOW"] },
   { key: "almaty",       coords: [76.90, 43.25],  label: "Almaty",       laneIds: ["KR-ALMATY", "CN-ALMATY"] },
   { key: "bishkek",      coords: [74.59, 42.87],  label: "Bishkek",      laneIds: ["KR-BISHKEK", "CN-BISHKEK"] },
   { key: "andijan",      coords: [72.34, 40.78],  label: "Andijan",      laneIds: ["KR-ANDIJAN", "CN-ANDIJAN"] },

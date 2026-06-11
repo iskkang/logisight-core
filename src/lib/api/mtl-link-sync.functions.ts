@@ -109,6 +109,14 @@ async function runMtlLinkSync(): Promise<SyncResult> {
   if (fescoData) {
     const rows = buildStatRows(fescoData.weekly_stats, "fesco-mtl-v1")
     if (rows.length > 0) {
+      for (const weekIso of [...new Set(rows.map((r) => r.week_iso))]) {
+        const { error } = await db
+          .from("delay_index_weekly")
+          .delete()
+          .eq("methodology_version", "fesco-mtl-v1")
+          .eq("week_iso", weekIso)
+        if (error) return { ok: false, tcr_upserted: tcrUpserted, fesco_upserted: 0, snapshot_date: today, error: `FESCO cleanup: ${error.message}` }
+      }
       const { error } = await db.from("delay_index_weekly").upsert(rows, { onConflict: "lane_id,week_iso,milestone" })
       if (error) return { ok: false, tcr_upserted: tcrUpserted, fesco_upserted: 0, snapshot_date: today, error: `FESCO upsert: ${error.message}` }
       fescoUpserted = rows.length
