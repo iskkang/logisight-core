@@ -350,6 +350,43 @@ function LdTickerBar({
   );
 }
 
+// ── Hero AI summary builder ───────────────────────────────────────────────────
+
+function buildHeroSummary(
+  kcciStat: IndexStats | undefined,
+  stats: IndexStats[],
+  alertCount: number,
+  disruptions: number,
+  openForecasts: Forecast[],
+): string {
+  const parts: string[] = [];
+  if (kcciStat?.latest_value != null) {
+    const val = kcciStat.latest_value.toLocaleString("en-US", { maximumFractionDigits: 0 });
+    const chg = kcciStat.change_pct;
+    const dir = chg == null ? "" : Math.abs(chg) < 0.5 ? "보합" : chg > 0 ? "상승" : "하락";
+    parts.push(
+      `한국발 해상 운임 지수(KCCI) ${val}pt — 전주 대비 ${chg != null ? (chg >= 0 ? "+" : "") + chg.toFixed(1) + "%" : "—"} ${dir} 추세.`,
+    );
+  }
+  const scfi = stats.find((s) => s.index_code === "SCFI");
+  if (scfi?.change_pct != null) {
+    const chg = scfi.change_pct;
+    parts.push(`글로벌 컨테이너 운임(SCFI) ${chg >= 0 ? "+" : ""}${chg.toFixed(1)}% 정합.`);
+  }
+  if (disruptions > 0) {
+    parts.push(`유라시아 회랑 ${disruptions}건 활성 장애 — 리드타임 영향 추정.`);
+  }
+  const fc = openForecasts[0];
+  if (fc?.direction) {
+    const dir = ({ up: "상승", down: "하락", flat: "보합" } as Record<string, string>)[fc.direction] ?? "";
+    parts.push(`AI 전망(에디터 검수): ${fc.metric_ref ?? "운임"} ${dir} 기조 시사.`);
+  }
+  if (alertCount > 0) {
+    parts.push(`경보 ${alertCount}건 점검 권장.`);
+  }
+  return parts.join(" ") || "주요 노선 현황과 운임 지수를 확인하세요.";
+}
+
 // ── Hero section ──────────────────────────────────────────────────────────────
 
 function LdHeroSection({
@@ -358,30 +395,25 @@ function LdHeroSection({
   medAlerts,
   kcciStat,
   disruptions,
+  aiSummary,
 }: {
   today: string;
   highAlerts: number;
   medAlerts: number;
   kcciStat: IndexStats | undefined;
   disruptions: number;
+  aiSummary: string;
 }) {
   const pressureUp = (kcciStat?.change_pct ?? 0) > 0;
   const alertCount = highAlerts + medAlerts;
 
-  const summaryLine = [
-    kcciStat?.latest_value != null
-      ? `한국발 해상 운임(KCCI ${kcciStat.latest_value.toLocaleString("en-US", { maximumFractionDigits: 0 })})${pressureUp ? "은 단기 상승 압력이 우세합니다" : "은 안정 추세를 유지하고 있습니다"}.`
-      : "해상 운임 데이터를 수집 중입니다.",
-    disruptions > 0 ? `유라시아 회랑에 ${disruptions}건의 활성 장애가 보고되어 있습니다.` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
   return (
     <section className="ld-hero-card ld-shell">
+      <div className="ld-hero-bg" style={{ backgroundImage: "url(/dashboard-hero.png)" }} aria-hidden />
+      <div className="ld-hero-overlay" aria-hidden />
       <div className="ld-hero-content">
         <h1>오늘의 물류 브리핑</h1>
-        <p>{summaryLine || "주요 노선 현황과 운임 지수를 확인하세요."}</p>
+        <p>{aiSummary}</p>
         <div className="ld-hero-pills">
           <span className={`ld-pill ${pressureUp ? "ld-pill--red" : "ld-pill--green"}`}>
             {pressureUp ? "↗ 운임 압력 상승" : "↘ 운임 안정"}
@@ -393,13 +425,6 @@ function LdHeroSection({
             <span className="ld-pill ld-pill--blue">▣ 경보 {alertCount}건</span>
           )}
           <span className="ld-pill ld-pill--slate">◷ 기준일 {today}</span>
-        </div>
-      </div>
-      <div className="ld-ship-visual" aria-hidden="true">
-        <div className="ld-map-glow" />
-        <div className="ld-ship-body" />
-        <div className="ld-containers">
-          <span /><span /><span /><span /><span /><span /><span /><span />
         </div>
       </div>
     </section>
@@ -559,7 +584,7 @@ function LdIntelligencePanel({
             <h3>
               {activeMetric ?? "지수"} 추이
               {baseIndexCaption(forecast as Forecast) ? (
-                <span style={{ marginLeft: 6, fontSize: 11, color: "#8ea4bf", fontWeight: 600 }}>
+                <span style={{ marginLeft: 6, fontSize: 11, color: "#64748b", fontWeight: 600 }}>
                   ({baseIndexCaption(forecast as Forecast)})
                 </span>
               ) : null}
@@ -576,19 +601,19 @@ function LdIntelligencePanel({
                 <AreaChart data={chartData} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
                   <defs>
                     <linearGradient id="ldChartGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#40d37d" stopOpacity={0.22} />
-                      <stop offset="95%" stopColor="#40d37d" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#1d6fb5" stopOpacity={0.18} />
+                      <stop offset="95%" stopColor="#1d6fb5" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis
                     dataKey="date"
-                    tick={{ fill: "#8ea4bf", fontSize: 10 }}
+                    tick={{ fill: "#64748b", fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{ fill: "#8ea4bf", fontSize: 10 }}
+                    tick={{ fill: "#64748b", fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}
                     domain={["auto", "auto"]}
@@ -610,11 +635,11 @@ function LdIntelligencePanel({
                   <Area
                     type="monotone"
                     dataKey="value"
-                    stroke="#40d37d"
+                    stroke="#1d6fb5"
                     strokeWidth={2.5}
                     fill="url(#ldChartGrad)"
                     dot={false}
-                    activeDot={{ r: 4, fill: "#b8ffcf", stroke: "#0e2a48", strokeWidth: 3 }}
+                    activeDot={{ r: 4, fill: "#93c5fd", stroke: "#1e3a5f", strokeWidth: 3 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -1025,12 +1050,12 @@ function LdOilCard({ jetFuel }: { jetFuel: IataJetFuelRow[] }) {
       ) : (
         <>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: 14 }}>
-            <span style={{ fontSize: 22, fontWeight: 900, color: "#f4f8ff", letterSpacing: "-0.04em" }}>
+            <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em" }}>
               ${latest?.price_usd_bbl?.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#8ea4bf", marginLeft: 4 }}>/bbl</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginLeft: 4 }}>/bbl</span>
             </span>
             {wow !== null && (
-              <span style={{ fontSize: 12, fontWeight: 900, color: wowUp ? "#40d37d" : "#ff6464" }}>
+              <span style={{ fontSize: 12, fontWeight: 900, color: wowUp ? "#059669" : "#dc2626" }}>
                 {wowUp ? "+" : ""}{wow.toFixed(1)}% WoW
               </span>
             )}
@@ -1040,20 +1065,20 @@ function LdOilCard({ jetFuel }: { jetFuel: IataJetFuelRow[] }) {
               <AreaChart data={chartData} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="ldOilGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f3a536" stopOpacity={0.22} />
-                    <stop offset="95%" stopColor="#f3a536" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#d97706" stopOpacity={0.20} />
+                    <stop offset="95%" stopColor="#d97706" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="date" hide />
                 <YAxis domain={["auto", "auto"]} hide />
                 <Tooltip
                   contentStyle={{
-                    background: "rgba(10, 30, 54, 0.96)",
-                    border: "1px solid rgba(116, 177, 255, 0.28)",
+                    background: "rgba(15, 34, 56, 0.96)",
+                    border: "1px solid rgba(85, 166, 255, 0.28)",
                     borderRadius: 8,
                     fontSize: 11,
                     fontWeight: 700,
-                    color: "#f4f8ff",
+                    color: "#f0f7ff",
                   }}
                   formatter={(v: number) => [`$${v.toFixed(2)}/bbl`, "Jet Fuel"]}
                   labelFormatter={(l: string) => `기준일 ${l}`}
@@ -1061,7 +1086,7 @@ function LdOilCard({ jetFuel }: { jetFuel: IataJetFuelRow[] }) {
                 <Area
                   type="monotone"
                   dataKey="price"
-                  stroke="#f3a536"
+                  stroke="#d97706"
                   strokeWidth={2}
                   fill="url(#ldOilGrad)"
                   dot={false}
@@ -1126,6 +1151,12 @@ function DashboardPage() {
   const laneRows = useMemo(() => buildLaneRows(seaRates, delays), [seaRates, delays]);
   const airLaneRows = useMemo(() => buildAirLaneRows(airRates), [airRates]);
   const latestUpdate = latestDataUpdate(dataUpdates);
+  const alertCount = highAlerts + medAlerts;
+  const heroSummary = useMemo(
+    () => buildHeroSummary(kcciStat, stats, alertCount, disruptions.length, openForecasts),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [kcciStat, stats, alertCount, disruptions.length, openForecasts.length],
+  );
 
   // Ticker items
   const tickerItems = orderedIndexRows.map((s) => ({
@@ -1140,7 +1171,6 @@ function DashboardPage() {
     kcciChange == null || kcciChange === 0 ? "flat" : kcciChange > 0 ? "up" : "down";
   const kcciSeries = orderedIndexRows.find((s) => s.index_code === "KCCI");
   const firstAirRow = airLaneRows[0];
-  const alertCount = highAlerts + medAlerts;
 
   return (
     <div className="ld-dash">
@@ -1154,6 +1184,7 @@ function DashboardPage() {
         medAlerts={medAlerts}
         kcciStat={kcciStat}
         disruptions={disruptions.length}
+        aiSummary={heroSummary}
       />
 
       {/* KPI Grid — 4 cards */}
@@ -1248,21 +1279,6 @@ function DashboardPage() {
         <LdOilCard jetFuel={jetFuelHistory} />
         <LdUpdateCard latestUpdate={latestUpdate} />
       </section>
-
-      {/* Footer */}
-      <footer className="ld-dashboard-footer ld-shell">
-        <div>
-          <strong>Logisight</strong>
-          <p>글로벌 물류 인텔리전스 플랫폼</p>
-        </div>
-        <nav>
-          <Link to="/rates">운임</Link>
-          <Link to="/eurasia">유라시아</Link>
-          <Link to="/forecasts">인사이트</Link>
-          <Link to="/news">뉴스</Link>
-        </nav>
-        <small>© 2026 MTL Shipping Agency · 모든 권리 보유</small>
-      </footer>
     </div>
   );
 }
