@@ -88,18 +88,6 @@ function SevBadge({ level }: { level: "high" | "medium" | "low" }) {
   );
 }
 
-// --- Data quality badge ---
-const DQ_STYLES: Record<string, string> = {
-  high: "text-status-normal",
-  medium: "text-status-caution",
-  low: "text-status-alert",
-};
-
-function DataQualityDot({ level }: { level: string }) {
-  const cls = DQ_STYLES[level] ?? "text-muted-foreground";
-  return <span className={`font-medium text-xs ${cls}`}>{level}</span>;
-}
-
 // --- Corridor concept diagram (built only from real lane data) ---
 type CorridorNode = { label: string; kind: "endpoint" | "border" };
 
@@ -265,6 +253,137 @@ const EMPTY_DRAFT: DisruptionDraft = {
   confidence: "medium",
 };
 
+const SEVERITY_ORDER = { high: 3, medium: 2, low: 1 } as const;
+
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+function formatDays(n: number | null | undefined): string {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  return `${round1(n)}일`;
+}
+
+function positiveDelayDays(lane: LaneWithDelay): number | null {
+  const value = lane.latestDelay?.median_delay_d;
+  if (value === null || value === undefined) return null;
+  return Math.max(0, round1(value));
+}
+
+function baseTransitLabel(lane: LaneRow): string {
+  if (lane.transit_min !== null && lane.transit_max !== null) {
+    return lane.transit_min === lane.transit_max
+      ? `${lane.transit_min}일`
+      : `${lane.transit_min}~${lane.transit_max}일`;
+  }
+  return "수집 중";
+}
+
+function currentTransitLabel(lane: LaneWithDelay): string {
+  const delay = positiveDelayDays(lane);
+  if (lane.transit_min === null || lane.transit_max === null || delay === null) return "수집 중";
+  const min = round1(lane.transit_min + delay);
+  const max = round1(lane.transit_max + delay);
+  return min === max ? `${min}일` : `${min}~${max}일`;
+}
+
+function routeDestination(lane: LaneRow): string {
+  const borders = lane.border_points ?? [];
+  if (borders.length > 0) return borders[borders.length - 1];
+  const name = lane.name_ko ?? lane.name_en ?? lane.id;
+  const parts = name
+    .split(/->|→|–|—|-/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts.at(-1) ?? lane.id;
+}
+
+function primaryDisruption(lane: LaneWithDelay): EurasiaDisruptionRow | null {
+  return [...lane.activeDisruptions].sort((a, b) => {
+    const sev = SEVERITY_ORDER[b.severity] - SEVERITY_ORDER[a.severity];
+    if (sev !== 0) return sev;
+    return (b.delay_contribution_days ?? 0) - (a.delay_contribution_days ?? 0);
+  })[0] ?? null;
+}
+
+function bottleneckText(lane: LaneWithDelay): string {
+  const issue = primaryDisruption(lane);
+  if (issue) {
+    const days = issue.delay_contribution_days !== null ? ` · +${formatDays(issue.delay_contribution_days)}` : "";
+    return `${issue.segment}: ${issue.title}${days}`;
+  }
+
+  const delay = positiveDelayDays(lane);
+  if (delay !== null && delay >= 3 && (lane.border_points ?? []).length > 0) {
+    return `${(lane.border_points ?? []).slice(1).join(" / ")} 구간 확인 필요`;
+  }
+  if (delay !== null && delay > 0) return "추가 지연 발생, 구간 원인 수집 중";
+  if (delay === 0) return "특이 지연 없음";
+  return "데이터 수집 중";
+}
+
+function evidenceText(lane: LaneWithDelay): string {
+  const sample = lane.latestDelay?.sample_count;
+  const week = lane.latestDelay?.week_iso?.slice(0, 10);
+  if (sample && week) return `${sample}건 관측 · ${week}`;
+  if (sample) return `${sample}건 관측`;
+  return "관측 수집 중";
+}
+
+function RouteAnswerPanel({ lane }: { lane: LaneWithDelay }) {
+  const delay = positiveDelayDays(lane);
+  const destination = routeDestination(lane);
+  const issue = primaryDisruption(lane);
+  const current = currentTransitLabel(lane);
+  const base = baseTransitLabel(lane);
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            지금 보내면
+          </p>
+          <h2 className="mt-1 text-base font-semibold text-foreground">
+            한국에서 {destination}까지 현재 예상 {current}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            평시 {base}
+            {delay !== null ? `에 최근 관측 추가 지연 ${formatDays(delay)}를 반영했습니다.` : " 기준 지연 관측을 수집 중입니다."}
+          </p>
+        </div>
+        <div className="grid min-w-[220px] grid-cols-2 gap-2 text-xs">
+          <div className="rounded-md bg-muted/50 px-3 py-2">
+            <p className="text-muted-foreground">평시 소요</p>
+            <p className="mt-1 font-semibold text-foreground">{base}</p>
+          </div>
+          <div className="rounded-md bg-muted/50 px-3 py-2">
+            <p className="text-muted-foreground">추가 지연</p>
+            <p className="mt-1 font-semibold text-foreground">{formatDays(delay)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-[1.5fr_1fr]">
+        <div className="rounded-md border border-border bg-background/40 px-3 py-2 text-xs">
+          <p className="font-semibold text-foreground">현재 병목</p>
+          <p className="mt-1 text-muted-foreground">{bottleneckText(lane)}</p>
+        </div>
+        <div className="rounded-md border border-border bg-background/40 px-3 py-2 text-xs">
+          <p className="font-semibold text-foreground">근거</p>
+          <p className="mt-1 text-muted-foreground">{evidenceText(lane)}</p>
+        </div>
+      </div>
+
+      {!issue && (
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          위치와 원인은 자동 집계 지연만으로 단정하지 않습니다. 국경·환적 병목은 활성 장애 데이터가 들어오면 구간명과 사유로 표시됩니다.
+        </p>
+      )}
+    </section>
+  );
+}
+
 // --- Page ---
 function EurasiaPage() {
   const qc = useQueryClient();
@@ -330,7 +449,7 @@ function EurasiaPage() {
 
   const avgDelay = useMemo(() => {
     const latestDelays = lanesWithDelay
-      .map((l) => l.latestDelay?.median_delay_d)
+      .map((l) => positiveDelayDays(l))
       .filter((v): v is number => v !== null && v !== undefined);
     if (latestDelays.length === 0) return null;
     return Math.round((latestDelays.reduce((s, v) => s + v, 0) / latestDelays.length) * 10) / 10;
@@ -349,22 +468,22 @@ function EurasiaPage() {
     const activeCount = disruptions.length;
     return [
       {
-        label: "활성 장애",
+        label: "현재 병목",
         value: activeCount === 0 ? "없음" : `${activeCount}건`,
         state: activeCount === 0 ? "normal" : activeCount >= 3 ? "alert" : "caution",
       },
       {
-        label: "평균 지연",
+        label: "평균 추가 지연",
         value: avgDelay !== null ? `${avgDelay}일` : "—",
         state: avgDelay === null ? "normal" : avgDelay >= 7 ? "alert" : avgDelay >= 3 ? "caution" : "normal",
       },
       {
-        label: "정시율",
+        label: "정상 도착 비율",
         value: avgOtp !== null ? `${avgOtp}%` : "—",
         state: avgOtp === null ? "normal" : avgOtp < 60 ? "alert" : avgOtp < 80 ? "caution" : "normal",
       },
       {
-        label: "기준주",
+        label: "기준",
         value: latestWeek?.slice(0, 10) ?? "—",
         state: "normal",
       },
@@ -384,101 +503,70 @@ function EurasiaPage() {
   const CORRIDOR_COLS: ColDef<LaneWithDelay>[] = [
     {
       key: "name",
-      header: "회랑",
+      header: "노선",
       cell: (r) => (
         <span className="font-medium text-foreground">{r.name_ko ?? r.name_en ?? r.id}</span>
       ),
     },
     {
-      key: "median_delay",
-      header: "중위 지연",
-      cell: (r) =>
-        r.latestDelay?.median_delay_d !== null && r.latestDelay?.median_delay_d !== undefined ? (
-          <span
-            className={
-              r.latestDelay.median_delay_d >= 7
-                ? "text-status-alert"
-                : r.latestDelay.median_delay_d >= 3
-                ? "text-status-caution"
-                : "text-status-normal"
-            }
-          >
-            {Math.round(r.latestDelay.median_delay_d * 10) / 10}일
-          </span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        ),
+      key: "base_transit",
+      header: "평시 소요",
+      cell: (r) => <span className="text-muted-foreground">{baseTransitLabel(r)}</span>,
       className: "text-right",
       headerClassName: "text-right",
     },
     {
-      key: "p90",
-      header: "P90 지연",
-      cell: (r) =>
-        r.latestDelay?.p90_delay_d !== null && r.latestDelay?.p90_delay_d !== undefined
-          ? `${Math.round(r.latestDelay.p90_delay_d * 10) / 10}일`
-          : "—",
-      className: "text-right text-muted-foreground",
+      key: "current_transit",
+      header: "현재 예상",
+      cell: (r) => <span className="font-medium text-foreground">{currentTransitLabel(r)}</span>,
+      className: "text-right",
       headerClassName: "text-right",
     },
     {
-      key: "otp",
-      header: "정시율",
+      key: "extra_delay",
+      header: "추가 지연",
       cell: (r) => {
-        const otp = r.latestDelay?.otp_pct;
-        if (otp == null) return <span className="text-muted-foreground">—</span>;
-        return (
+        const delay = positiveDelayDays(r);
+        return delay !== null ? (
           <span
-            className={otp < 60 ? "text-status-alert" : otp < 80 ? "text-status-caution" : "text-status-normal"}
+            className={
+              delay >= 7
+                ? "text-status-alert"
+                : delay >= 3
+                ? "text-status-caution"
+                : "text-status-normal"
+            }
           >
-            {otp}%
+            +{formatDays(delay)}
           </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
         );
       },
       className: "text-right",
       headerClassName: "text-right",
     },
     {
-      key: "quality",
-      header: "데이터 품질",
-      cell: (r) =>
-        r.latestDelay?.data_quality ? (
-          <DataQualityDot level={r.latestDelay.data_quality as string} />
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        ),
+      key: "bottleneck",
+      header: "현재 병목",
+      cell: (r) => <span className="line-clamp-2 text-muted-foreground">{bottleneckText(r)}</span>,
     },
     {
-      key: "disruptions",
-      header: "활성 장애",
-      cell: (r) =>
-        r.activeDisruptions.length > 0 ? (
-          <span className="text-status-alert font-medium">{r.activeDisruptions.length}건</span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        ),
-      className: "text-right",
-      headerClassName: "text-right",
-    },
-    {
-      key: "week",
-      header: "기준주",
-      cell: (r) =>
-        r.latestDelay?.week_iso ? (
-          <span className="text-muted-foreground text-[11px]">{r.latestDelay.week_iso.slice(0, 10)}</span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        ),
+      key: "evidence",
+      header: "근거",
+      cell: (r) => <span className="text-muted-foreground text-[11px]">{evidenceText(r)}</span>,
     },
   ];
 
   // Drawer for selected lane
   const drawerContent = selectedLane ? (
     <div className="space-y-5">
+      <RouteAnswerPanel lane={selectedLane} />
+
       {/* Delay trend */}
       <div>
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          지연 추이 (중위 지연일)
+          최근 추가 지연 추이
         </h3>
         {selectedLane.delayHistory.length >= 2 ? (
           <>
@@ -493,7 +581,7 @@ function EurasiaPage() {
               }
             />
             <p className="mt-1 text-[11px] text-muted-foreground">
-              최근 {Math.min(24, selectedLane.delayHistory.length)}주 · 출처: delay_index_weekly (FESCO TSR 자동)
+              최근 {Math.min(24, selectedLane.delayHistory.length)}개 관측 기간 · 출처: delay_index_weekly
             </p>
           </>
         ) : (
@@ -505,16 +593,16 @@ function EurasiaPage() {
       {selectedLane.latestDelay && (
         <div>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            최신 지표 ({selectedLane.latestDelay.week_iso?.slice(0, 10)})
+            계산 근거 ({selectedLane.latestDelay.week_iso?.slice(0, 10)})
           </h3>
           <div className="grid grid-cols-2 gap-y-2 text-xs">
-            <span className="text-muted-foreground">중위 지연</span>
+            <span className="text-muted-foreground">보통 추가 지연</span>
             <span>{selectedLane.latestDelay.median_delay_d !== null ? `${Math.round(selectedLane.latestDelay.median_delay_d * 10) / 10}일` : "—"}</span>
-            <span className="text-muted-foreground">P90 지연</span>
+            <span className="text-muted-foreground">심한 경우 추가 지연</span>
             <span>{selectedLane.latestDelay.p90_delay_d !== null ? `${Math.round(selectedLane.latestDelay.p90_delay_d * 10) / 10}일` : "—"}</span>
-            <span className="text-muted-foreground">정시율</span>
+            <span className="text-muted-foreground">정상 도착 비율</span>
             <span>{selectedLane.latestDelay.otp_pct !== null ? `${selectedLane.latestDelay.otp_pct}%` : "—"}</span>
-            <span className="text-muted-foreground">샘플 수</span>
+            <span className="text-muted-foreground">관측 건수</span>
             <span>{selectedLane.latestDelay.sample_count ?? "—"}</span>
             <span className="text-muted-foreground">마일스톤</span>
             <span>{selectedLane.latestDelay.milestone ?? "—"}</span>
@@ -797,6 +885,8 @@ function EurasiaPage() {
         </div>
       )}
 
+      {focusLane && <RouteAnswerPanel lane={focusLane} />}
+
       {/* Corridor map */}
       <section>
         <CorridorMapPanel
@@ -812,9 +902,9 @@ function EurasiaPage() {
       {/* Corridor board */}
       <section>
         <h2 className="mb-2 text-[13px] font-semibold">
-          회랑 운영 현황{" "}
+          노선별 현재 예상 소요일{" "}
           <span className="text-[11px] font-normal text-muted-foreground">
-            delay_index_weekly · 현재 기준
+            평시 소요 + 최근 관측 지연
           </span>
         </h2>
         {lanesWithDelay.length === 0 ? (
@@ -837,7 +927,7 @@ function EurasiaPage() {
         <section>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-[13px] font-semibold">
-              선택 노선 개념도{" "}
+              선택 노선 병목 구간{" "}
               <span className="text-[11px] font-normal text-muted-foreground">
                 {focusLane.name_ko ?? focusLane.name_en ?? focusLane.id}
               </span>
@@ -867,8 +957,7 @@ function EurasiaPage() {
           <div className="rounded-lg border border-border bg-card p-4">
             <CorridorDiagram lane={focusLane} />
             <p className="mt-2 text-[11px] text-muted-foreground">
-              지원 노선·국경/환적 구간·활성 장애만 표시 · 장식 요소나 미확인 실시간 위치 없음 ·
-              구간 지연 기여는 어드민 보완(eurasia_disruptions) 추정치
+              국경/환적 지점과 활성 병목만 표시합니다. 구간별 원인은 eurasia_disruptions 기준이며, 미확인 실시간 위치는 표시하지 않습니다.
             </p>
           </div>
         </section>

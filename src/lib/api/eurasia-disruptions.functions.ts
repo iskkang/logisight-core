@@ -21,7 +21,7 @@ export const getEurasiaDisruptionsActive = createServerFn({ method: "GET" }).han
 
 const DisruptionSchema = z.object({
   id: z.string().optional(),
-  lane_id: z.string().uuid().nullable().optional(),
+  lane_id: z.string().min(1).max(120).nullable().optional(),
   segment: z.string().min(1).max(200),
   title: z.string().min(1).max(500),
   severity: z.enum(["high", "medium", "low"]),
