@@ -454,9 +454,11 @@ function LdKpiCard({
 }) {
   return (
     <article className={`ld-kpi-card ld-panel-card ld-tone-${tone}`}>
-      <div className="ld-kpi-icon">{icon}</div>
-      <div className="ld-kpi-copy">
+      <div className="ld-kpi-top">
         <div className="ld-card-eyebrow">{title}</div>
+        <div className="ld-kpi-icon">{icon}</div>
+      </div>
+      <div className="ld-kpi-bottom">
         <div className="ld-kpi-value-row">
           <strong>{value}</strong>
           {change && (
@@ -465,7 +467,7 @@ function LdKpiCard({
             </span>
           )}
         </div>
-        <p>{sub}</p>
+        <p className="ld-kpi-copy">{sub}</p>
       </div>
       {spark && spark.length > 1 && (
         <LdSparkline points={spark.slice(-9)} trend={trend} />
