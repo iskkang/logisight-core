@@ -1,31 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useMemo, type CSSProperties, type ReactNode } from "react";
+import { useMemo } from "react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import {
-  Activity,
-  AlertTriangle,
-  BrainCircuit,
-  CheckCircle2,
-  Gauge,
-  Globe2,
-  Ship,
-} from "lucide-react";
-
-import { DashboardTicker } from "@/components/dashboard/DashboardTicker";
-import { DashboardProcessStrip } from "@/components/dashboard/DashboardProcessStrip";
-import { FreshnessBadge } from "@/components/dashboard/FreshnessBadge";
-import { Sparkline } from "@/components/dashboard/Sparkline";
-import { ForecastSparkline } from "@/components/forecasts/ForecastSparkline";
 import {
   DIR_META,
   FACTOR_LABEL,
   baseIndexCaption,
   dirCls,
   displayLabelOf,
-  displayOrderOf,
-  evidenceCount,
-  missingNames,
   sentences,
 } from "@/components/forecasts/forecastUtils";
 
@@ -54,6 +36,8 @@ import {
   type Forecast,
   type ForecastSeries,
 } from "@/lib/api/forecasts";
+
+import "./dashboard.css";
 
 const JUDGMENT_TAB_CODES = ["KCCI", "WCI", "SCFI"] as const;
 type JudgmentTabCode = (typeof JUDGMENT_TAB_CODES)[number];
@@ -93,7 +77,7 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
 });
 
-type Tone = "blue" | "green" | "amber" | "red" | "gray";
+// ── Types ────────────────────────────────────────────────────────────────────
 
 type KeyLane = {
   laneId: string;
@@ -112,11 +96,34 @@ type KeyLaneRow = {
   asOf: string | null;
 };
 
-type SeaMover = {
-  label: string;
-  value: string;
-  mom: number;
-  asOf: string;
+type AirLaneRow = {
+  origin: string;
+  dest: string;
+  region: string | null;
+  value: string | null;
+  mom: number | null;
+  values: number[];
+  asOf: string | null;
+};
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const KEY_LANES: KeyLane[] = [
+  { laneId: "PUS-LAX", origin: "부산", dest: "로스앤젤레스", mode: "ocean", metricType: "rate", displayOrder: 1 },
+  { laneId: "PUS-NYC", origin: "부산", dest: "뉴욕", mode: "ocean", metricType: "rate", displayOrder: 2 },
+  { laneId: "PUS-CHI", origin: "부산", dest: "시카고", mode: "ocean", metricType: "rate", displayOrder: 3 },
+  { laneId: "KR-ANDIJAN", origin: "한국", dest: "안디잔", mode: "rail", metricType: "delay", displayOrder: 4 },
+  { laneId: "CN-ALMATY", origin: "중국", dest: "알마티", mode: "rail", metricType: "delay", displayOrder: 5 },
+];
+
+const AIR_PRIORITY_DESTS = ["로스", "시카고", "하노이"];
+const INDEX_ORDER = ["SCFI", "KCCI", "CCFI", "FBX", "WCI", "BDI"];
+
+const SEV_TONE_CLASS: Record<AlertCandidate["severity"], string> = {
+  high: "ld-tone-red",
+  medium: "ld-tone-amber",
+  low: "ld-tone-blue",
+  info: "ld-tone-gray",
 };
 
 const SEV_LABEL: Record<AlertCandidate["severity"], string> = {
@@ -126,71 +133,21 @@ const SEV_LABEL: Record<AlertCandidate["severity"], string> = {
   info: "정보",
 };
 
-const SEV_TONE: Record<AlertCandidate["severity"], Tone> = {
-  high: "red",
-  medium: "amber",
-  low: "blue",
-  info: "gray",
-};
-
-const STATUS_LABEL: Record<AlertCandidate["status"], string> = {
-  new: "신규",
-  escalated: "악화",
-  unchanged: "지속",
-};
-
-const INDEX_ORDER = ["SCFI", "KCCI", "CCFI", "FBX", "WCI", "BDI"];
-
-// MTL 고정 모니터링 노선. 값은 아래 실제 KITA/유라시아 데이터로만 채운다.
-const KEY_LANES: KeyLane[] = [
-  { laneId: "PUS-LAX", origin: "부산", dest: "로스앤젤레스", mode: "ocean", metricType: "rate", displayOrder: 1 },
-  { laneId: "PUS-NYC", origin: "부산", dest: "뉴욕", mode: "ocean", metricType: "rate", displayOrder: 2 },
-  { laneId: "PUS-CHI", origin: "부산", dest: "시카고", mode: "ocean", metricType: "rate", displayOrder: 3 },
-  { laneId: "KR-ANDIJAN", origin: "한국", dest: "안디잔", mode: "rail", metricType: "delay", displayOrder: 4 },
-  { laneId: "CN-ALMATY", origin: "중국", dest: "알마티", mode: "rail", metricType: "delay", displayOrder: 5 },
-];
-
-const TONE_CLASS: Record<Tone, { text: string; bg: string; border: string; soft: string }> = {
-  blue: {
-    text: "text-blue-700",
-    bg: "bg-blue-600",
-    border: "border-blue-200",
-    soft: "bg-blue-50 text-blue-700",
-  },
-  green: {
-    text: "text-emerald-700",
-    bg: "bg-emerald-600",
-    border: "border-emerald-200",
-    soft: "bg-emerald-50 text-emerald-700",
-  },
-  amber: {
-    text: "text-amber-700",
-    bg: "bg-amber-500",
-    border: "border-amber-200",
-    soft: "bg-amber-50 text-amber-700",
-  },
-  red: {
-    text: "text-red-600",
-    bg: "bg-red-500",
-    border: "border-red-200",
-    soft: "bg-red-50 text-red-600",
-  },
-  gray: {
-    text: "text-slate-600",
-    bg: "bg-slate-500",
-    border: "border-slate-200",
-    soft: "bg-slate-100 text-slate-600",
-  },
-};
+// ── Utility functions ─────────────────────────────────────────────────────────
 
 function pctText(v: number | null | undefined, digits = 1): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return `${v >= 0 ? "+" : ""}${v.toFixed(digits)}%`;
 }
 
-function dirTextClass(v: number | null | undefined): string {
-  if (v == null || v === 0) return "text-direction-flat";
-  return v > 0 ? "text-direction-up" : "text-direction-down";
+function trendCls(v: number | null | undefined): string {
+  if (v == null || v === 0) return "ld-trend--flat";
+  return v > 0 ? "ld-trend--up" : "ld-trend--down";
+}
+
+function trendSym(v: number | null | undefined): string {
+  if (v == null || v === 0) return "—";
+  return v > 0 ? "▲" : "▼";
 }
 
 function yyyymmLabel(ym: string | null | undefined): string {
@@ -207,16 +164,6 @@ function kstDateString(date = new Date()): string {
   ].join("-");
 }
 
-function sourceList(stats: IndexStats[], dataUpdates: { dataset: string; updated_at: string | null }[]): string {
-  const fromUpdates = dataUpdates.map((u) => u.dataset).filter(Boolean);
-  if (fromUpdates.length > 0) return fromUpdates.slice(0, 4).join(" · ");
-
-  const fromStats = [...new Set(stats.map((s) => s.source).filter((s): s is string => Boolean(s)))];
-  if (fromStats.length > 0) return fromStats.slice(0, 4).join(" · ");
-
-  return "데이터 수집 중";
-}
-
 function latestDataUpdate(dataUpdates: { updated_at: string | null }[]): string | null {
   return dataUpdates.map((u) => u.updated_at).filter((d): d is string => Boolean(d)).sort().at(-1) ?? null;
 }
@@ -224,6 +171,23 @@ function latestDataUpdate(dataUpdates: { updated_at: string | null }[]): string 
 function statByCode(stats: IndexStats[], code: string): IndexStats | undefined {
   return stats.find((s) => s.index_code === code);
 }
+
+function orderedStats(stats: IndexStats[]): IndexStats[] {
+  const rank = new Map(INDEX_ORDER.map((code, i) => [code, i]));
+  return [...stats]
+    .filter((s) => s.latest_value != null)
+    .sort((a, b) => (rank.get(a.index_code) ?? 99) - (rank.get(b.index_code) ?? 99));
+}
+
+function sourceList(stats: IndexStats[], dataUpdates: { dataset: string; updated_at: string | null }[]): string {
+  const fromUpdates = dataUpdates.map((u) => u.dataset).filter(Boolean);
+  if (fromUpdates.length > 0) return fromUpdates.slice(0, 4).join(" · ");
+  const fromStats = [...new Set(stats.map((s) => s.source).filter((s): s is string => Boolean(s)))];
+  if (fromStats.length > 0) return fromStats.slice(0, 4).join(" · ");
+  return "데이터 수집 중";
+}
+
+// ── Data builders ─────────────────────────────────────────────────────────────
 
 function buildLaneRows(seaRates: KitaSeaRateRow[], delays: DelayWeeklyRow[]): KeyLaneRow[] {
   const latestSea = latestByRoute(seaRates);
@@ -248,7 +212,6 @@ function buildLaneRows(seaRates: KitaSeaRateRow[], delays: DelayWeeklyRow[]): Ke
           asOf: row.year_mon,
         };
       }
-
       const laneDelays = delays
         .filter((d) => d.lane_id === lane.laneId)
         .sort((a, b) => a.week_iso.localeCompare(b.week_iso));
@@ -256,7 +219,7 @@ function buildLaneRows(seaRates: KitaSeaRateRow[], delays: DelayWeeklyRow[]): Ke
       const values = laneDelays.map((d) => d.median_delay_d).filter((v): v is number => v != null);
       return {
         lane,
-        value: latest?.median_delay_d != null ? `중위 지연 ${latest.median_delay_d.toFixed(1)}일` : null,
+        value: latest?.median_delay_d != null ? `지연 ${latest.median_delay_d.toFixed(1)}일` : null,
         mom: null,
         values,
         asOf: latest?.week_iso ?? null,
@@ -301,644 +264,8 @@ function buildLaneRows(seaRates: KitaSeaRateRow[], delays: DelayWeeklyRow[]): Ke
       asOf: candidate.row.year_mon,
     });
   }
-
   return visibleRows;
 }
-
-function buildTopSeaMovers(seaRates: KitaSeaRateRow[]): SeaMover[] {
-  const latestSea = latestByRoute(seaRates);
-  return latestSea
-    .flatMap((row) => {
-      const series = seaRates
-        .filter((x) => x.origin === row.origin && x.dest === row.dest)
-        .sort((a, b) => a.year_mon.localeCompare(b.year_mon));
-      const mom = computeMoM(series.map((x) => ({ year_mon: x.year_mon, value: x.feu })));
-      if (mom == null || mom <= 0 || row.feu == null) return [];
-      return [
-        {
-          label: `${row.origin} → ${row.dest}`,
-          value: `$${row.feu.toLocaleString("en-US")}/FEU`,
-          mom,
-          asOf: row.year_mon,
-        },
-      ];
-    })
-    .sort((a, b) => b.mom - a.mom)
-    .slice(0, 3);
-}
-
-function orderedStats(stats: IndexStats[]): IndexStats[] {
-  const rank = new Map(INDEX_ORDER.map((code, i) => [code, i]));
-  return [...stats]
-    .filter((s) => s.latest_value != null)
-    .sort((a, b) => (rank.get(a.index_code) ?? 99) - (rank.get(b.index_code) ?? 99));
-}
-
-function HeroChip({ label, value, tone = "blue" }: { label: string; value: string; tone?: Tone }) {
-  const toneCls = TONE_CLASS[tone];
-  return (
-    <span className={`inline-flex min-h-8 items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold ${toneCls.border} bg-white/10 text-white backdrop-blur`}>
-      <span className={`h-2 w-2 rounded-full ${toneCls.bg}`} aria-hidden />
-      <span className="text-white/68">{label}</span>
-      <span className="text-white">{value}</span>
-    </span>
-  );
-}
-
-function DashboardHero({
-  today,
-  highAlerts,
-  medAlerts,
-  kcciStat,
-  disruptions,
-}: {
-  today: string;
-  highAlerts: number;
-  medAlerts: number;
-  kcciStat: IndexStats | undefined;
-  disruptions: number;
-}) {
-  const alertTone: Tone = highAlerts > 0 ? "red" : medAlerts > 0 ? "amber" : "green";
-  const eurasiaTone: Tone = disruptions > 0 ? "amber" : "green";
-  return (
-    <section className="relative min-h-[220px] overflow-hidden bg-[#071b31] px-4 py-6 text-white lg:px-12 lg:py-7">
-      <div
-        className="absolute inset-0 bg-cover bg-[position:78%_34%]"
-        style={{ backgroundImage: "url(/dashboard-hero.png)" }}
-        aria-hidden
-      />
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(90deg, rgba(5,18,34,0.98) 0%, rgba(7,24,43,0.92) 42%, rgba(9,32,57,0.45) 72%, rgba(7,22,40,0.24) 100%)",
-        }}
-        aria-hidden
-      />
-      <div
-        className="absolute inset-x-0 bottom-0 h-20"
-        style={{ background: "linear-gradient(180deg, transparent, rgba(234,242,251,0.98))" }}
-        aria-hidden
-      />
-      <div className="relative z-10 mx-auto max-w-[1540px]">
-        <h1 className="text-[34px] font-black leading-tight tracking-normal sm:text-[42px] lg:text-[48px]">
-          <span>종합 </span>
-          <span className="text-[#36a9ff]">Control Tower</span>
-        </h1>
-        <p className="mt-2 max-w-[620px] text-sm font-medium leading-6 text-white/82 lg:text-[15px]">
-          글로벌 해상 운임, 무역, 정책, 유라시아 리스크를 통합 분석하여 의사결정을 돕는 통합 인텔리전스 플랫폼
-        </p>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <HeroChip label="오늘" value={today} tone="blue" />
-          <HeroChip label="경보" value={`${highAlerts}건 경고 · ${medAlerts}건 주의`} tone={alertTone} />
-          <HeroChip label="KCCI WoW" value={pctText(kcciStat?.change_pct)} tone={Math.abs(kcciStat?.change_pct ?? 0) >= 5 ? "amber" : "green"} />
-          <HeroChip label="유라시아 상태" value={disruptions === 0 ? "정상" : `${disruptions}건 활성`} tone={eurasiaTone} />
-          <HeroChip label="기준일" value={kcciStat?.latest_date?.slice(0, 10) ?? "수집 중"} tone="blue" />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function KpiCard({
-  icon,
-  label,
-  value,
-  sub,
-  tone = "blue",
-  sparkValues,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-  sub: string;
-  tone?: Tone;
-  sparkValues?: number[];
-}) {
-  const toneCls = TONE_CLASS[tone];
-  return (
-    <article className="min-h-[78px] rounded-lg border border-[#d9e5f3] bg-white/95 p-3 shadow-[0_10px_26px_rgba(16,34,58,0.08)]">
-      <div className="flex h-full items-center gap-2.5">
-        <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${toneCls.soft} ring-1 ring-inset ring-current/10`}>
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-extrabold leading-tight text-slate-500">{label}</div>
-          <div className={`mt-1 whitespace-nowrap text-xl font-black leading-none tracking-normal ${toneCls.text}`}>{value}</div>
-          <div className="mt-1 text-[10px] font-semibold text-slate-500">{sub}</div>
-        </div>
-        {sparkValues && sparkValues.length > 1 && (
-          <div className="hidden w-20 text-slate-400 xl:block">
-            <Sparkline values={sparkValues.slice(-12)} width={80} height={28} color="currentColor" />
-          </div>
-        )}
-      </div>
-    </article>
-  );
-}
-
-function KpiStrip({
-  highAlerts,
-  medAlerts,
-  repForecast,
-  forecastSeries,
-  laneRows,
-  indexCount,
-}: {
-  highAlerts: number;
-  medAlerts: number;
-  repForecast: Forecast | null;
-  forecastSeries: ForecastSeries | undefined;
-  laneRows: KeyLaneRow[];
-  indexCount: number;
-}) {
-  const direction = repForecast?.direction ? DIR_META[repForecast.direction] : null;
-  const judgmentTone: Tone =
-    repForecast?.direction === "up" ? "green" : repForecast?.direction === "down" ? "red" : repForecast ? "amber" : "gray";
-  const forecastValues = forecastSeries?.points.map((p) => p.value) ?? [];
-  return (
-    <section className="grid gap-2 lg:grid-cols-5">
-      <KpiCard
-        icon={<AlertTriangle className="h-5 w-5" />}
-        label="오늘의 경보"
-        value={<span>{highAlerts + medAlerts}</span>}
-        sub={highAlerts > 0 || medAlerts > 0 ? "상세히 보기" : "경고 + 주의 없음"}
-        tone={highAlerts > 0 ? "red" : medAlerts > 0 ? "amber" : "green"}
-      />
-      <KpiCard
-        icon={<Gauge className="h-5 w-5" />}
-        label={`운임 기준 ${repForecast ? displayLabelOf(repForecast) : ""}`}
-        value={repForecast?.metric_value_at_publish != null ? formatNumber(repForecast.metric_value_at_publish, 0) : "수집 중"}
-        sub={repForecast?.metric_ref ?? "대표 전망 지표 없음"}
-        tone="amber"
-        sparkValues={forecastValues}
-      />
-      <KpiCard
-        icon={<BrainCircuit className="h-5 w-5" />}
-        label="AI 종합 판단"
-        value={direction ? `${direction.label}` : "검수 중"}
-        sub={repForecast?.expected_range_pct ? `전망 저장값 · ${repForecast.expected_range_pct}%` : "전망 저장값 기준"}
-        tone={judgmentTone}
-        sparkValues={forecastValues}
-      />
-      <KpiCard
-        icon={<Ship className="h-5 w-5" />}
-        label="주요 노선"
-        value={laneRows.length}
-        sub="개 모니터링"
-        tone="blue"
-      />
-      <KpiCard
-        icon={<Globe2 className="h-5 w-5" />}
-        label="글로벌 주요 지수"
-        value={indexCount}
-        sub="개 추적 중"
-        tone="blue"
-      />
-    </section>
-  );
-}
-
-function SectionTitle({
-  children,
-  badge,
-  link,
-}: {
-  children: ReactNode;
-  badge?: ReactNode;
-  link?: ReactNode;
-}) {
-  return (
-    <div className="mb-2 flex items-center justify-between gap-2">
-      <h2 className="flex items-center gap-2 text-sm font-black tracking-normal text-[#173151]">
-        {children}
-        {badge}
-      </h2>
-      {link}
-    </div>
-  );
-}
-
-function ToneBadge({ tone, children }: { tone: Tone; children: ReactNode }) {
-  return (
-    <span className={`inline-flex items-center rounded-md px-2 py-1 text-[11px] font-black ${TONE_CLASS[tone].soft}`}>
-      {children}
-    </span>
-  );
-}
-
-function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return (
-    <section className={`rounded-lg border border-[#d9e5f3] bg-white/95 p-3 shadow-[0_10px_26px_rgba(16,34,58,0.07)] ${className}`}>
-      {children}
-    </section>
-  );
-}
-
-function AlertSummaryCard({
-  alerts,
-  stats,
-  latestRiskNote,
-}: {
-  alerts: AlertCandidate[];
-  stats: IndexStats[];
-  latestRiskNote: string | null;
-}) {
-  const primary = alerts[0] ?? null;
-  const high = alerts.filter((a) => a.severity === "high").length;
-  const badgeTone = primary ? SEV_TONE[primary.severity] : "green";
-  const impactCodes = ["KCCI", "WCI", "SCFI"];
-  return (
-    <Panel>
-      <SectionTitle
-        badge={primary ? <ToneBadge tone={badgeTone}>{SEV_LABEL[primary.severity]}</ToneBadge> : <ToneBadge tone="green">정상</ToneBadge>}
-      >
-        오늘의 핵심 변화
-      </SectionTitle>
-
-      {primary ? (
-        <div className="rounded-lg border border-red-100 bg-gradient-to-b from-white to-red-50/45 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <ToneBadge tone={badgeTone}>
-              <AlertTriangle className="mr-1 h-3.5 w-3.5" />
-              {SEV_LABEL[primary.severity]}
-            </ToneBadge>
-            <span className="text-[11px] font-semibold text-slate-500">{STATUS_LABEL[primary.status]}</span>
-          </div>
-          <h3 className="mt-3 text-base font-black leading-snug tracking-normal text-slate-900">{primary.title}</h3>
-          <p className="mt-2 text-xs font-semibold leading-6 text-slate-600">{primary.sub}</p>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {impactCodes.map((code) => {
-              const stat = statByCode(stats, code);
-              return (
-                <div key={code} className="rounded-md border border-slate-200 bg-white px-2 py-2 text-xs font-extrabold text-slate-600">
-                  {code}
-                  <strong className={`mt-0.5 block tabular-nums ${dirTextClass(stat?.change_pct)}`}>{pctText(stat?.change_pct)}</strong>
-                </div>
-              );
-            })}
-          </div>
-          <Link
-            to={primary.deepLink as "/"}
-            className="mt-3 inline-flex h-8 w-full items-center justify-center rounded-md border border-blue-200 bg-white text-xs font-black text-blue-700 hover:bg-blue-50"
-          >
-            분석 요약 보기
-          </Link>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-emerald-100 bg-emerald-50/55 p-3">
-          <div className="flex items-center gap-2 text-sm font-black text-emerald-700">
-            <CheckCircle2 className="h-4 w-4" />
-            경보 없음
-          </div>
-          <p className="mt-2 text-xs font-semibold leading-6 text-slate-600">
-            현재 공개 경보 후보에 경고·주의 항목이 없습니다.
-          </p>
-        </div>
-      )}
-
-      {latestRiskNote && (
-        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-          <div className="text-[11px] font-black text-slate-500">리스크 노트</div>
-          <p className="mt-1 line-clamp-3 text-xs font-semibold leading-6 text-slate-700">{latestRiskNote}</p>
-        </div>
-      )}
-
-      {high > 1 && <p className="mt-2 text-[11px] font-semibold text-red-600">추가 경고 {high - 1}건이 있습니다.</p>}
-    </Panel>
-  );
-}
-
-function DataBasisCard({
-  asOf,
-  dataUpdates,
-  stats,
-  seaRates,
-  exRateDate,
-  modelVersion,
-}: {
-  asOf: string;
-  dataUpdates: { dataset: string; updated_at: string | null }[];
-  stats: IndexStats[];
-  seaRates: KitaSeaRateRow[];
-  exRateDate: string | null | undefined;
-  modelVersion: string;
-}) {
-  const latestUpdate = latestDataUpdate(dataUpdates);
-  const availableIndexes = stats.filter((s) => s.latest_value != null).length;
-  const latestSeaMonth = seaRates.map((r) => r.year_mon).sort().at(-1) ?? null;
-  const rows = [
-    ["기준일", asOf],
-    ["데이터 갱신", latestUpdate ? `${latestUpdate.slice(0, 16).replace("T", " ")} KST` : "수집 이력 확인 중"],
-    ["수집 소스", sourceList(stats, dataUpdates)],
-    ["지수 커버리지", `${availableIndexes}/${stats.length || 0}개 지수`],
-    ["KITA 해상 기준", yyyymmLabel(latestSeaMonth)],
-    ["환율 기준", exRateDate ?? "데이터 수집 중"],
-    ["모델 버전", modelVersion],
-  ];
-  return (
-    <Panel>
-      <SectionTitle>데이터 기준</SectionTitle>
-      <dl className="space-y-2">
-        {rows.map(([label, value]) => (
-          <div key={label} className="flex items-start justify-between gap-3 border-b border-slate-100 pb-2 text-xs last:border-0 last:pb-0">
-            <dt className="shrink-0 font-bold text-slate-500">{label}</dt>
-            <dd className="line-clamp-2 text-right font-extrabold text-slate-800">{value}</dd>
-          </div>
-        ))}
-      </dl>
-    </Panel>
-  );
-}
-
-function ForecastJudgmentPanel({
-  forecasts,
-  seriesMap,
-  selectedMetric,
-}: {
-  forecasts: Forecast[];
-  seriesMap: Record<string, ForecastSeries>;
-  selectedMetric?: JudgmentTabCode;
-}) {
-  const forecastByMetric = useMemo(() => {
-    const rows = new Map<JudgmentTabCode, Forecast>();
-    for (const forecast of forecasts.filter((f) => f.status === "published")) {
-      const metric = forecast.metric_ref as JudgmentTabCode | null;
-      if (metric && JUDGMENT_TAB_CODES.includes(metric) && !rows.has(metric)) {
-        rows.set(metric, forecast);
-      }
-    }
-    return rows;
-  }, [forecasts]);
-  const fallbackMetric = JUDGMENT_TAB_CODES.find((code) => forecastByMetric.has(code));
-  const activeMetric = selectedMetric && forecastByMetric.has(selectedMetric) ? selectedMetric : fallbackMetric;
-  const forecast = activeMetric ? forecastByMetric.get(activeMetric) ?? null : null;
-  const series = forecast ? seriesMap[forecast.id] : undefined;
-
-  if (!forecast) {
-    return (
-      <Panel>
-        <SectionTitle>오늘의 종합 판단</SectionTitle>
-        <p className="text-sm font-semibold text-slate-500">KCCI, WCI, SCFI 중 발행된 전망이 없습니다. 검수 후 공개됩니다.</p>
-      </Panel>
-    );
-  }
-
-  const direction = forecast.direction ? DIR_META[forecast.direction] : null;
-  const directionClasses = dirCls(forecast.direction);
-  const leadSentences = sentences(forecast.statement);
-  const lead = leadSentences[0] ?? forecast.statement;
-  const transition = leadSentences.length > 1 ? leadSentences[leadSentences.length - 1] : "";
-  const invalidation = forecast.invalidation_condition ?? "";
-  const upText = forecast.direction === "down" ? invalidation : transition;
-  const downText = forecast.direction === "up" ? invalidation : transition;
-  const factorRows = (forecast.factor_scores ?? []).filter((f) => !f.missing && f.score != null);
-  const miss = missingNames(forecast);
-
-  return (
-    <Panel className="p-3 lg:p-4">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <SectionTitle
-            badge={
-              direction ? (
-                <span className={`rounded-md px-2 py-1 text-[11px] font-black ${directionClasses.badge}`}>
-                  {direction.glyph} {direction.label}
-                </span>
-              ) : undefined
-            }
-          >
-            오늘의 종합 판단
-          </SectionTitle>
-          <div className="flex flex-wrap gap-2">
-            <ToneBadge tone="blue">{displayLabelOf(forecast)}</ToneBadge>
-            <ToneBadge tone="gray">확신도 {forecast.confidence ?? "미입력"}</ToneBadge>
-            <ToneBadge tone="green">AI 초안 · 에디터 검수</ToneBadge>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <ToneBadge tone="blue">AI 분석</ToneBadge>
-          <ToneBadge tone="gray">에디터 검수</ToneBadge>
-        </div>
-      </div>
-
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.45fr)_280px]">
-        <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap items-center gap-1.5" role="tablist" aria-label="전망 지표 선택">
-            {JUDGMENT_TAB_CODES.map((code) => {
-              const hasForecast = forecastByMetric.has(code);
-              const active = code === activeMetric;
-              const className = [
-                "inline-flex min-h-8 items-center rounded-md border px-3 py-1.5 text-xs font-black transition",
-                active
-                  ? "border-blue-400 bg-blue-50 text-blue-700 ring-1 ring-blue-300"
-                  : "border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-200 hover:bg-white hover:text-blue-700",
-                hasForecast ? "" : "cursor-not-allowed opacity-45",
-              ].join(" ");
-              if (!hasForecast) {
-                return (
-                  <span key={code} role="tab" aria-selected={false} aria-disabled="true" className={className}>
-                    {code}
-                  </span>
-                );
-              }
-              return (
-                <Link
-                  key={code}
-                  to="/dashboard"
-                  search={{ judgment: code }}
-                  role="tab"
-                  aria-selected={active}
-                  className={className}
-                >
-                  {code}
-                </Link>
-              );
-            })}
-          </div>
-          <div className="mb-1 text-xs font-black text-slate-700">
-            {displayLabelOf(forecast)} 추이
-            {baseIndexCaption(forecast) && <span className="ml-1 font-semibold text-slate-400">({baseIndexCaption(forecast)})</span>}
-          </div>
-          <div className="min-h-[188px] rounded-lg border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-2">
-            <ForecastSparkline
-              series={series}
-              valueAtPublish={forecast.metric_value_at_publish}
-              rangeLowPct={forecast.range_low_pct}
-              rangeHighPct={forecast.range_high_pct}
-              colorClass={directionClasses.spark}
-              className="h-[172px]"
-            />
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-lg border border-slate-100 bg-slate-50/80">
-          <h3 className="border-b border-slate-100 px-3 py-2 text-xs font-black text-slate-700">요인별 기여도</h3>
-          <div className="space-y-2 px-3 py-2.5">
-            {factorRows.map((factor) => {
-              const score = factor.score as number;
-              const width = `${Math.min(Math.abs(score) / 2, 1) * 50}%`;
-              return (
-                <div key={factor.factor} className="grid grid-cols-[62px_1fr_38px] items-center gap-2 text-xs font-bold text-slate-600">
-                  <span>{FACTOR_LABEL[factor.factor] ?? factor.factor}</span>
-                  <span className="relative h-2.5 rounded-full bg-slate-200">
-                    <span className="absolute inset-y-0 left-1/2 w-px bg-white" />
-                    <span
-                      className={`absolute inset-y-0 rounded-full ${score >= 0 ? "bg-blue-500" : "bg-slate-500"}`}
-                      style={score >= 0 ? ({ left: "50%", width } as CSSProperties) : ({ right: "50%", width } as CSSProperties)}
-                    />
-                  </span>
-                  <span className="text-right tabular-nums text-slate-800">{score > 0 ? "+" : ""}{score}</span>
-                </div>
-              );
-            })}
-            {factorRows.length === 0 && <p className="text-xs font-semibold text-slate-500">팩터 점수 수집 중</p>}
-            {miss.length > 0 && <p className="text-[11px] font-semibold text-slate-400">{miss.join(" · ")} 결측</p>}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3">
-        <h3 className="text-xs font-black text-slate-700">종합 인사이트</h3>
-        <p className="mt-1 text-xs font-semibold leading-6 text-slate-600">{lead || "전망 본문 수집 중"}</p>
-      </div>
-
-      <div className="mt-3 grid gap-2 md:grid-cols-3">
-        <ScenarioBox tone="red" title="상방 조건" text={upText} />
-        <ScenarioBox tone="blue" title="기준 시나리오" text={lead} strong />
-        <ScenarioBox tone="green" title="하방 조건" text={downText} />
-      </div>
-    </Panel>
-  );
-}
-
-function ScenarioBox({ title, text, tone, strong }: { title: string; text: string; tone: Tone; strong?: boolean }) {
-  return (
-    <div
-      className={[
-        "rounded-lg border bg-white px-3 py-2.5 text-center",
-        strong ? "border-blue-300 ring-1 ring-blue-500/80" : TONE_CLASS[tone].border,
-      ].join(" ")}
-    >
-      <strong className={`block text-xs font-black ${TONE_CLASS[tone].text}`}>{title}</strong>
-      <p className="mt-1 line-clamp-2 min-h-[40px] text-[11px] font-semibold leading-5 text-slate-500">
-        {text || "발행 전망에 조건 문구 없음"}
-      </p>
-    </div>
-  );
-}
-
-function ForecastMiniCards({ forecasts, series }: { forecasts: Forecast[]; series: Record<string, ForecastSeries> }) {
-  const tiles = [...forecasts]
-    .filter((f) => f.status === "published")
-    .sort((a, b) => displayOrderOf(a) - displayOrderOf(b))
-    .slice(0, 3);
-  if (tiles.length === 0) return null;
-
-  return (
-    <section className="grid gap-2 md:grid-cols-3">
-      {tiles.map((forecast) => {
-        const direction = forecast.direction ? DIR_META[forecast.direction] : null;
-        const directionClasses = dirCls(forecast.direction);
-        const evidence = evidenceCount(forecast);
-        return (
-          <Link
-            key={forecast.id}
-            to="/forecasts"
-            search={{ dir: [], series: [], sel: forecast.id }}
-            className="rounded-lg border border-[#d9e5f3] bg-white/95 p-3 shadow-[0_10px_26px_rgba(16,34,58,0.07)] hover:border-blue-300"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-black tracking-normal text-slate-900">{displayLabelOf(forecast)}</h3>
-                <p className="text-[11px] font-bold text-slate-500">{forecast.metric_ref ?? "전망 지표"}</p>
-              </div>
-              {direction && (
-                <span className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-black ${directionClasses.badge}`}>
-                  {direction.glyph} {direction.label}
-                </span>
-              )}
-            </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <strong className="text-xl font-black tracking-normal text-slate-900">
-                {forecast.metric_value_at_publish != null ? formatNumber(forecast.metric_value_at_publish, 0) : "—"}
-              </strong>
-              {forecast.expected_range_pct && (
-                <span className={directionClasses.text}>{forecast.expected_range_pct}%</span>
-              )}
-            </div>
-            <div className="mt-2 h-9">
-              <ForecastSparkline
-                series={series[forecast.id]}
-                valueAtPublish={forecast.metric_value_at_publish}
-                rangeLowPct={forecast.range_low_pct}
-                rangeHighPct={forecast.range_high_pct}
-                colorClass={directionClasses.spark}
-                mini
-                className="h-9"
-              />
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] font-bold text-slate-500">
-              <span>근거 {evidence.present}/{evidence.total}</span>
-              <span className="text-right">자세히 보기</span>
-            </div>
-          </Link>
-        );
-      })}
-    </section>
-  );
-}
-
-function LaneCard({ row }: { row: KeyLaneRow }) {
-  const route = `${row.lane.origin} → ${row.lane.dest}`;
-  const isRail = row.lane.mode === "rail";
-  return (
-    <article className="flex min-h-[132px] flex-col rounded-lg border border-[#cfdceb] bg-white p-3">
-      <div className="flex items-center justify-between gap-2 text-xs font-black text-slate-700">
-        <span className="min-w-0 truncate">
-          {isRail ? "철도" : "해상"} · {route}
-        </span>
-        {isRail ? <Activity className="h-3.5 w-3.5 text-slate-400" /> : <Ship className="h-3.5 w-3.5 text-slate-400" />}
-      </div>
-      <div className="mt-2 text-[22px] font-black leading-tight tracking-normal text-slate-900">
-        {row.value ?? "수집 중"}
-      </div>
-      <div className="mt-auto grid grid-cols-[auto_auto_64px] items-end gap-2 text-[11px] font-bold text-slate-500">
-        <span className={`whitespace-nowrap ${dirTextClass(row.mom)}`}>{row.mom != null ? pctText(row.mom) : row.asOf ? "지연 추적" : "데이터 없음"}</span>
-        <span className="whitespace-nowrap">{row.asOf ? (isRail ? row.asOf : yyyymmLabel(row.asOf)) : "—"}</span>
-        <span className="w-16 justify-self-end text-emerald-600">
-          <Sparkline values={row.values.slice(-8)} width={64} height={22} color="currentColor" />
-        </span>
-      </div>
-    </article>
-  );
-}
-
-function LaneGrid({ rows }: { rows: KeyLaneRow[] }) {
-  return (
-    <Panel>
-      <SectionTitle badge={<ToneBadge tone="gray">한국발</ToneBadge>}>주요 노선 현황</SectionTitle>
-      <div className="grid auto-rows-fr gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        {rows.map((row) => (
-          <LaneCard key={row.lane.laneId} row={row} />
-        ))}
-      </div>
-    </Panel>
-  );
-}
-
-type AirLaneRow = {
-  origin: string;
-  dest: string;
-  region: string | null;
-  value: string | null;
-  mom: number | null;
-  values: number[];
-  asOf: string | null;
-};
-
-// 고정 6개 노선 우선순위 (부분 문자열 매칭)
-const AIR_PRIORITY_DESTS = ["로스", "시카고", "하노이"];
 
 function buildAirLaneRows(airRates: KitaAirRateRow[]): AirLaneRow[] {
   const incheon = airRates.filter(
@@ -972,118 +299,481 @@ function buildAirLaneRows(airRates: KitaAirRateRow[]): AirLaneRow[] {
   return rows.filter((r) => r.value != null);
 }
 
-function AirLaneCard({ row }: { row: AirLaneRow }) {
+// ── Inline SVG sparkline ──────────────────────────────────────────────────────
+
+function LdSparkline({ points, trend }: { points: number[]; trend?: "up" | "down" | "flat" }) {
+  if (points.length < 2) return null;
+  const W = 120;
+  const H = 40;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+  const coords = points
+    .map((p, i) => {
+      const x = (i / (points.length - 1)) * W;
+      const y = H - ((p - min) / range) * (H - 6) - 3;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  const cls = trend === "down" ? "ld-sparkline ld-sparkline--down" : trend === "flat" ? "ld-sparkline ld-sparkline--flat" : "ld-sparkline";
   return (
-    <article className="flex min-h-[132px] flex-col rounded-lg border border-[#cfdceb] bg-white p-3">
-      <div className="flex items-center justify-between gap-2 text-xs font-black text-slate-700">
-        <span className="min-w-0 truncate">
-          항공 · {row.origin} → {row.dest}
-        </span>
-        <Globe2 className="h-3.5 w-3.5 text-slate-400" />
+    <svg className={cls} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
+      <polyline points={coords} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ── Ticker bar ────────────────────────────────────────────────────────────────
+
+function LdTickerBar({
+  items,
+  asOf,
+}: {
+  items: { code: string; value: string; changePct: number | null }[];
+  asOf: string;
+}) {
+  return (
+    <div className="ld-ticker-row">
+      <div className="ld-ticker-track ld-shell">
+        {items.map((item) => (
+          <div className="ld-ticker-item" key={item.code}>
+            <span className="ld-ticker-label">{item.code}</span>
+            <strong>{item.value}</strong>
+            <span className={`ld-trend ${trendCls(item.changePct)}`}>
+              {trendSym(item.changePct)} {pctText(item.changePct)}
+            </span>
+          </div>
+        ))}
+        <div className="ld-ticker-date">기준일 {asOf} (KST)</div>
       </div>
-      {row.region && (
-        <span className="mt-0.5 text-[10px] font-semibold text-slate-400">{row.region}</span>
+    </div>
+  );
+}
+
+// ── Hero section ──────────────────────────────────────────────────────────────
+
+function LdHeroSection({
+  today,
+  highAlerts,
+  medAlerts,
+  kcciStat,
+  disruptions,
+}: {
+  today: string;
+  highAlerts: number;
+  medAlerts: number;
+  kcciStat: IndexStats | undefined;
+  disruptions: number;
+}) {
+  const pressureUp = (kcciStat?.change_pct ?? 0) > 0;
+  const alertCount = highAlerts + medAlerts;
+
+  const summaryLine = [
+    kcciStat?.latest_value != null
+      ? `한국발 해상 운임(KCCI ${kcciStat.latest_value.toLocaleString("en-US", { maximumFractionDigits: 0 })})${pressureUp ? "은 단기 상승 압력이 우세합니다" : "은 안정 추세를 유지하고 있습니다"}.`
+      : "해상 운임 데이터를 수집 중입니다.",
+    disruptions > 0 ? `유라시아 회랑에 ${disruptions}건의 활성 장애가 보고되어 있습니다.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <section className="ld-hero-card ld-shell">
+      <div className="ld-hero-content">
+        <h1>오늘의 물류 브리핑</h1>
+        <p>{summaryLine || "주요 노선 현황과 운임 지수를 확인하세요."}</p>
+        <div className="ld-hero-pills">
+          <span className={`ld-pill ${pressureUp ? "ld-pill--red" : "ld-pill--green"}`}>
+            {pressureUp ? "↗ 운임 압력 상승" : "↘ 운임 안정"}
+          </span>
+          {disruptions > 0 && (
+            <span className="ld-pill ld-pill--amber">⚠ 유라시아 리스크 {disruptions}건</span>
+          )}
+          {alertCount > 0 && (
+            <span className="ld-pill ld-pill--blue">▣ 경보 {alertCount}건</span>
+          )}
+          <span className="ld-pill ld-pill--slate">◷ 기준일 {today}</span>
+        </div>
+      </div>
+      <div className="ld-ship-visual" aria-hidden="true">
+        <div className="ld-map-glow" />
+        <div className="ld-ship-body" />
+        <div className="ld-containers">
+          <span /><span /><span /><span /><span /><span /><span /><span />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── KPI Grid ──────────────────────────────────────────────────────────────────
+
+function LdKpiCard({
+  icon,
+  title,
+  value,
+  sub,
+  change,
+  trend,
+  tone,
+  spark,
+}: {
+  icon: string;
+  title: string;
+  value: string;
+  sub: string;
+  change?: string;
+  trend?: "up" | "down" | "flat";
+  tone: "blue" | "green" | "red" | "amber" | "gray";
+  spark?: number[];
+}) {
+  return (
+    <article className={`ld-kpi-card ld-panel-card ld-tone-${tone}`}>
+      <div className="ld-kpi-icon">{icon}</div>
+      <div className="ld-kpi-copy">
+        <div className="ld-card-eyebrow">{title}</div>
+        <div className="ld-kpi-value-row">
+          <strong>{value}</strong>
+          {change && (
+            <span className={`ld-trend ${trend ? `ld-trend--${trend}` : ""}`}>
+              {trend === "up" ? "▲" : trend === "down" ? "▼" : ""} {change}
+            </span>
+          )}
+        </div>
+        <p>{sub}</p>
+      </div>
+      {spark && spark.length > 1 && (
+        <LdSparkline points={spark.slice(-9)} trend={trend} />
       )}
-      <div className="mt-2 text-[22px] font-black leading-tight tracking-normal text-slate-900">
-        {row.value ?? "수집 중"}
-      </div>
-      <div className="mt-auto grid grid-cols-[auto_auto_64px] items-end gap-2 text-[11px] font-bold text-slate-500">
-        <span className={`whitespace-nowrap ${dirTextClass(row.mom)}`}>{pctText(row.mom)}</span>
-        <span className="whitespace-nowrap">{row.asOf ? yyyymmLabel(row.asOf) : "—"}</span>
-        <span className="w-16 justify-self-end text-sky-500">
-          <Sparkline values={row.values.slice(-8)} width={64} height={22} color="currentColor" />
-        </span>
-      </div>
     </article>
   );
 }
 
-function AirLaneGrid({ rows }: { rows: AirLaneRow[] }) {
-  if (rows.length === 0) return null;
-  return (
-    <Panel>
-      <SectionTitle
-        badge={<ToneBadge tone="blue">인천발</ToneBadge>}
-        link={
-          <Link to="/rates" className="text-[11px] font-black text-blue-700 hover:underline">
-            전체 보기
-          </Link>
-        }
-      >
-        항공 노선 현황
-      </SectionTitle>
-      <div className="grid grid-cols-3 gap-2">
-        {rows.map((row) => (
-          <AirLaneCard key={`${row.origin}-${row.dest}`} row={row} />
-        ))}
-      </div>
-    </Panel>
-  );
-}
+// ── Intelligence Panel ────────────────────────────────────────────────────────
 
-function IndexSnapshot({ stats, asOf }: { stats: IndexStats[]; asOf: string }) {
-  const rows = orderedStats(stats).slice(0, 5);
+function LdIntelligencePanel({
+  forecasts,
+  seriesMap,
+  stats,
+  selectedMetric,
+}: {
+  forecasts: Forecast[];
+  seriesMap: Record<string, ForecastSeries>;
+  stats: IndexStats[];
+  selectedMetric?: JudgmentTabCode;
+}) {
+  const forecastByMetric = useMemo(() => {
+    const rows = new Map<JudgmentTabCode, Forecast>();
+    for (const f of forecasts.filter((f) => f.status === "published")) {
+      const metric = f.metric_ref as JudgmentTabCode | null;
+      if (metric && JUDGMENT_TAB_CODES.includes(metric) && !rows.has(metric)) {
+        rows.set(metric, f);
+      }
+    }
+    return rows;
+  }, [forecasts]);
+
+  const fallbackMetric = JUDGMENT_TAB_CODES.find((code) => forecastByMetric.has(code));
+  const activeMetric =
+    selectedMetric && forecastByMetric.has(selectedMetric) ? selectedMetric : fallbackMetric;
+  const forecast = activeMetric ? forecastByMetric.get(activeMetric) ?? null : null;
+  const series = forecast ? seriesMap[forecast.id] : undefined;
+
+  const direction = forecast?.direction ? DIR_META[forecast.direction] : null;
+  const directionClasses = dirCls(forecast?.direction);
+  const lead = sentences(forecast?.statement ?? "")[0] ?? forecast?.statement ?? "";
+  const lastSentence = sentences(forecast?.statement ?? "").at(-1) ?? "";
+  const invalidation = forecast?.invalidation_condition ?? "";
+
+  // Chart data from forecast series points
+  const chartData = useMemo(() => {
+    if (!series?.points?.length) return [];
+    return series.points.map((p) => ({
+      date: p.date ? p.date.slice(5, 10) : "",
+      value: p.value,
+      full: p.date,
+    }));
+  }, [series]);
+
+  // Contribution factors
+  const factorRows = (forecast?.factor_scores ?? []).filter(
+    (f) => !f.missing && f.score != null,
+  );
+  const maxAbsScore = Math.max(...factorRows.map((f) => Math.abs(f.score as number)), 1);
+
+  // Current metric stat for display
+  const metricStat = activeMetric ? statByCode(stats, activeMetric) : undefined;
+
   return (
-    <Panel>
-      <SectionTitle
-        link={
-          <Link to="/rates" className="text-[11px] font-black text-blue-700 hover:underline">
-            전체 보기
-          </Link>
-        }
-      >
-        글로벌 지수 스냅샷
-      </SectionTitle>
-      <div className="divide-y divide-slate-100">
-        {rows.map((row) => (
-          <div key={row.index_code} className="grid grid-cols-[34px_1fr_auto_auto] items-center gap-2 py-2 text-xs font-extrabold">
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-blue-50 text-[10px] text-blue-700">{row.index_code.slice(0, 2)}</span>
-            <span className="text-slate-700">{row.index_code}</span>
-            <span className="tabular-nums text-slate-900">{formatNumber(row.latest_value, row.index_code === "SCFI" || row.index_code === "CCFI" ? 2 : 0)}</span>
-            <span className={`tabular-nums ${dirTextClass(row.change_pct)}`}>{pctText(row.change_pct)}</span>
+    <section className="ld-intelligence-card ld-panel-card">
+      {/* Title row */}
+      <div className="ld-section-title-row">
+        <div>
+          <h2>운임 종합 판단</h2>
+          <span className="ld-badge ld-badge--blue">AI 인사이트 · 에디터 검수</span>
+        </div>
+        {direction && (
+          <span className={`ld-badge ${directionClasses.badge}`}>
+            {direction.glyph} {direction.label}
+          </span>
+        )}
+      </div>
+
+      {/* Tab switcher */}
+      <div className="ld-tabs" role="tablist" aria-label="운임 지수 선택">
+        {JUDGMENT_TAB_CODES.map((code) => {
+          const hasForecast = forecastByMetric.has(code);
+          const active = code === activeMetric;
+          const cls = [
+            active ? "ld-tab-active" : "",
+            !hasForecast ? "ld-tab-disabled" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          if (!hasForecast) {
+            return (
+              <a key={code} className={cls} role="tab" aria-selected={false} aria-disabled="true">
+                {code}
+              </a>
+            );
+          }
+          return (
+            <Link
+              key={code}
+              to="/dashboard"
+              search={{ judgment: code }}
+              role="tab"
+              aria-selected={active}
+              className={cls}
+            >
+              {code}
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Chart + Contribution factors */}
+      <div className="ld-intelligence-grid">
+        <div className="ld-chart-wrap">
+          <div className="ld-chart-header">
+            <h3>
+              {activeMetric ?? "지수"} 추이
+              {baseIndexCaption(forecast as Forecast) ? (
+                <span style={{ marginLeft: 6, fontSize: 11, color: "#8ea4bf", fontWeight: 600 }}>
+                  ({baseIndexCaption(forecast as Forecast)})
+                </span>
+              ) : null}
+            </h3>
+            <span>
+              {metricStat?.latest_value != null
+                ? formatNumber(metricStat.latest_value, 0)
+                : "—"}
+            </span>
           </div>
-        ))}
-        {rows.length === 0 && <p className="py-3 text-xs font-semibold text-slate-500">지수 데이터 수집 중</p>}
+          <div className="ld-chart-inner">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={180}>
+                <AreaChart data={chartData} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="ldChartGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#40d37d" stopOpacity={0.22} />
+                      <stop offset="95%" stopColor="#40d37d" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: "#8ea4bf", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fill: "#8ea4bf", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    domain={["auto", "auto"]}
+                    width={42}
+                    tickFormatter={(v: number) => v.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "rgba(10, 30, 54, 0.96)",
+                      border: "1px solid rgba(116, 177, 255, 0.28)",
+                      borderRadius: 10,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#f4f8ff",
+                    }}
+                    formatter={(v: number) => [v.toLocaleString("en-US", { maximumFractionDigits: 1 }), activeMetric]}
+                    labelFormatter={(l: string) => `기준일 ${l}`}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#40d37d"
+                    strokeWidth={2.5}
+                    fill="url(#ldChartGrad)"
+                    dot={false}
+                    activeDot={{ r: 4, fill: "#b8ffcf", stroke: "#0e2a48", strokeWidth: 3 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ height: 180, display: "grid", placeItems: "center", color: "#6f849d", fontSize: 12 }}>
+                {forecast ? "전망 데이터 수집 중" : "발행된 전망이 없습니다"}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Contribution factors */}
+        <div className="ld-contribution-card">
+          <h3>상승 요인 기여도</h3>
+          {factorRows.length > 0 ? (
+            <>
+              {factorRows.slice(0, 5).map((factor) => {
+                const score = factor.score as number;
+                const width = Math.round((Math.abs(score) / maxAbsScore) * 86);
+                return (
+                  <div className="ld-contribution-row" key={factor.factor}>
+                    <span>{FACTOR_LABEL[factor.factor] ?? factor.factor}</span>
+                    <div className="ld-bar-track">
+                      <i style={{ width: `${width}%` }} />
+                    </div>
+                    <strong>{score > 0 ? "+" : ""}{score}</strong>
+                  </div>
+                );
+              })}
+              <div className="ld-contribution-total">
+                <span>합계</span>
+                <strong>
+                  {factorRows.reduce((s, f) => s + (f.score as number), 0) > 0 ? "+" : ""}
+                  {factorRows.reduce((s, f) => s + (f.score as number), 0).toFixed(1)}
+                </strong>
+              </div>
+            </>
+          ) : (
+            <div style={{ marginTop: 16, color: "#6f849d", fontSize: 12 }}>
+              팩터 점수 수집 중
+            </div>
+          )}
+        </div>
       </div>
-      <p className="mt-2 text-[11px] font-semibold text-slate-400">WoW · 52주 백분위 · 기준 {asOf}</p>
-    </Panel>
+
+      {/* AI summary */}
+      <div className="ld-ai-summary">
+        <div className="ld-ai-icon">AI</div>
+        <div>
+          <strong>AI 요약 · 에디터 검수</strong>
+          <p>{lead || "전망 본문 수집 중입니다. 에디터 검수 후 공개됩니다."}</p>
+        </div>
+      </div>
+
+      {/* Scenarios */}
+      <div className="ld-scenario-grid">
+        <article className="ld-scenario ld-scenario--red">
+          <h3>상방 조건</h3>
+          <p>
+            {forecast?.direction === "up" ? lastSentence : invalidation || "수요 강세 지속 + 공급 제약 심화"}
+          </p>
+          {forecast?.range_high_pct != null && (
+            <strong>전망 범위 상단 +{forecast.range_high_pct}%</strong>
+          )}
+        </article>
+        <article className="ld-scenario ld-scenario--blue">
+          <h3>기준 시나리오</h3>
+          <p>{lead || "수요 완만 + 공급 제한적 완화"}</p>
+          {forecast?.expected_range_pct && (
+            <strong>전망 {forecast.expected_range_pct}%</strong>
+          )}
+        </article>
+        <article className="ld-scenario ld-scenario--green">
+          <h3>하방 조건</h3>
+          <p>
+            {forecast?.direction === "down" ? lastSentence : invalidation || "수요 둔화 + 공급 회복 가속"}
+          </p>
+          {forecast?.range_low_pct != null && (
+            <strong>전망 범위 하단 {forecast.range_low_pct}%</strong>
+          )}
+        </article>
+      </div>
+    </section>
   );
 }
 
-function TopSeaMovers({ movers }: { movers: SeaMover[] }) {
+// ── Action Queue sidebar ──────────────────────────────────────────────────────
+
+function LdActionQueue({ alerts }: { alerts: AlertCandidate[] }) {
+  const items = alerts.slice(0, 4);
   return (
-    <Panel>
-      <SectionTitle
-        link={
-          <Link to="/rates" className="text-[11px] font-black text-blue-700 hover:underline">
-            전체 보기
-          </Link>
-        }
-      >
-        가장 크게 상승한 한국발 운임
-      </SectionTitle>
-      {movers.length === 0 ? (
-        <p className="text-xs font-semibold text-slate-500">KITA 해상 운임 상승 데이터 수집 중</p>
+    <section className="ld-panel-card ld-side-card">
+      <div className="ld-side-title-row">
+        <h2>Action Queue</h2>
+        <Link to="/rates">
+          <button type="button">전체 보기</button>
+        </Link>
+      </div>
+      {items.length === 0 ? (
+        <p style={{ marginTop: 14, color: "#6f849d", fontSize: 12 }}>현재 활성 경보 없음</p>
       ) : (
-        <div className="space-y-2.5">
-          {movers.map((mover, index) => (
-            <div key={mover.label} className="grid grid-cols-[24px_1fr_auto] items-center gap-2 border-b border-slate-100 pb-2 text-xs font-extrabold last:border-0 last:pb-0">
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-slate-900 text-[11px] text-white">{index + 1}</span>
-              <span className="min-w-0">
-                <span className="block truncate text-slate-800">{mover.label}</span>
-                <span className="text-[11px] text-slate-400">{mover.value} · {yyyymmLabel(mover.asOf)}</span>
+        <div className="ld-action-list">
+          {items.map((alert, i) => (
+            <div className="ld-action-item" key={alert.title}>
+              <div className="ld-rank">{i + 1}</div>
+              <div className="ld-action-copy">
+                <strong>{alert.title}</strong>
+                <span>{alert.sub}</span>
+              </div>
+              <span className={`ld-mini-badge ${SEV_TONE_CLASS[alert.severity]}`}>
+                {SEV_LABEL[alert.severity]}
               </span>
-              <span className="tabular-nums text-direction-up">{pctText(mover.mom)}</span>
             </div>
           ))}
         </div>
       )}
-      <p className="mt-2 text-[11px] font-semibold text-slate-400">MoM 기준 · KITA 해상 USD/FEU</p>
-    </Panel>
+    </section>
   );
 }
 
-function EurasiaPanel({
+// ── Index Snapshot sidebar ────────────────────────────────────────────────────
+
+function LdIndexSnapshot({ stats, asOf }: { stats: IndexStats[]; asOf: string }) {
+  const rows = orderedStats(stats).slice(0, 6);
+  return (
+    <section className="ld-panel-card ld-side-card">
+      <div className="ld-side-title-row">
+        <h2>글로벌 지수 스냅샷</h2>
+        <Link to="/rates">
+          <button type="button">전체 보기</button>
+        </Link>
+      </div>
+      <div className="ld-snapshot-grid">
+        {rows.map((row) => (
+          <div className="ld-snapshot-item" key={row.index_code}>
+            <span>{row.index_code}</span>
+            <strong>
+              {formatNumber(
+                row.latest_value,
+                row.index_code === "SCFI" || row.index_code === "CCFI" ? 2 : 0,
+              )}
+            </strong>
+            <em className={trendCls(row.change_pct)}>
+              {trendSym(row.change_pct)} {pctText(row.change_pct)}
+            </em>
+          </div>
+        ))}
+        {rows.length === 0 && (
+          <p style={{ gridColumn: "1/-1", color: "#6f849d", fontSize: 12 }}>지수 수집 중</p>
+        )}
+      </div>
+      <p className="ld-card-footnote">WoW · 기준 {asOf}</p>
+    </section>
+  );
+}
+
+// ── Eurasia Risk sidebar ──────────────────────────────────────────────────────
+
+function LdEurasiaRisk({
   disruptions,
 }: {
   disruptions: {
@@ -1094,207 +784,320 @@ function EurasiaPanel({
     segment: string;
   }[];
 }) {
+  const items = disruptions.slice(0, 4);
   return (
-    <Panel className="min-h-[238px] overflow-hidden">
-      <SectionTitle
-        link={
-          <Link to="/eurasia" className="text-[11px] font-black text-blue-700 hover:underline">
-            전체 보기
-          </Link>
-        }
-      >
-        유라시아 활성 장애
-      </SectionTitle>
-      {disruptions.length === 0 ? (
-        <div>
-          <div className="inline-flex items-center gap-2 text-sm font-black text-emerald-700">
-            <CheckCircle2 className="h-4 w-4" />
-            특정 장애 없음
-          </div>
-          <div className="mt-4 flex justify-center rounded-lg border border-slate-100 bg-slate-50 p-4">
-            <img src="/world-map.svg" alt="" className="h-[116px] max-w-full opacity-30" />
-          </div>
-        </div>
+    <section className="ld-panel-card ld-side-card">
+      <div className="ld-side-title-row">
+        <h2>유라시아 리스크</h2>
+        <Link to="/eurasia">
+          <button type="button">전체 보기</button>
+        </Link>
+      </div>
+      {items.length === 0 ? (
+        <p style={{ marginTop: 14, color: "#6f849d", fontSize: 12 }}>특정 장애 없음 · 정상</p>
       ) : (
-        <div className="space-y-2">
-          {disruptions.slice(0, 4).map((d) => (
-            <div key={d.id} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-black text-slate-800">{d.title}</span>
-                <ToneBadge tone={d.severity === "high" ? "red" : d.severity === "medium" ? "amber" : "blue"}>
-                  {d.severity === "high" ? "경고" : d.severity === "medium" ? "주의" : "낮음"}
-                </ToneBadge>
-              </div>
-              <p className="mt-1 font-semibold text-slate-500">
-                {d.segment}
-                {d.delay_contribution_days != null ? ` · ${d.delay_contribution_days}일 기여 추정` : ""}
-              </p>
+        <div className="ld-risk-list">
+          {items.map((d) => (
+            <div className="ld-risk-row" key={d.id}>
+              <span>
+                {d.title}
+                {d.delay_contribution_days != null ? ` (${d.delay_contribution_days}일)` : ""}
+              </span>
+              <strong
+                className={`ld-mini-badge ${
+                  d.severity === "high"
+                    ? "ld-tone-red"
+                    : d.severity === "medium"
+                      ? "ld-tone-amber"
+                      : "ld-tone-blue"
+                }`}
+              >
+                {d.severity === "high" ? "경고" : d.severity === "medium" ? "주의" : "낮음"}
+              </strong>
             </div>
           ))}
         </div>
       )}
-    </Panel>
+    </section>
   );
 }
 
-const HANA_LOGO = "https://cdn.brandfetch.io/id32Zgea2w/w/400/h/400/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX&t=1778049584773";
+// ── Sea / Air Route Monitor ───────────────────────────────────────────────────
 
-function ExchangeRateMiniPanel({ exRate }: { exRate: ExchangeRateRow | null }) {
+function LdRouteCard({
+  icon,
+  routeLabel,
+  price,
+  unit,
+  mom,
+  asOf,
+  values,
+}: {
+  icon: string;
+  routeLabel: string;
+  price: string;
+  unit: string;
+  mom: number | null;
+  asOf: string | null;
+  values: number[];
+}) {
+  const spark = values.slice(-8);
+  const momTrend: "up" | "down" | "flat" =
+    mom == null || mom === 0 ? "flat" : mom > 0 ? "up" : "down";
+
+  return (
+    <article className="ld-route-card">
+      <div className="ld-route-name">
+        <span>{icon}</span>
+        {routeLabel}
+      </div>
+      <div className="ld-route-price">
+        <strong>{price}</strong>
+        <em>{unit}</em>
+      </div>
+      <div className="ld-route-meta">
+        <span className={`ld-trend ld-trend--${momTrend}`}>
+          {trendSym(mom)} {pctText(mom)}
+        </span>
+        <span>{asOf ? yyyymmLabel(asOf) : "—"}</span>
+      </div>
+      {spark.length > 1 && <LdSparkline points={spark} trend={momTrend} />}
+    </article>
+  );
+}
+
+function LdSeaRouteMonitor({ laneRows }: { laneRows: KeyLaneRow[] }) {
+  const seaRows = laneRows.filter((r) => r.lane.mode === "ocean" && r.value != null);
+  const gridCls = seaRows.length >= 4 ? "ld-route-grid ld-route-grid--4" : "ld-route-grid";
+  return (
+    <section className="ld-panel-card ld-route-section">
+      <div className="ld-side-title-row">
+        <h2>해상 노선 모니터</h2>
+        <Link to="/rates">
+          <button type="button">더보기</button>
+        </Link>
+      </div>
+      {seaRows.length === 0 ? (
+        <p style={{ marginTop: 14, color: "#6f849d", fontSize: 12 }}>데이터 수집 중</p>
+      ) : (
+        <div className={gridCls}>
+          {seaRows.map((row) => (
+            <LdRouteCard
+              key={row.lane.laneId}
+              icon="▣"
+              routeLabel={`${row.lane.origin} → ${row.lane.dest}`}
+              price={row.value ?? "—"}
+              unit=""
+              mom={row.mom}
+              asOf={row.asOf}
+              values={row.values}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function LdAirRouteMonitor({ airRows }: { airRows: AirLaneRow[] }) {
+  return (
+    <section className="ld-panel-card ld-route-section">
+      <div className="ld-side-title-row">
+        <h2>항공 노선 모니터</h2>
+        <Link to="/rates">
+          <button type="button">더보기</button>
+        </Link>
+      </div>
+      {airRows.length === 0 ? (
+        <p style={{ marginTop: 14, color: "#6f849d", fontSize: 12 }}>데이터 수집 중</p>
+      ) : (
+        <div className="ld-route-grid">
+          {airRows.map((row) => (
+            <LdRouteCard
+              key={`${row.origin}-${row.dest}`}
+              icon="✈"
+              routeLabel={`${row.origin} → ${row.dest}`}
+              price={row.value ?? "—"}
+              unit=""
+              mom={row.mom}
+              asOf={row.asOf}
+              values={row.values}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ── Bottom utility cards ──────────────────────────────────────────────────────
+
+function LdDataBasisCard({
+  asOf,
+  dataUpdates,
+  stats,
+  seaRates,
+  exRateDate,
+}: {
+  asOf: string;
+  dataUpdates: { dataset: string; updated_at: string | null }[];
+  stats: IndexStats[];
+  seaRates: KitaSeaRateRow[];
+  exRateDate: string | null | undefined;
+}) {
+  const latestUpdate = latestDataUpdate(dataUpdates);
+  const availableIndexes = stats.filter((s) => s.latest_value != null).length;
+  const latestSeaMonth = seaRates.map((r) => r.year_mon).sort().at(-1) ?? null;
+  const rows = [
+    ["기준일", asOf],
+    ["데이터 갱신", latestUpdate ? `${latestUpdate.slice(0, 16).replace("T", " ")} KST` : "수집 이력 확인 중"],
+    ["수집 소스", sourceList(stats, dataUpdates)],
+    ["지수 커버리지", `${availableIndexes}/${stats.length || 0}개`],
+    ["KITA 해상", yyyymmLabel(latestSeaMonth)],
+    ["환율 기준", exRateDate ?? "수집 중"],
+  ];
+  return (
+    <section className="ld-panel-card ld-utility-card">
+      <h2>데이터 기준</h2>
+      <div className="ld-utility-list">
+        {rows.map(([label, value]) => (
+          <div className="ld-utility-row" key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LdFxCard({ exRate }: { exRate: ExchangeRateRow | null }) {
   const rows = exRate
     ? [
-        { label: "USD", sublabel: null, value: exRate.usd_krw },
-        { label: "EUR", sublabel: null, value: exRate.eur_krw },
-        { label: "JPY", sublabel: "100엔", value: exRate.jpy_krw },
-        { label: "CNY", sublabel: null, value: exRate.cny_krw },
-        { label: "RUB", sublabel: null, value: exRate.rub_krw },
+        { label: "USD / KRW", value: exRate.usd_krw },
+        { label: "EUR / KRW", value: exRate.eur_krw },
+        { label: "CNY / KRW", value: exRate.cny_krw },
+        { label: "JPY(100) / KRW", value: exRate.jpy_krw },
+        { label: "RUB / KRW", value: exRate.rub_krw },
       ]
     : [];
   return (
-    <Panel>
-      <SectionTitle
-        link={
-          exRate ? (
-            <span className="text-[10px] text-slate-400">{exRate.rate_date.slice(0, 10)}</span>
-          ) : undefined
-        }
-      >
-        환율 현황
-      </SectionTitle>
-      {rows.length > 0 ? (
-        <div className="space-y-1.5">
-          {rows.map(({ label, sublabel, value }) => (
-            <div key={label} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-1.5">
-              <span className="text-[11px] font-black text-slate-500">
-                {sublabel ? `${sublabel} ${label}` : `1 ${label}`}
-              </span>
-              <span className="text-sm font-black text-slate-800">
-                {value != null ? `₩${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}` : "-"}
-              </span>
+    <section className="ld-panel-card ld-utility-card">
+      <h2>환율 정보</h2>
+      {rows.length === 0 ? (
+        <p style={{ marginTop: 14, color: "#6f849d", fontSize: 12 }}>데이터 수집 중</p>
+      ) : (
+        <div className="ld-utility-list">
+          {rows.map(({ label, value }) => (
+            <div className="ld-utility-row" key={label}>
+              <span>{label}</span>
+              <strong>
+                {value != null
+                  ? `₩${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}`
+                  : "—"}
+              </strong>
             </div>
           ))}
-          <div className="flex items-center justify-end gap-1 pt-0.5">
-            <img src={HANA_LOGO} alt="하나은행" className="h-3.5 w-3.5 rounded-sm object-cover" />
-            <span className="text-[10px] text-slate-400">하나은행 고시환율</span>
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-md bg-slate-50 px-3 py-3 text-center text-[11px] text-slate-400">
-          데이터 수집 중
+          {exRate?.rate_date && (
+            <p className="ld-card-footnote" style={{ marginTop: 4 }}>
+              하나은행 · {exRate.rate_date.slice(0, 10)}
+            </p>
+          )}
         </div>
       )}
-    </Panel>
+    </section>
   );
 }
 
-function JetFuelChartCard({ rows }: { rows: IataJetFuelRow[] }) {
-  const chartData = useMemo(
-    () =>
-      rows
-        .filter((r) => r.price_usd_bbl != null)
-        .map((r) => ({ date: r.as_of.slice(5), price: r.price_usd_bbl as number, full: r.as_of })),
-    [rows],
-  );
-
-  const latest = rows.at(-1);
+function LdOilCard({ jetFuel }: { jetFuel: IataJetFuelRow[] }) {
+  const latest = jetFuel.at(-1);
+  const chartData = jetFuel
+    .filter((r) => r.price_usd_bbl != null)
+    .map((r) => ({ date: r.as_of.slice(5, 10), price: r.price_usd_bbl as number }));
   const wow = latest?.fuel_wow_pct ?? null;
   const wowUp = wow !== null && wow >= 0;
 
   return (
-    <Panel>
-      <SectionTitle
-        link={
-          latest ? (
-            <span className="text-[10px] text-slate-400">IATA/Platts</span>
-          ) : undefined
-        }
-      >
-        항공유 가격
-      </SectionTitle>
+    <section className="ld-panel-card ld-utility-card">
+      <h2>항공유 가격</h2>
       {chartData.length === 0 ? (
-        <div className="rounded-md bg-slate-50 px-3 py-3 text-center text-[11px] text-slate-400">
-          데이터 수집 중
-        </div>
+        <p style={{ marginTop: 14, color: "#6f849d", fontSize: 12 }}>데이터 수집 중</p>
       ) : (
         <>
-          <div className="mb-2 flex items-baseline justify-between">
-            <span className="text-xl font-black text-slate-900">
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: 14 }}>
+            <span style={{ fontSize: 22, fontWeight: 900, color: "#f4f8ff", letterSpacing: "-0.04em" }}>
               ${latest?.price_usd_bbl?.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-              <span className="ml-1 text-xs font-bold text-slate-400">/bbl</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#8ea4bf", marginLeft: 4 }}>/bbl</span>
             </span>
             {wow !== null && (
-              <span className={`text-xs font-black ${wowUp ? "text-emerald-600" : "text-rose-600"}`}>
+              <span style={{ fontSize: 12, fontWeight: 900, color: wowUp ? "#40d37d" : "#ff6464" }}>
                 {wowUp ? "+" : ""}{wow.toFixed(1)}% WoW
               </span>
             )}
           </div>
-          <div className="h-[72px]">
+          <div style={{ height: 60, marginTop: 8 }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
                 <defs>
-                  <linearGradient id="jetFuelGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.18} />
-                    <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                  <linearGradient id="ldOilGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f3a536" stopOpacity={0.22} />
+                    <stop offset="95%" stopColor="#f3a536" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="date" hide />
                 <YAxis domain={["auto", "auto"]} hide />
                 <Tooltip
-                  contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 11, fontWeight: 700 }}
+                  contentStyle={{
+                    background: "rgba(10, 30, 54, 0.96)",
+                    border: "1px solid rgba(116, 177, 255, 0.28)",
+                    borderRadius: 8,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#f4f8ff",
+                  }}
                   formatter={(v: number) => [`$${v.toFixed(2)}/bbl`, "Jet Fuel"]}
-                  labelFormatter={(l) => `기준일 ${l}`}
+                  labelFormatter={(l: string) => `기준일 ${l}`}
                 />
                 <Area
                   type="monotone"
                   dataKey="price"
-                  stroke="#f97316"
+                  stroke="#f3a536"
                   strokeWidth={2}
-                  fill="url(#jetFuelGrad)"
+                  fill="url(#ldOilGrad)"
                   dot={false}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-1 text-right text-[10px] text-slate-400">
-            기준일 {latest?.as_of?.slice(0, 10)}
-          </div>
+          <p className="ld-card-footnote" style={{ marginTop: 4 }}>
+            IATA/Platts · 기준 {latest?.as_of?.slice(0, 10)}
+          </p>
         </>
       )}
-    </Panel>
+    </section>
   );
 }
 
-function IndexChangeHeatmap({ stats }: { stats: IndexStats[] }) {
-  const CODES = ["SCFI", "KCCI", "CCFI", "FBX", "WCI", "BDI"];
-  const rows = CODES.map((c) => stats.find((s) => s.index_code === c)).filter(Boolean) as IndexStats[];
-  if (rows.length === 0) return null;
+function LdUpdateCard({ latestUpdate }: { latestUpdate: string | null }) {
+  const label = latestUpdate
+    ? latestUpdate.slice(0, 16).replace("T", " ") + " KST"
+    : "수집 이력 확인 중";
   return (
-    <Panel>
-      <SectionTitle>지수 변화 히트맵</SectionTitle>
-      <div className="grid grid-cols-2 gap-1.5">
-        {rows.map((s) => {
-          const pct = s.change_pct;
-          const isUp = pct !== null && pct >= 0;
-          const isDown = pct !== null && pct < 0;
-          const bg = isUp ? "bg-emerald-50" : isDown ? "bg-red-50" : "bg-slate-50";
-          const pctColor = isUp ? "text-emerald-700" : isDown ? "text-red-600" : "text-slate-400";
-          return (
-            <div key={s.index_code} className={`rounded-md px-2.5 py-2 ${bg}`}>
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[11px] font-black text-slate-600">{s.index_code}</span>
-                <span className={`text-[11px] font-black ${pctColor}`}>
-                  {pct === null ? "-" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`}
-                </span>
-              </div>
-              <div className="mt-0.5 text-sm font-black text-slate-800">
-                {s.latest_value?.toLocaleString("en-US", { maximumFractionDigits: 1 }) ?? "-"}
-              </div>
-            </div>
-          );
-        })}
+    <section className="ld-panel-card ld-utility-card">
+      <h2>업데이트</h2>
+      <div className="ld-update-content">
+        <span className="ld-update-icon">◷</span>
+        <p>
+          최신 데이터로 업데이트되었습니다.
+          <br />
+          마지막 수집: {label}
+        </p>
       </div>
-    </Panel>
+    </section>
   );
 }
+
+// ── Dashboard page ────────────────────────────────────────────────────────────
 
 function DashboardPage() {
   const search = Route.useSearch();
@@ -1308,34 +1111,44 @@ function DashboardPage() {
   const { data: jetFuelHistory } = useSuspenseQuery(iataJetFuelQueryOptions());
   const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
   const { data: series } = useSuspenseQuery(forecastSeriesQueryOptions());
-  const { data: riskNotes } = useSuspenseQuery(riskNotesQueryOptions());
   const { data: dataUpdates } = useSuspenseQuery(dataUpdatesQueryOptions());
 
   const today = kstDateString();
   const orderedIndexRows = orderedStats(stats);
   const kcciStat = statByCode(stats, "KCCI");
-  const asOf = kcciStat?.latest_date?.slice(0, 10) ?? orderedIndexRows[0]?.latest_date?.slice(0, 10) ?? "수집 중";
+  const asOf =
+    kcciStat?.latest_date?.slice(0, 10) ??
+    orderedIndexRows[0]?.latest_date?.slice(0, 10) ??
+    "수집 중";
   const highAlerts = alerts.filter((a) => a.severity === "high").length;
   const medAlerts = alerts.filter((a) => a.severity === "medium").length;
   const openForecasts = forecasts.filter((f) => f.status === "published");
-  const repForecast = openForecasts.find((f) => f.metric_ref === "KCCI") ?? openForecasts[0] ?? null;
-  const modelVersion = forecasts.find((f) => f.model_version)?.model_version ?? "미입력";
   const laneRows = useMemo(() => buildLaneRows(seaRates, delays), [seaRates, delays]);
   const airLaneRows = useMemo(() => buildAirLaneRows(airRates), [airRates]);
-  const topSeaMovers = useMemo(() => buildTopSeaMovers(seaRates), [seaRates]);
   const latestUpdate = latestDataUpdate(dataUpdates);
-  const latestUpdateLabel = latestUpdate ? latestUpdate.slice(0, 16).replace("T", " ") : "수집 이력 확인 중";
+
+  // Ticker items
   const tickerItems = orderedIndexRows.map((s) => ({
     code: s.index_code,
     value: s.latest_value!.toLocaleString("en-US", { maximumFractionDigits: 2 }),
     changePct: s.change_pct,
   }));
-  const latestRiskNote = riskNotes[0]?.note ?? null;
+
+  // KPI values
+  const kcciChange = kcciStat?.change_pct;
+  const kcciTrend: "up" | "down" | "flat" =
+    kcciChange == null || kcciChange === 0 ? "flat" : kcciChange > 0 ? "up" : "down";
+  const kcciSeries = orderedIndexRows.find((s) => s.index_code === "KCCI");
+  const firstAirRow = airLaneRows[0];
+  const alertCount = highAlerts + medAlerts;
 
   return (
-    <div className="bg-[#eaf2fb] text-slate-900">
-      <DashboardTicker items={tickerItems} />
-      <DashboardHero
+    <div className="ld-dash">
+      {/* Ticker */}
+      <LdTickerBar items={tickerItems} asOf={asOf} />
+
+      {/* Hero */}
+      <LdHeroSection
         today={today}
         highAlerts={highAlerts}
         medAlerts={medAlerts}
@@ -1343,58 +1156,113 @@ function DashboardPage() {
         disruptions={disruptions.length}
       />
 
-      <main className="relative z-10 mx-auto mt-3 max-w-[1540px] space-y-3 px-4 pb-4 lg:px-12">
-        <KpiStrip
-          highAlerts={highAlerts}
-          medAlerts={medAlerts}
-          repForecast={repForecast}
-          forecastSeries={repForecast ? series[repForecast.id] : undefined}
-          laneRows={laneRows}
-          indexCount={orderedIndexRows.length}
+      {/* KPI Grid — 4 cards */}
+      <section className="ld-kpi-grid ld-shell">
+        <LdKpiCard
+          icon="↗"
+          title="운임 압력"
+          value={kcciTrend === "up" ? "상승" : kcciTrend === "down" ? "하락" : "보합"}
+          sub={kcciChange != null ? `KCCI WoW ${pctText(kcciChange)}` : "KCCI 수집 중"}
+          tone={kcciTrend === "up" ? "red" : kcciTrend === "down" ? "green" : "gray"}
+          trend={kcciTrend}
         />
+        <LdKpiCard
+          icon="K"
+          title="한국발 해상 (KCCI)"
+          value={
+            kcciStat?.latest_value != null
+              ? kcciStat.latest_value.toLocaleString("en-US", { maximumFractionDigits: 0 })
+              : "수집 중"
+          }
+          sub={kcciStat?.latest_date ? `기준 ${kcciStat.latest_date.slice(0, 10)}` : "데이터 수집 중"}
+          change={kcciChange != null ? pctText(kcciChange) : undefined}
+          trend={kcciTrend}
+          tone="blue"
+          spark={kcciSeries?.normal_range != null ? [
+            kcciSeries.normal_range[0],
+            kcciSeries.latest_value ?? kcciSeries.normal_range[1],
+          ] : undefined}
+        />
+        <LdKpiCard
+          icon="✈"
+          title="항공 운임 (KITA)"
+          value={firstAirRow?.value ?? "수집 중"}
+          sub={
+            firstAirRow
+              ? `${firstAirRow.origin} → ${firstAirRow.dest}`
+              : "인천발 데이터 수집 중"
+          }
+          change={firstAirRow?.mom != null ? pctText(firstAirRow.mom) : undefined}
+          trend={
+            firstAirRow?.mom == null
+              ? undefined
+              : firstAirRow.mom > 0
+                ? "up"
+                : firstAirRow.mom < 0
+                  ? "down"
+                  : "flat"
+          }
+          tone="green"
+          spark={firstAirRow?.values}
+        />
+        <LdKpiCard
+          icon="⚠"
+          title="리스크 알림"
+          value={`${alertCount}건`}
+          sub={alertCount > 0 ? `경고 ${highAlerts} · 주의 ${medAlerts}` : "활성 경보 없음"}
+          tone={highAlerts > 0 ? "red" : medAlerts > 0 ? "amber" : "gray"}
+        />
+      </section>
 
-        <section className="grid gap-3 xl:grid-cols-[284px_minmax(0,1fr)_360px] xl:items-start">
-          <aside className="space-y-3">
-            <AlertSummaryCard alerts={alerts} stats={stats} latestRiskNote={latestRiskNote} />
-            <DataBasisCard
-              asOf={asOf}
-              dataUpdates={dataUpdates}
-              stats={stats}
-              seaRates={seaRates}
-              exRateDate={exRate?.rate_date}
-              modelVersion={modelVersion}
-            />
-            <ExchangeRateMiniPanel exRate={exRate ?? null} />
-            <JetFuelChartCard rows={jetFuelHistory} />
-          </aside>
+      {/* Main grid: Intelligence Panel + Right Sidebar */}
+      <section className="ld-main-grid ld-shell">
+        <LdIntelligencePanel
+          forecasts={openForecasts}
+          seriesMap={series}
+          stats={stats}
+          selectedMetric={search.judgment}
+        />
+        <aside className="ld-side-column">
+          <LdActionQueue alerts={alerts} />
+          <LdIndexSnapshot stats={stats} asOf={asOf} />
+          <LdEurasiaRisk disruptions={disruptions} />
+        </aside>
+      </section>
 
-          <section className="min-w-0 space-y-3">
-            <ForecastJudgmentPanel
-              forecasts={openForecasts}
-              seriesMap={series}
-              selectedMetric={search.judgment}
-            />
-            <LaneGrid rows={laneRows} />
-            <AirLaneGrid rows={airLaneRows} />
-          </section>
+      {/* Route Monitor */}
+      <section className="ld-route-monitor-grid ld-shell">
+        <LdSeaRouteMonitor laneRows={laneRows} />
+        <LdAirRouteMonitor airRows={airLaneRows} />
+      </section>
 
-          <aside className="space-y-3">
-            <IndexSnapshot stats={stats} asOf={asOf} />
-            <TopSeaMovers movers={topSeaMovers} />
-            <EurasiaPanel disruptions={disruptions} />
-            <IndexChangeHeatmap stats={stats} />
-          </aside>
-        </section>
+      {/* Utility row */}
+      <section className="ld-utility-grid ld-shell">
+        <LdDataBasisCard
+          asOf={asOf}
+          dataUpdates={dataUpdates}
+          stats={stats}
+          seaRates={seaRates}
+          exRateDate={exRate?.rate_date}
+        />
+        <LdFxCard exRate={exRate ?? null} />
+        <LdOilCard jetFuel={jetFuelHistory} />
+        <LdUpdateCard latestUpdate={latestUpdate} />
+      </section>
 
-        <DashboardProcessStrip />
-
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-blue-200/70 pt-2 text-[11px] font-semibold text-slate-500">
-          <span>전망·지수·노선 값은 공개 Supabase 데이터 기준입니다.</span>
-          <span>
-            기준 {asOf} · 최신 수집 {latestUpdateLabel}
-          </span>
+      {/* Footer */}
+      <footer className="ld-dashboard-footer ld-shell">
+        <div>
+          <strong>Logisight</strong>
+          <p>글로벌 물류 인텔리전스 플랫폼</p>
         </div>
-      </main>
+        <nav>
+          <Link to="/rates">운임</Link>
+          <Link to="/eurasia">유라시아</Link>
+          <Link to="/forecasts">인사이트</Link>
+          <Link to="/news">뉴스</Link>
+        </nav>
+        <small>© 2026 MTL Shipping Agency · 모든 권리 보유</small>
+      </footer>
     </div>
   );
 }
