@@ -101,16 +101,35 @@ function ForecastsPage() {
   const setMod = (key: string | null) =>
     navigate({ search: (prev: Search) => ({ ...prev, mod: key ?? undefined, sel: undefined }), replace: true });
 
-  return (
-    <div className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
-      <ForecastHero
-        lastUpdated={lastUpdated}
-        modules={modules}
-        activeModule={search.mod ?? null}
-        onModule={setMod}
-      />
+  const heroChips: { label: string; value: string; color: string }[] = [];
+  if (kpis.hitRate.rate != null)
+    heroChips.push({
+      label: "방향 적중률",
+      value: `${kpis.hitRate.rate}%`,
+      color: "var(--color-status-normal)",
+    });
+  heroChips.push({
+    label: "이번 주 발행",
+    value: `${kpis.publishedThisWeek}건`,
+    color: "var(--color-cyan)",
+  });
+  heroChips.push({
+    label: "판정 대기",
+    value: `${kpis.awaitingJudgment}건`,
+    color: "var(--color-status-caution)",
+  });
 
-      <div className="mt-5">
+  return (
+    <>
+    <ForecastHero
+      lastUpdated={lastUpdated}
+      modules={modules}
+      activeModule={search.mod ?? null}
+      onModule={setMod}
+      chips={heroChips}
+    />
+    <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+      <div>
         <ForecastKpiStrip kpis={kpis} />
       </div>
 
@@ -138,6 +157,7 @@ function ForecastsPage() {
 
       <ForecastMethodology />
     </div>
+    </>
   );
 }
 

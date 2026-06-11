@@ -753,15 +753,17 @@ function EurasiaPage() {
 
   return (
     <DashboardShell
-      title="유라시아 Control Tower"
-      subtitle="한·중–CIS·유럽 철도 회랑 운영 현황"
+      eyebrow="Eurasia Corridor · CADI"
+      title="유라시아"
+      titleAccent="Control Tower"
+      subtitle="한·중–CIS–유럽 철도 회랑의 지연 지수·정시율·활성 병목 — 시장에 공개된 소스가 없는 자체 추적 데이터입니다."
       toolbar={
         <button
           type="button"
           onClick={() => setShowAdminForm((v) => !v)}
-          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+          className="inline-flex h-10 items-center whitespace-nowrap rounded-md border border-white/30 bg-white/10 px-[18px] text-[13.5px] font-bold text-white transition-opacity hover:opacity-90"
         >
-          + 장애 입력
+          장애 입력
         </button>
       }
     >

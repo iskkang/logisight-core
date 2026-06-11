@@ -646,17 +646,19 @@ function PolicyPage() {
 
   return (
     <DashboardShell
-      title="리스크 인텔리전스"
-      subtitle="해상 병목·항만 혼잡·규제 이벤트 리스크 모니터"
+      eyebrow="Risk Intelligence"
+      title="리스크"
+      titleAccent="인텔리전스"
+      subtitle="해상 병목·항만 혼잡·초크포인트·호르무즈 통항을 모니터링합니다."
       toolbar={
         <button
           type="button"
           onClick={() => setShowImpact((v) => !v)}
           className={[
-            "rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+            "inline-flex h-10 items-center whitespace-nowrap rounded-md px-[18px] text-[13.5px] font-bold transition-opacity hover:opacity-90",
             showImpact
-              ? "border-[var(--color-cyan)] bg-[var(--color-cyan)]/10 text-foreground"
-              : "border-border text-muted-foreground hover:bg-muted",
+              ? "bg-white text-[var(--color-navy-900)]"
+              : "border border-white/30 bg-white/10 text-white",
           ].join(" ")}
         >
           {showImpact ? "분석 닫기" : "내 화물 영향 분석"}

@@ -38,6 +38,7 @@ import {
   type TradeStatisticsBundle,
 } from "@/lib/api/trade";
 import { indexStatsQueryOptions, formatNumber } from "@/lib/api/rates";
+import { PageHero } from "@/components/site/PageHero";
 import { ISO2_TO_NUMERIC, flagEmoji } from "@/lib/iso-country-codes";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -475,18 +476,28 @@ function TradePage() {
 
   return (
     <main className="bg-[#f5f8fc] text-slate-900">
+      <PageHero
+        eyebrow="Trade Insight"
+        titleMain="무역 동향"
+        titleAccent="인사이트"
+        subtitle="관세청 수출입무역통계 기반 국가·대륙·품목 교역 흐름. 확정·잠정 데이터를 명확히 구분합니다."
+        chips={[
+          {
+            label: "기준",
+            value: formatPeriod(model.snapshot.period),
+            color: "var(--color-cyan)",
+          },
+          {
+            label: "무역수지",
+            value: money(model.snapshot.balanceUsd),
+            color: "var(--color-status-normal)",
+          },
+        ]}
+      />
       <section className="mx-auto max-w-[1540px] px-4 py-5 lg:px-12">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-end gap-3">
-            <h1 className="text-2xl font-black tracking-normal text-slate-950 lg:text-3xl">무역 동향 인사이트</h1>
-            <p className="pb-1 text-xs font-semibold text-slate-500">
-              실데이터로 국가·대륙·품목·신성질 통계를 표시합니다.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <ActionButton icon={<Download className="h-4 w-4" />}>리포트 다운로드</ActionButton>
-            <ActionButton icon={<Share2 className="h-4 w-4" />}>공유</ActionButton>
-          </div>
+        <div className="mb-3 flex items-center justify-end gap-2">
+          <ActionButton icon={<Download className="h-4 w-4" />}>리포트 다운로드</ActionButton>
+          <ActionButton icon={<Share2 className="h-4 w-4" />}>공유</ActionButton>
         </div>
 
         <FilterBar region={region} metric={metric} onRegion={setRegion} onMetric={setMetric} model={model} />

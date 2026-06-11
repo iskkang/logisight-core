@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
 import { articleParam } from "@/lib/api/article";
+import { NewsletterForm } from "@/components/site/NewsletterForm";
 
 const newsSearchSchema = z.object({
   cat: z.string().min(1).max(40).optional(),
@@ -334,6 +335,22 @@ function NewsPage() {
               </ul>
             </>
           )}
+
+          {/* Newsletter band */}
+          <div
+            className="mt-14 flex flex-wrap items-center justify-between gap-6 rounded-lg px-7 py-6 text-white"
+            style={{ background: "var(--color-navy-900)" }}
+          >
+            <div>
+              <div className="text-lg font-bold">📨 매주 한 편의 물류 브리핑</div>
+              <p className="mt-1.5 text-[13px] text-white/78">
+                운임 지수·정책 변화·회랑 동향을 정리한 뉴스레터를 받아보세요.
+              </p>
+            </div>
+            <div className="min-w-[280px] max-w-[460px] flex-1">
+              <NewsletterForm compact />
+            </div>
+          </div>
         </div>
       )}
     </div>

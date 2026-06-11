@@ -20,6 +20,8 @@ import {
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import { PageHero } from "@/components/site/PageHero";
+
 import {
   tradeStatisticsQueryOptions,
   hsChapter,
@@ -117,8 +119,9 @@ function IndustriesPage() {
   const balance = totalExport - totalImport;
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 lg:px-6 lg:py-14">
-      <Header maxPeriod={maxPeriod} />
+    <>
+    <Header maxPeriod={maxPeriod} />
+    <main className="mx-auto max-w-7xl px-4 py-8 lg:px-6 lg:py-10">
       <Filters
         periods={periods}
         from={periodFrom}
@@ -151,6 +154,7 @@ function IndustriesPage() {
         출처: 관세청 수출입무역통계 · 기준: {formatPeriod(maxPeriod ?? "")}. 월별 통계는 익월 갱신.
       </footer>
     </main>
+    </>
   );
 }
 
@@ -162,17 +166,15 @@ function sum(arr: number[]) {
 
 function Header({ maxPeriod }: { maxPeriod: string | undefined }) {
   return (
-    <header className="border-b border-border pb-6">
-      <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-cyan)]">
-        Industries
-      </p>
-      <h1 className="mt-2 text-3xl font-bold text-foreground lg:text-4xl">
-        산업별 교역 동향
-      </h1>
-      <p className="mt-3 max-w-3xl text-sm text-muted-foreground lg:text-base">
-        관세청 수출입무역통계 기준 교역량 상위 품목 · 기준: {formatPeriod(maxPeriod ?? "—")}
-      </p>
-    </header>
+    <PageHero
+      eyebrow="Industries"
+      titleMain="산업별"
+      titleAccent="교역 동향"
+      subtitle="관세청 무역통계를 HS 챕터 단위로 랭킹·분석합니다. 실제 데이터가 있는 챕터만 표시합니다."
+      chips={[
+        { label: "기준", value: formatPeriod(maxPeriod ?? "—"), color: "var(--color-cyan)" },
+      ]}
+    />
   );
 }
 

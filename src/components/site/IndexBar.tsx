@@ -1,4 +1,5 @@
-// Sticky financial-terminal-style index ticker — live from freight_indices + NYFI API.
+// 지수 티커 — freight_indices + NYFI 실데이터. 프로토타입 NavTicker 스타일
+// (코드: 시안 언더라인 · 모노 숫자 · ▲/▼ 방향 글리프 · 우측 기준일).
 import { useQuery } from "@tanstack/react-query";
 import {
   freightIndicesQueryOptions,
@@ -10,30 +11,40 @@ import { nyfiQueryOptions, sortNyfiLanes, formatNyfiValue } from "@/lib/api/nyfi
 type Item = { code: string; label: string; value: string; change?: number | null };
 
 function ChangeChip({ change }: { change: number | null | undefined }) {
-  if (change == null) return <span className="text-xs text-[var(--color-ink-muted)]">—</span>;
+  if (change == null)
+    return <span className="text-xs text-[var(--color-ink-muted)]">—</span>;
   const pos = change >= 0;
   return (
     <span
       className="text-xs font-semibold tabular-nums"
-      style={{ color: pos ? "var(--color-success)" : "var(--color-danger)" }}
+      style={{
+        fontFamily: "var(--font-mono)",
+        color: pos ? "var(--color-direction-up)" : "var(--color-direction-down)",
+      }}
     >
-      {pos ? "+" : ""}
-      {change.toFixed(2)}%
+      {pos ? "▲ +" : "▼ −"}
+      {Math.abs(change).toFixed(2)}%
     </span>
   );
 }
 
-function TickerItem({ it }: { it: Item }) {
+function TickerItem({ it, last }: { it: Item; last: boolean }) {
   return (
-    <li className="inline-flex items-center gap-2 whitespace-nowrap">
-      <span className="text-[11px] uppercase tracking-wide text-[var(--color-ink-muted)]">
+    <li className="inline-flex items-center gap-[7px] whitespace-nowrap">
+      <span
+        className="pb-px text-[11.5px] uppercase tracking-wide text-[var(--color-ink-muted)]"
+        style={{ borderBottom: "2px solid color-mix(in oklch, var(--color-cyan) 55%, transparent)" }}
+      >
         {it.label}
       </span>
-      <span className="text-sm font-bold tabular-nums text-[var(--color-ink)]">
+      <span
+        className="text-[13.5px] font-bold tabular-nums text-[var(--color-ink)]"
+        style={{ fontFamily: "var(--font-mono)" }}
+      >
         {it.value}
       </span>
       <ChangeChip change={it.change} />
-      <span className="mx-4 inline-block h-3 w-px bg-[var(--color-line)]" />
+      {!last && <span className="mx-4 inline-block h-3 w-px bg-[var(--color-line)]" />}
     </li>
   );
 }
@@ -57,19 +68,24 @@ export function IndexBar({ items }: { items?: Item[] }) {
   }));
 
   const resolved: Item[] = items ?? [...supabaseItems, ...nyfiItems];
-
-  const track = resolved.map((it, i) => <TickerItem key={it.code + "-" + i} it={it} />);
+  const asOf = (data ?? [])[0]?.week_date?.slice(0, 10) ?? null;
 
   return (
     <div
-      className="sticky top-14 z-40 border-b"
+      className="border-b"
       style={{ background: "var(--color-card)", borderColor: "var(--color-line)" }}
     >
-      <div className="mx-auto max-w-7xl overflow-hidden whitespace-nowrap">
-        <ul className="animate-ticker inline-flex min-w-max items-center px-4 py-2 lg:px-6">
-          {track}
-          {track}
+      <div className="mx-auto flex max-w-[1540px] items-center overflow-x-auto px-4 lg:px-12 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="inline-flex min-w-max items-center py-[9px]">
+          {resolved.map((it, i) => (
+            <TickerItem key={it.code + "-" + i} it={it} last={i === resolved.length - 1} />
+          ))}
         </ul>
+        {asOf && (
+          <span className="ml-auto whitespace-nowrap pl-4 text-[11.5px] text-[var(--color-ink-muted)]">
+            기준일 {asOf} (KST)
+          </span>
+        )}
       </div>
     </div>
   );

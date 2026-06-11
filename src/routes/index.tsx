@@ -1,14 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import {
-  freightIndicesQueryOptions,
-  formatIndexValue,
-  indexDisplayLabel,
-} from "@/lib/api/freight-indices";
-import {
-  nyfiQueryOptions,
-  formatNyfiValue,
-} from "@/lib/api/nyfi";
+import { freightIndicesQueryOptions } from "@/lib/api/freight-indices";
+import { nyfiQueryOptions } from "@/lib/api/nyfi";
 import {
   latestNewsQueryOptions,
   formatPublishedAt,
@@ -34,6 +27,8 @@ import {
 } from "@/server/signals";
 import { RatesBrief } from "@/components/dashboard/RatesBrief";
 import { NewsletterForm } from "@/components/site/NewsletterForm";
+import { alertCandidatesQueryOptions } from "@/lib/api/alerts";
+import { publishedForecastsQueryOptions, hitRate } from "@/lib/api/forecasts";
 import { useState } from "react";
 
 export const Route = createFileRoute("/")({
@@ -47,6 +42,8 @@ export const Route = createFileRoute("/")({
     context.queryClient.ensureQueryData(freightIndicesHistoryQueryOptions());
     context.queryClient.ensureQueryData(indexStatsQueryOptions());
     context.queryClient.ensureQueryData(kitaAirRatesQueryOptions());
+    context.queryClient.ensureQueryData(alertCandidatesQueryOptions());
+    context.queryClient.ensureQueryData(publishedForecastsQueryOptions());
   },
   head: () => ({
     meta: [
@@ -68,86 +65,82 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-/* -------------------- Hero world-map backdrop -------------------- */
-function HeroMapBackdrop() {
-  const mask = {
-    WebkitMaskImage: "url('/world-map.svg')",
-    maskImage: "url('/world-map.svg')",
-    WebkitMaskRepeat: "no-repeat",
-    maskRepeat: "no-repeat",
-    WebkitMaskPosition: "center",
-    maskPosition: "center",
-    WebkitMaskSize: "cover",
-    maskSize: "cover",
-  } as const;
-
+/* -------------------- Hero (다크 네이비 + 월드맵 도트 + 컨테이너선 블리드) -------------------- */
+function HeroBackdrop() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      {/* soft glow for depth */}
+      {/* dotted continents — world-map silhouette */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 left-[30%]"
         style={{
-          background:
-            "radial-gradient(60% 65% at 64% 38%, rgba(56,189,248,0.16), transparent 70%)",
+          WebkitMaskImage: "url('/world-map.svg')",
+          maskImage: "url('/world-map.svg')",
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
+          WebkitMaskPosition: "center right",
+          maskPosition: "center right",
+          WebkitMaskSize: "contain",
+          maskSize: "contain",
+          backgroundImage:
+            "radial-gradient(circle, rgba(56,189,248,0.38) 1.2px, transparent 1.8px)",
+          backgroundSize: "13px 13px",
+          opacity: 0.5,
         }}
       />
-      {/* dotted continents: a dot pattern clipped to the world-map silhouette */}
+      {/* container-ship bleed (right) */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-y-0 right-0 w-[72%] bg-cover opacity-50 lg:w-[54%] lg:opacity-90"
         style={{
-          ...mask,
-          backgroundImage:
-            "radial-gradient(circle, rgba(125,211,252,0.6) 1px, transparent 1.6px)",
-          backgroundSize: "13px 13px",
-          opacity: 0.6,
+          backgroundImage: "url(/dashboard-hero.png)",
+          backgroundPosition: "right center",
+          WebkitMaskImage: "linear-gradient(90deg, transparent, #000 44%)",
+          maskImage: "linear-gradient(90deg, transparent, #000 44%)",
         }}
       />
     </div>
   );
 }
 
-function HeroCard({ code, sub, label }: { code: string; sub: string; label?: string }) {
-  const isNyfi = code.startsWith("NYFI:");
+function HeroStatusChips() {
   const { data: idx } = useSuspenseQuery(freightIndicesQueryOptions());
-  const { data: nyfi } = useSuspenseQuery(nyfiQueryOptions());
+  const { data: alerts } = useSuspenseQuery(alertCandidatesQueryOptions());
+  const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
 
-  let value = "—";
-  let change: number | null | undefined = null;
-  let weekDate: string | null = null;
-  let displayLabel = label ?? indexDisplayLabel(code);
+  const asOf =
+    (idx ?? []).find((r) => r.index_code === "KCCI")?.week_date?.slice(0, 10) ??
+    (idx ?? [])[0]?.week_date?.slice(0, 10) ??
+    null;
+  const alertCount = (alerts ?? []).length;
+  const { rate } = hitRate(forecasts ?? []);
 
-  if (isNyfi) {
-    const lane = (nyfi ?? []).find((l) => l.code === code);
-    value = formatNyfiValue(lane?.value);
-    change = lane?.wow ?? null;
-    weekDate = lane?.weekDate ?? null;
-    if (!label && lane) displayLabel = `NYFI ${lane.nameKo}`;
-  } else {
-    const row = idx?.find((r) => r.index_code === code);
-    value = formatIndexValue(row?.value ?? null);
-    change = row?.change_pct;
-    weekDate = row?.week_date || null;
-  }
-
-  const changeColor =
-    change == null ? "text-white/50" : change >= 0 ? "text-emerald-300" : "text-rose-300";
-  const dateLabel = weekDate ? `${weekDate.slice(0, 10).replace(/-/g, ".")} 기준` : null;
+  const chips: { label: string; value: string; color: string }[] = [];
+  if (asOf) chips.push({ label: "기준일", value: asOf, color: "var(--color-cyan)" });
+  chips.push({
+    label: "활성 리스크",
+    value: `${alertCount}건`,
+    color: "var(--color-status-alert)",
+  });
+  if (rate != null)
+    chips.push({
+      label: "전망 적중률",
+      value: `${rate}%`,
+      color: "var(--color-status-normal)",
+    });
 
   return (
-    <div className="rounded-lg border border-white/10 bg-white/5 p-4 backdrop-blur">
-      <div className="text-[11px] uppercase tracking-wide text-white/60">{displayLabel}</div>
-      <div className="mt-1 text-2xl font-bold tabular-nums text-white">{value}</div>
-      <div className="mt-0.5 text-[11px] tabular-nums">
-        <span className="text-white/55">{sub}</span>
-        {change != null && (
-          <span className={changeColor}>
-            {" · "}
-            {change >= 0 ? "+" : ""}
-            {change.toFixed(2)}% WoW
-          </span>
-        )}
-      </div>
-      {dateLabel && <div className="mt-0.5 text-[10px] text-white/40">{dateLabel}</div>}
+    <div className="mt-5 flex flex-wrap gap-2.5">
+      {chips.map((c) => (
+        <span
+          key={c.label}
+          className="inline-flex items-center gap-[7px] whitespace-nowrap rounded-full border border-white/[0.16] bg-white/[0.08] px-3.5 py-[7px] text-[13px] font-semibold text-white/85 backdrop-blur"
+        >
+          <span className="h-2 w-2 rounded-full" style={{ background: c.color }} aria-hidden />
+          {c.label}
+          <b className="font-bold text-white" style={{ fontFamily: "var(--font-mono)" }}>
+            {c.value}
+          </b>
+        </span>
+      ))}
     </div>
   );
 }
@@ -158,63 +151,55 @@ function Index() {
     <section
       className="relative overflow-hidden"
       style={{
-        background:
-          "linear-gradient(135deg, var(--color-navy-900) 0%, var(--color-navy-800) 100%)",
+        background: "linear-gradient(100deg, #0a1f3c 0%, #0f2d5a 46%, #173f73 100%)",
       }}
     >
-      <HeroMapBackdrop />
-      <div className="relative z-10 mx-auto grid max-w-7xl gap-10 px-4 py-16 lg:grid-cols-5 lg:gap-12 lg:px-6 lg:py-20">
-        <div className="lg:col-span-3">
-          <p
-            className="text-xs font-semibold uppercase tracking-[0.18em]"
-            style={{ color: "var(--color-cyan)" }}
+      <HeroBackdrop />
+      <div className="relative z-10 mx-auto max-w-[1540px] px-4 pb-12 pt-14 lg:px-12">
+        <p
+          className="text-xs font-bold uppercase tracking-[0.18em]"
+          style={{ color: "var(--color-cyan)" }}
+        >
+          Logistics Intelligence Platform
+        </p>
+        <h1 className="mt-3 text-4xl font-bold leading-[1.1] tracking-tight lg:text-5xl">
+          <span style={{ color: "#f1f5f5" }}>물류를 읽는</span>
+          <br />
+          <span style={{ color: "#2DD4BF" }}>
+            {"    "}새로운 시선
+          </span>
+        </h1>
+        <p className="mt-4 max-w-[540px] text-[15px] leading-relaxed text-white/82">
+          운임·교역·정책·유라시아 회랑을 매주 한 편의 분석으로.
+          <br />
+          흩어진 데이터를 한 화면에서 읽고 분석하세요.
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            to="/forecasts"
+            search={{ dir: [], series: [] }}
+            className="inline-flex h-10 items-center rounded-md bg-white px-[18px] text-[13.5px] font-bold text-[var(--color-navy-900)] transition-opacity hover:opacity-90"
           >
-            Logistics Intelligence Platform
-          </p>
-          <h1 className="mt-4 text-balance text-3xl font-bold leading-tight text-white lg:text-5xl">
-            물류를 읽는
-            <br />
-            <span style={{ color: "var(--color-cyan)" }}>새로운 시선</span>
-          </h1>
-          <p className="mt-5 max-w-xl text-sm leading-relaxed text-white/75 lg:text-base">
-            운임 지수와 시장 뉴스, 정책 변화. 흩어진 정보를 매주 한 편의 분석으로 정리합니다.
-          </p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <a
-              href="/news"
-              className="inline-flex h-10 items-center rounded-md px-5 text-sm font-semibold"
-              style={{
-                background: "var(--color-cyan)",
-                color: "var(--color-navy-900)",
-              }}
-            >
-              이번 주 분석 보기
-            </a>
-            <a
-              href="/rates"
-              className="inline-flex h-10 items-center rounded-md border border-white/25 px-5 text-sm font-semibold text-white hover:bg-white/5"
-            >
-              운임 대시보드
-            </a>
-          </div>
+            이번 주 분석 보기
+          </Link>
+          <Link
+            to="/dashboard"
+            className="inline-flex h-10 items-center rounded-md border border-white/[0.32] bg-white/10 px-[18px] text-[13.5px] font-bold text-white transition-opacity hover:opacity-90"
+          >
+            운임 대시보드
+          </Link>
         </div>
-
-        <div className="lg:col-span-2">
-          <div className="grid grid-cols-2 gap-3">
-            <HeroCard code="SCFI" sub="상하이→유럽 종합" />
-            <HeroCard code="NYFI:ASIA-USWC" sub="NYSHEX NYFI" />
-            <HeroCard code="KCCI" sub="한국형 종합" />
-            <HeroCard code="CCFI" sub="중국 수출 종합" />
-          </div>
-        </div>
-      </div>
-
-      <div className="relative z-10 border-t border-white/10 bg-black/20">
-        <div className="mx-auto max-w-7xl px-4 py-3 text-[11px] text-white/55 lg:px-6">
-          출처: 공공데이터(PORT-MIS · 관세청 · 해양수산부) 기반 · 매주 업데이트
-        </div>
+        <HeroStatusChips />
       </div>
     </section>
+
+    {/* 출처 밴드 */}
+    <div style={{ background: "var(--color-navy-900)" }}>
+      <div className="mx-auto max-w-[1540px] px-4 py-[11px] text-xs text-white/[0.62] lg:px-12">
+        출처: 공공데이터(PORT-MIS · 관세청 · 해양수산부) 기반 · 매주 업데이트
+      </div>
+    </div>
+
     <DashboardSection />
     <IndustryInsightsSection />
     </>
@@ -234,10 +219,11 @@ function DashboardSection() {
             <HomeRatesBrief />
             <NewsBlock />
           </div>
-          {/* Right column: weekly briefing → newsletter */}
+          {/* Right column: weekly briefing → newsletter → 광고 */}
           <aside className="space-y-6">
             <WeeklyBriefingBlock />
             <NewsletterSidebar />
+            <AdCard />
           </aside>
         </div>
       </div>
@@ -537,13 +523,41 @@ function NewsletterSidebar() {
   );
 }
 
+/* -------------------- 광고 카드 (MTL Truck LCL) -------------------- */
+function AdCard() {
+  return (
+    <a
+      href="mailto:sales@mtlship.com"
+      className="block overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-card)] transition-shadow hover:shadow-md"
+    >
+      <div className="flex items-center justify-between border-b border-[var(--color-line)] px-3.5 py-2">
+        <span className="text-[10.5px] font-bold tracking-[0.1em] text-[var(--color-ink-muted)]">
+          SPONSORED · 광고
+        </span>
+        <span
+          className="text-[10.5px] text-[var(--color-ink-muted)]"
+          style={{ fontFamily: "var(--font-mono)" }}
+        >
+          MTL Shipping Agency
+        </span>
+      </div>
+      <img
+        src="/ad-mtl-truck-lcl.png"
+        alt="MTL Truck LCL 서비스 — 빠른 출발, 신뢰성 있는 배송, 소형 화물에 적합"
+        className="block h-auto w-full"
+        loading="lazy"
+      />
+    </a>
+  );
+}
+
 /* -------------------- Industry Insights -------------------- */
 function IndustryInsightsSection() {
   const cards: {
     icon: string;
     title: string;
     desc: string;
-    to: "/eurasia" | "/industries";
+    to: "/eurasia" | "/industries" | "/trade" | "/policy";
   }[] = [
     {
       icon: "🚉",
@@ -555,46 +569,49 @@ function IndustryInsightsSection() {
       icon: "↗",
       title: "교역 인사이트",
       desc: "HS 챕터별 수출입 동향 (관세청 기준)",
-      to: "/industries",
+      to: "/trade",
     },
     {
       icon: "⚠️",
       title: "리스크 인사이트",
       desc: "주요 항만 disruption 이벤트 추적",
-      to: "/eurasia",
+      to: "/policy",
     },
   ];
   return (
-    <section className="mx-auto max-w-7xl px-4 py-12 lg:px-6 lg:py-16">
-      <div className="flex items-end justify-between">
-        <h2 className="text-xl font-bold text-[var(--color-ink)] lg:text-2xl">
-          산업별 물류 인사이트
-        </h2>
-        <Link
-          to="/industries"
-          className="text-xs font-semibold text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-        >
-          전체 보기 →
-        </Link>
+    <section
+      className="border-t border-[var(--color-line)]"
+      style={{ background: "var(--color-surface-alt, #f7f9fc)" }}
+    >
+      <div className="mx-auto max-w-7xl px-4 py-10 lg:px-6 lg:py-12">
+        <div className="flex items-end justify-between">
+          <h2 className="text-xl font-extrabold tracking-tight text-[var(--color-ink)] lg:text-2xl">
+            산업별 물류 인사이트
+          </h2>
+          <Link
+            to="/industries"
+            className="text-xs font-semibold text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+          >
+            전체 보기 →
+          </Link>
+        </div>
+        <ul className="mt-5 grid gap-4 sm:grid-cols-3">
+          {cards.map((c) => (
+            <li key={c.title}>
+              <Link
+                to={c.to}
+                className="block h-full rounded-lg border border-[var(--color-line)] bg-[var(--color-card)] p-5 transition-shadow hover:shadow-md"
+              >
+                <div className="text-xl">{c.icon}</div>
+                <h3 className="mt-3 text-[15px] font-bold text-[var(--color-ink)]">{c.title}</h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-[var(--color-ink-muted)]">
+                  {c.desc}
+                </p>
+              </Link>
+            </li>
+          ))}
+        </ul>
       </div>
-      <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map((c) => (
-          <li key={c.title}>
-            <Link
-              to={c.to}
-              className="block h-full rounded-lg border border-[var(--color-line)] bg-[var(--color-card)] p-5 transition-shadow hover:shadow-md"
-            >
-              <div className="text-xl">{c.icon}</div>
-              <h3 className="mt-2 text-sm font-bold text-[var(--color-ink)]">
-                {c.title}
-              </h3>
-              <p className="mt-1 text-xs leading-relaxed text-[var(--color-ink-muted)]">
-                {c.desc}
-              </p>
-            </Link>
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }

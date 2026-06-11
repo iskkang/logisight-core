@@ -16,6 +16,7 @@ import {
 } from "recharts";
 
 import { DashboardTicker } from "@/components/dashboard/DashboardTicker";
+import { PageHero } from "@/components/site/PageHero";
 import { publishedForecastsQueryOptions } from "@/lib/api/forecasts";
 import {
   bunkerPricesQueryOptions,
@@ -666,7 +667,20 @@ function RatesPage() {
   return (
     <main className="min-h-screen bg-[#eaf2fb] text-slate-900">
       <DashboardTicker items={tickerItems} />
-      <Hero latestMonth={latestMonth} routeCount={visibleMetrics.length} />
+      <PageHero
+        eyebrow="Rates Control Tower"
+        titleMain="운임"
+        titleAccent="Control Tower"
+        subtitle="저장된 KITA 운임과 글로벌 지수를 기준으로 해상·항공 운임 동향을 한눈에 확인합니다."
+        chips={[
+          { label: "기준월", value: fmtMonth(latestMonth), color: "var(--color-cyan)" },
+          {
+            label: "조회 노선",
+            value: `${visibleMetrics.length}개`,
+            color: "var(--color-status-normal)",
+          },
+        ]}
+      />
 
       <div className="relative z-10 mx-auto mt-3 flex w-full max-w-[1540px] flex-col gap-3 px-4 pb-4 lg:px-12">
         <FilterBar
@@ -752,52 +766,6 @@ function RatesPage() {
         </section>
       </div>
     </main>
-  );
-}
-
-function Hero({ latestMonth, routeCount }: { latestMonth: string | null; routeCount: number }) {
-  return (
-    <section className="relative min-h-[220px] overflow-hidden bg-[#071b31] px-4 py-6 text-white lg:px-12 lg:py-7">
-      <div
-        className="absolute inset-0 bg-cover bg-[position:78%_34%]"
-        style={{ backgroundImage: "url(/dashboard-hero.png)" }}
-        aria-hidden
-      />
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(90deg, rgba(5,18,34,0.98) 0%, rgba(7,24,43,0.92) 42%, rgba(9,32,57,0.45) 72%, rgba(7,22,40,0.24) 100%)",
-        }}
-        aria-hidden
-      />
-      <div
-        className="absolute inset-x-0 bottom-0 h-20"
-        style={{ background: "linear-gradient(180deg, transparent, rgba(234,242,251,0.98))" }}
-        aria-hidden
-      />
-      <div className="relative z-10 mx-auto max-w-[1540px]">
-        <h1 className="text-[34px] font-black leading-tight tracking-normal sm:text-[42px] lg:text-[48px]">
-          <span>운임 </span>
-          <span className="text-[#36a9ff]">Control Tower</span>
-        </h1>
-        <p className="mt-2 max-w-[620px] text-sm font-medium leading-6 text-white/82 lg:text-[15px]">
-          저장된 KITA 운임과 글로벌 지수를 기준으로 해상·항공 운임 동향을 한눈에 확인합니다.
-        </p>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <span className="inline-flex min-h-8 items-center gap-2 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur bg-white/10">
-            <span className="h-2 w-2 rounded-full bg-blue-600" aria-hidden />
-            <span className="text-white/68">기준월</span>
-            <span className="text-white">{fmtMonth(latestMonth)}</span>
-          </span>
-          <span className="inline-flex min-h-8 items-center gap-2 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur bg-white/10">
-            <span className="h-2 w-2 rounded-full bg-emerald-600" aria-hidden />
-            <span className="text-white/68">조회 노선</span>
-            <span className="text-white">{routeCount}개</span>
-          </span>
-        </div>
-      </div>
-    </section>
   );
 }
 

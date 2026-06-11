@@ -180,7 +180,15 @@ function RootComponent() {
 
 // Dashboards keep the dark/light toggle; everything else (editorial pages) is
 // pinned light via the .theme-light scope.
-const DASHBOARD_PREFIXES = ["/rates", "/trade", "/policy", "/eurasia", "/dashboard"];
+const DASHBOARD_PREFIXES = [
+  "/rates",
+  "/trade",
+  "/policy",
+  "/eurasia",
+  "/dashboard",
+  "/forecasts",
+  "/industries",
+];
 
 function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -203,7 +211,7 @@ function SiteShell({ children }: { children: React.ReactNode }) {
       <Navigation />
       {!hideGlobalTicker && <IndexBar />}
       <main className="flex-1">{children}</main>
-      <Footer compact={hideGlobalTicker} />
+      <Footer />
     </div>
   );
 }

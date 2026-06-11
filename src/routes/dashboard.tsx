@@ -37,6 +37,7 @@ import {
   type ForecastSeries,
 } from "@/lib/api/forecasts";
 
+import { PageHero } from "@/components/site/PageHero";
 import "./dashboard.css";
 
 const JUDGMENT_TAB_CODES = ["KCCI", "WCI", "SCFI"] as const;
@@ -396,7 +397,6 @@ function LdHeroSection({
   kcciStat,
   disruptions,
   aiSummary,
-  airRate,
 }: {
   today: string;
   highAlerts: number;
@@ -404,72 +404,37 @@ function LdHeroSection({
   kcciStat: IndexStats | undefined;
   disruptions: number;
   aiSummary: string;
-  airRate: { value: string | null; mom: number | null } | null;
 }) {
   const pressureUp = (kcciStat?.change_pct ?? 0) > 0;
   const alertCount = highAlerts + medAlerts;
-  const kcciTrend = kcciStat?.change_pct == null ? "flat" : kcciStat.change_pct > 0 ? "up" : "down";
-  const airTrend = airRate?.mom == null ? "flat" : airRate.mom > 0 ? "up" : "down";
+
+  const chips = [
+    {
+      label: "운임 압력",
+      value: pressureUp ? "상승" : "안정",
+      color: pressureUp ? "var(--color-status-alert)" : "var(--color-status-normal)",
+    },
+    {
+      label: "유라시아 리스크",
+      value: disruptions > 0 ? `${disruptions}건` : "정상",
+      color: disruptions > 0 ? "var(--color-status-caution)" : "var(--color-status-normal)",
+    },
+    {
+      label: "경보",
+      value: `${alertCount}건`,
+      color: "var(--color-status-observe)",
+    },
+    { label: "기준일", value: today, color: "var(--color-cyan)" },
+  ];
 
   return (
-    <div className="ld-hero-wrap">
-      <section className="ld-hero-card ld-shell">
-        <div className="ld-hero-content">
-          <h1>오늘의 물류 브리핑</h1>
-          <p>{aiSummary}</p>
-          <div className="ld-hero-pills">
-            <span className={`ld-pill ${pressureUp ? "ld-pill--red" : "ld-pill--green"}`}>
-              {pressureUp ? "↗ 운임 압력 상승" : "↘ 운임 안정"}
-            </span>
-            {disruptions > 0 && (
-              <span className="ld-pill ld-pill--amber">⚠ 유라시아 리스크 {disruptions}건</span>
-            )}
-            {alertCount > 0 && (
-              <span className="ld-pill ld-pill--blue">▣ 경보 {alertCount}건</span>
-            )}
-            <span className="ld-pill ld-pill--slate">◷ 기준일 {today}</span>
-          </div>
-
-          {/* Embedded KPI strip */}
-          <div className="ld-hero-kpi-strip">
-            <div className="ld-hero-kpi-item">
-              <span className="ld-hero-kpi-label">KCCI</span>
-              <span className="ld-hero-kpi-val">
-                {kcciStat?.latest_value != null
-                  ? kcciStat.latest_value.toLocaleString("en-US", { maximumFractionDigits: 0 })
-                  : "—"}
-                <em>pt</em>
-              </span>
-              <span className={`ld-hero-kpi-chg ld-trend--${kcciTrend}`}>
-                {trendSym(kcciStat?.change_pct)} {pctText(kcciStat?.change_pct)}
-              </span>
-            </div>
-            <div className="ld-hero-kpi-item">
-              <span className="ld-hero-kpi-label">항공 운임 (ICN)</span>
-              <span className="ld-hero-kpi-val">
-                {airRate?.value ?? "수집 중"}
-              </span>
-              {airRate?.mom != null ? (
-                <span className={`ld-hero-kpi-chg ld-trend--${airTrend}`}>
-                  {trendSym(airRate.mom)} {pctText(airRate.mom)}
-                </span>
-              ) : (
-                <span className="ld-hero-kpi-chg ld-trend--flat">—</span>
-              )}
-            </div>
-            <div className="ld-hero-kpi-item">
-              <span className="ld-hero-kpi-label">경보 현황</span>
-              <span className="ld-hero-kpi-val">
-                {alertCount}<em>건</em>
-              </span>
-              <span className={`ld-hero-kpi-chg ld-trend--${alertCount > 0 ? "down" : "flat"}`}>
-                {alertCount > 0 ? `고위험 ${highAlerts}건` : "정상"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
+    <PageHero
+      eyebrow="Control Tower"
+      titleMain="종합"
+      titleAccent="Control Tower"
+      subtitle={aiSummary}
+      chips={chips}
+    />
   );
 }
 
@@ -1164,14 +1129,12 @@ function DashboardPage() {
     changePct: s.change_pct,
   }));
 
-  const firstAirRow = airLaneRows[0] ?? null;
-
   return (
     <div className="ld-dash">
       {/* Ticker */}
       <LdTickerBar items={tickerItems} asOf={asOf} />
 
-      {/* Hero — flush against ticker, KPI strip embedded */}
+      {/* Hero — 다크 네이비 + 컨테이너선 블리드 (프로토타입 PageHero) */}
       <LdHeroSection
         today={today}
         highAlerts={highAlerts}
@@ -1179,7 +1142,6 @@ function DashboardPage() {
         kcciStat={kcciStat}
         disruptions={disruptions.length}
         aiSummary={heroSummary}
-        airRate={firstAirRow ? { value: firstAirRow.value, mom: firstAirRow.mom } : null}
       />
 
       {/* Main grid: Intelligence Panel + Right Sidebar */}
