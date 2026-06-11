@@ -938,7 +938,7 @@ type AirLaneRow = {
 };
 
 // 고정 6개 노선 우선순위 (부분 문자열 매칭)
-const AIR_PRIORITY_DESTS = ["로스", "시카고", "하노이", "프랑크", "두바이", "홍콩"];
+const AIR_PRIORITY_DESTS = ["로스", "시카고", "하노이"];
 
 function buildAirLaneRows(airRates: KitaAirRateRow[]): AirLaneRow[] {
   const incheon = airRates.filter(
@@ -1012,7 +1012,7 @@ function AirLaneGrid({ rows }: { rows: AirLaneRow[] }) {
       >
         항공 노선 현황
       </SectionTitle>
-      <div className="grid auto-rows-fr gap-2 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2">
         {rows.map((row) => (
           <AirLaneCard key={`${row.origin}-${row.dest}`} row={row} />
         ))}
