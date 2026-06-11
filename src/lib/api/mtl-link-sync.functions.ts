@@ -52,6 +52,21 @@ export type SyncResult = {
   error?:          string
 }
 
+function parseCorridorResponse(value: unknown): CorridorResponse | null {
+  let parsed = value
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed)
+    } catch {
+      return null
+    }
+  }
+  if (!parsed || typeof parsed !== "object") return null
+
+  const response = parsed as CorridorResponse
+  return response.ok ? response : null
+}
+
 function buildStatRows(stats: WeeklyStat[], methodology: string) {
   return stats
     .filter((s) => s.median_delay_h !== null)
@@ -121,12 +136,10 @@ async function runMtlLinkSync(): Promise<SyncResult> {
   let fescoData: CorridorResponse | null = null
 
   if (tcrRes.status === "fulfilled" && tcrRes.value.ok) {
-    tcrData = (await tcrRes.value.json()) as CorridorResponse
-    if (!tcrData.ok) tcrData = null
+    tcrData = parseCorridorResponse(await tcrRes.value.json())
   }
   if (fescoRes.status === "fulfilled" && fescoRes.value.ok) {
-    fescoData = (await fescoRes.value.json()) as CorridorResponse
-    if (!fescoData.ok) fescoData = null
+    fescoData = parseCorridorResponse(await fescoRes.value.json())
   }
 
   if (!tcrData && !fescoData) {
