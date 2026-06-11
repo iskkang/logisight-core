@@ -5,6 +5,7 @@ import {
   getRateFilterOptions,
   getFreightRates,
   getBunkerPrices,
+  getBunkerHistory,
   getKitaAirRates,
   getKitaSeaRates,
   getIndexStats,
@@ -91,6 +92,13 @@ export const bunkerPricesQueryOptions = () =>
   queryOptions({
     queryKey: ["bunker_prices", "latest"],
     queryFn: () => getBunkerPrices(),
+    staleTime: 10 * 60 * 1000,
+  });
+
+export const bunkerHistoryQueryOptions = () =>
+  queryOptions({
+    queryKey: ["bunker_prices", "history"],
+    queryFn: () => getBunkerHistory(),
     staleTime: 10 * 60 * 1000,
   });
 

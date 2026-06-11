@@ -253,6 +253,22 @@ export const getIndexStats = createServerFn({ method: "GET" }).handler(
   },
 );
 
+export const getBunkerHistory = createServerFn({ method: "GET" }).handler(
+  async (): Promise<BunkerPriceRow[]> => {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - 6);
+    const { data, error } = await supabasePublicServer
+      .from("bunker_prices")
+      .select("grade,port,price_usd,obs_date,source,source_url")
+      .ilike("grade", "%jet%")
+      .gte("obs_date", cutoff.toISOString().split("T")[0])
+      .order("obs_date", { ascending: true })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as BunkerPriceRow[];
+  },
+);
+
 export const getBunkerPrices = createServerFn({ method: "GET" }).handler(
   async (): Promise<BunkerPriceRow[]> => {
     const { data, error } = await supabasePublicServer

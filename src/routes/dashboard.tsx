@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, type CSSProperties, type ReactNode } from "react";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   Activity,
   AlertTriangle,
@@ -30,12 +31,14 @@ import {
 
 import { alertCandidatesQueryOptions, type AlertCandidate } from "@/lib/api/alerts";
 import {
+  bunkerHistoryQueryOptions,
   computeMoM,
   formatNumber,
   indexStatsQueryOptions,
   kitaAirRatesQueryOptions,
   kitaSeaRatesQueryOptions,
   latestByRoute,
+  type BunkerPriceRow,
   type IndexStats,
   type KitaAirRateRow,
   type KitaSeaRateRow,
@@ -72,6 +75,7 @@ export const Route = createFileRoute("/dashboard")({
     context.queryClient.ensureQueryData(eurasiaDisruptionsActiveQueryOptions());
     context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
     context.queryClient.ensureQueryData(latestExchangeRateQueryOptions());
+    context.queryClient.ensureQueryData(bunkerHistoryQueryOptions());
     context.queryClient.ensureQueryData(publishedForecastsQueryOptions());
     context.queryClient.ensureQueryData(forecastSeriesQueryOptions());
     context.queryClient.ensureQueryData(riskNotesQueryOptions());
@@ -1182,6 +1186,95 @@ function ExchangeRateMiniPanel({ exRate }: { exRate: ExchangeRateRow | null }) {
   );
 }
 
+function JetFuelChartCard({ rows }: { rows: BunkerPriceRow[] }) {
+  const chartData = useMemo(() => {
+    const byDate = new Map<string, { sum: number; count: number }>();
+    for (const r of rows) {
+      if (r.price_usd == null) continue;
+      const entry = byDate.get(r.obs_date) ?? { sum: 0, count: 0 };
+      entry.sum += r.price_usd;
+      entry.count += 1;
+      byDate.set(r.obs_date, entry);
+    }
+    return [...byDate.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, { sum, count }]) => ({
+        date: date.slice(5),
+        price: Math.round(sum / count),
+      }));
+  }, [rows]);
+
+  const latest = chartData.at(-1);
+  const prev = chartData.at(-2);
+  const mom =
+    latest && prev && prev.price > 0
+      ? ((latest.price - prev.price) / prev.price) * 100
+      : null;
+  const momUp = mom !== null && mom >= 0;
+
+  return (
+    <Panel>
+      <SectionTitle>항공유 가격 (Jet-A1)</SectionTitle>
+      {chartData.length === 0 ? (
+        <div className="rounded-md bg-slate-50 px-3 py-3 text-center text-[11px] text-slate-400">
+          데이터 수집 중
+        </div>
+      ) : (
+        <>
+          <div className="mb-2 flex items-baseline justify-between">
+            <span className="text-xl font-black text-slate-900">
+              ${latest?.price.toLocaleString("en-US")}
+              <span className="ml-1 text-xs font-bold text-slate-400">/MT</span>
+            </span>
+            {mom !== null && (
+              <span
+                className={`text-xs font-black ${momUp ? "text-emerald-600" : "text-rose-600"}`}
+              >
+                {momUp ? "+" : ""}
+                {mom.toFixed(1)}%
+              </span>
+            )}
+          </div>
+          <div className="h-[72px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="jetFuelGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" hide />
+                <YAxis domain={["auto", "auto"]} hide />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                  formatter={(v: number) => [`$${v.toLocaleString("en-US")}`, "USD/MT"]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="price"
+                  stroke="#f97316"
+                  strokeWidth={2}
+                  fill="url(#jetFuelGrad)"
+                  dot={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-1 text-right text-[10px] text-slate-400">
+            기준일 {latest?.date}
+          </div>
+        </>
+      )}
+    </Panel>
+  );
+}
+
 function IndexChangeHeatmap({ stats }: { stats: IndexStats[] }) {
   const CODES = ["SCFI", "KCCI", "CCFI", "FBX", "WCI", "BDI"];
   const rows = CODES.map((c) => stats.find((s) => s.index_code === c)).filter(Boolean) as IndexStats[];
@@ -1224,6 +1317,7 @@ function DashboardPage() {
   const { data: disruptions } = useSuspenseQuery(eurasiaDisruptionsActiveQueryOptions());
   const { data: delays } = useSuspenseQuery(eurasiaDelaysQueryOptions());
   const { data: exRate } = useSuspenseQuery(latestExchangeRateQueryOptions());
+  const { data: bunkerHistory } = useSuspenseQuery(bunkerHistoryQueryOptions());
   const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
   const { data: series } = useSuspenseQuery(forecastSeriesQueryOptions());
   const { data: riskNotes } = useSuspenseQuery(riskNotesQueryOptions());
@@ -1283,6 +1377,7 @@ function DashboardPage() {
               modelVersion={modelVersion}
             />
             <ExchangeRateMiniPanel exRate={exRate ?? null} />
+            <JetFuelChartCard rows={bunkerHistory} />
           </aside>
 
           <section className="min-w-0 space-y-3">
