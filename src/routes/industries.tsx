@@ -55,8 +55,7 @@ export const Route = createFileRoute("/industries")({
       { property: "og:title", content: "산업별 교역 동향 — Logisight" },
       {
         property: "og:description",
-        content:
-          "HS 챕터 랭킹, 국가별 비중, 월별 추이를 제공하는 한국 교역 대시보드.",
+        content: "HS 챕터 랭킹, 국가별 비중, 월별 추이를 제공하는 한국 교역 대시보드.",
       },
       { property: "og:url", content: "https://logisight-core.lovable.app/industries" },
     ],
@@ -75,14 +74,7 @@ export const Route = createFileRoute("/industries")({
   ),
 });
 
-const PIE_COLORS = [
-  "#0F2D5A",
-  "#1B4D8C",
-  "#38BDF8",
-  "#0EA5A4",
-  "#F59E0B",
-  "#94A3B8",
-];
+const PIE_COLORS = ["#0F2D5A", "#1B4D8C", "#38BDF8", "#0EA5A4", "#F59E0B", "#94A3B8"];
 
 function IndustriesPage() {
   const { from, to, metric, view } = Route.useSearch();
@@ -108,53 +100,48 @@ function IndustriesPage() {
   const impKey = metric === "usd" ? "import_usd" : "import_weight";
   const fmt = metric === "usd" ? formatUSD : formatTon;
 
-  const totalExport = useMemo(
-    () => sum(rows.map((r) => r[expKey] ?? 0)),
-    [rows, expKey],
-  );
-  const totalImport = useMemo(
-    () => sum(rows.map((r) => r[impKey] ?? 0)),
-    [rows, impKey],
-  );
+  const totalExport = useMemo(() => sum(rows.map((r) => r[expKey] ?? 0)), [rows, expKey]);
+  const totalImport = useMemo(() => sum(rows.map((r) => r[impKey] ?? 0)), [rows, impKey]);
   const balance = totalExport - totalImport;
 
   return (
-    <>
-    <Header maxPeriod={maxPeriod} />
-    <main className="mx-auto max-w-7xl px-4 py-8 lg:px-6 lg:py-10">
-      <Filters
-        periods={periods}
-        from={periodFrom}
-        to={periodTo}
-        metric={metric}
-        view={view}
-        onChange={(patch) =>
-          navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) })
-        }
-      />
-      <Summary
-        from={periodFrom}
-        to={periodTo}
-        totalExport={totalExport}
-        totalImport={totalImport}
-        balance={balance}
-        fmt={fmt}
-        metricLabel={metric === "usd" ? "수출액" : "중량"}
-      />
+    <div className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
+      <Header maxPeriod={maxPeriod} />
+      <main className="mx-auto max-w-[1540px] px-4 py-[26px] lg:px-12">
+        <Filters
+          periods={periods}
+          from={periodFrom}
+          to={periodTo}
+          metric={metric}
+          view={view}
+          onChange={(patch) =>
+            navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) })
+          }
+        />
+        <Summary
+          from={periodFrom}
+          to={periodTo}
+          totalExport={totalExport}
+          totalImport={totalImport}
+          balance={balance}
+          fmt={fmt}
+          metricLabel={metric === "usd" ? "수출액" : "중량"}
+        />
 
-      {view === "hs" ? (
-        <ChapterSection rows={rows} expKey={expKey} impKey={impKey} fmt={fmt} />
-      ) : (
-        <CountrySection rows={rows} expKey={expKey} impKey={impKey} fmt={fmt} />
-      )}
+        {view === "hs" ? (
+          <ChapterSection rows={rows} expKey={expKey} impKey={impKey} fmt={fmt} />
+        ) : (
+          <CountrySection rows={rows} expKey={expKey} impKey={impKey} fmt={fmt} />
+        )}
 
-      <MonthlyTrend rows={rows} expKey={expKey} impKey={impKey} metric={metric} />
+        <MonthlyTrend rows={rows} expKey={expKey} impKey={impKey} metric={metric} />
 
-      <footer className="mt-10 border-t border-border pt-4 text-xs text-muted-foreground">
-        출처: 관세청 수출입무역통계 · 기준: {formatPeriod(maxPeriod ?? "")}. 월별 통계는 익월 갱신.
-      </footer>
-    </main>
-    </>
+        <footer className="mt-10 border-t border-border pt-4 text-xs text-muted-foreground">
+          출처: 관세청 수출입무역통계 · 기준: {formatPeriod(maxPeriod ?? "")}. 월별 통계는 익월
+          갱신.
+        </footer>
+      </main>
+    </div>
   );
 }
 
@@ -168,12 +155,10 @@ function Header({ maxPeriod }: { maxPeriod: string | undefined }) {
   return (
     <PageHero
       eyebrow="Industries"
-      titleMain="산업별"
+      titleMain="산업"
       titleAccent="교역 동향"
       subtitle="관세청 무역통계를 HS 챕터 단위로 랭킹·분석합니다. 실제 데이터가 있는 챕터만 표시합니다."
-      chips={[
-        { label: "기준", value: formatPeriod(maxPeriod ?? "—"), color: "var(--color-cyan)" },
-      ]}
+      chips={[{ label: "기준", value: formatPeriod(maxPeriod ?? "—"), color: "var(--color-cyan)" }]}
     />
   );
 }
@@ -191,7 +176,9 @@ function Filters({
   to: string | undefined;
   metric: "usd" | "weight";
   view: "hs" | "country";
-  onChange: (patch: Partial<{ from: string; to: string; metric: "usd" | "weight"; view: "hs" | "country" }>) => void;
+  onChange: (
+    patch: Partial<{ from: string; to: string; metric: "usd" | "weight"; view: "hs" | "country" }>,
+  ) => void;
 }) {
   return (
     <section className="mt-6 flex flex-wrap items-end gap-4 rounded-lg border border-border bg-card p-4">
@@ -326,9 +313,7 @@ function Summary({
         </div>
       </div>
       <div className="rounded-lg border border-border bg-card p-3">
-        <p className="px-2 pt-1 text-xs font-medium text-muted-foreground">
-          수출 vs 수입
-        </p>
+        <p className="px-2 pt-1 text-xs font-medium text-muted-foreground">수출 vs 수입</p>
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -394,19 +379,16 @@ function ChapterSection({
 
   const aggs = useMemo(() => aggregateByChapter(rows, expKey, impKey), [rows, expKey, impKey]);
 
-  const top5Exp = useMemo(
-    () => buildTopWithOther(aggs, "exp"),
-    [aggs],
-  );
-  const top5Imp = useMemo(
-    () => buildTopWithOther(aggs, "imp"),
-    [aggs],
-  );
+  const top5Exp = useMemo(() => buildTopWithOther(aggs, "exp"), [aggs]);
+  const top5Imp = useMemo(() => buildTopWithOther(aggs, "imp"), [aggs]);
 
   return (
     <>
       <section className="mt-10">
-        <SectionTitle title="HS 챕터 랭킹" subtitle="선택된 지표 내림차순. 실제 데이터가 있는 챕터만 표시됩니다." />
+        <SectionTitle
+          title="HS 챕터 랭킹"
+          subtitle="선택된 지표 내림차순. 실제 데이터가 있는 챕터만 표시됩니다."
+        />
         {aggs.length === 0 ? (
           <EmptyState />
         ) : (
@@ -461,9 +443,7 @@ function ChapterSection({
                             <ChapterDetail
                               chapter={a.chapter}
                               chapterName={a.name}
-                              rows={rows.filter(
-                                (r) => hsChapter(r.hs_code) === a.chapter,
-                              )}
+                              rows={rows.filter((r) => hsChapter(r.hs_code) === a.chapter)}
                               expKey={expKey}
                               impKey={impKey}
                               fmt={fmt}
@@ -481,16 +461,8 @@ function ChapterSection({
       </section>
 
       <section className="mt-10 grid gap-4 lg:grid-cols-2">
-        <DonutCard
-          title="수출 비중 (HS 챕터)"
-          data={top5Exp}
-          fmt={fmt}
-        />
-        <DonutCard
-          title="수입 비중 (HS 챕터)"
-          data={top5Imp}
-          fmt={fmt}
-        />
+        <DonutCard title="수출 비중 (HS 챕터)" data={top5Exp} fmt={fmt} />
+        <DonutCard title="수입 비중 (HS 챕터)" data={top5Imp} fmt={fmt} />
       </section>
     </>
   );
@@ -559,13 +531,7 @@ function DonutCard({
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie
-                data={data}
-                dataKey="value"
-                innerRadius={50}
-                outerRadius={90}
-                paddingAngle={1}
-              >
+              <Pie data={data} dataKey="value" innerRadius={50} outerRadius={90} paddingAngle={1}>
                 {data.map((_, i) => (
                   <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                 ))}
@@ -664,8 +630,22 @@ function ChapterDetail({
                   <YAxis tickFormatter={(v) => fmt(v)} fontSize={10} />
                   <Tooltip formatter={(v: number) => fmt(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Line type="monotone" dataKey="exp" name="수출" stroke="#0F2D5A" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="imp" name="수입" stroke="#38BDF8" strokeWidth={2} dot={false} />
+                  <Line
+                    type="monotone"
+                    dataKey="exp"
+                    name="수출"
+                    stroke="#0F2D5A"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="imp"
+                    name="수입"
+                    stroke="#38BDF8"
+                    strokeWidth={2}
+                    dot={false}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -817,9 +797,7 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
   return (
     <div>
       <h2 className="text-xl font-semibold">{title}</h2>
-      {subtitle ? (
-        <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-      ) : null}
+      {subtitle ? <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p> : null}
     </div>
   );
 }

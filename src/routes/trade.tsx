@@ -57,7 +57,8 @@ export const Route = createFileRoute("/trade")({
       { title: "무역 동향 인사이트 - Logisight" },
       {
         name: "description",
-        content: "관세청 수출입무역통계 기반 교역액, 국가·품목 랭킹, 월별 추이를 한 화면에서 분석합니다.",
+        content:
+          "관세청 수출입무역통계 기반 교역액, 국가·품목 랭킹, 월별 추이를 한 화면에서 분석합니다.",
       },
     ],
   }),
@@ -76,7 +77,15 @@ function TradePending() {
 }
 
 type MetricMode = "total" | "export" | "import" | "balance";
-type RegionKey = "전체" | "아시아" | "북미" | "유럽" | "중동" | "중남미" | "아프리카" | "오세아니아";
+type RegionKey =
+  | "전체"
+  | "아시아"
+  | "북미"
+  | "유럽"
+  | "중동"
+  | "중남미"
+  | "아프리카"
+  | "오세아니아";
 
 type CountryAgg = {
   code: string;
@@ -128,7 +137,16 @@ type ProvisionalSnapshot = {
   balanceYoY: number | null;
 };
 
-const REGIONS: RegionKey[] = ["전체", "아시아", "북미", "유럽", "중동", "중남미", "아프리카", "오세아니아"];
+const REGIONS: RegionKey[] = [
+  "전체",
+  "아시아",
+  "북미",
+  "유럽",
+  "중동",
+  "중남미",
+  "아프리카",
+  "오세아니아",
+];
 const REGION_BY_CODE: Record<string, RegionKey> = {
   CN: "아시아",
   JP: "아시아",
@@ -188,9 +206,9 @@ function periodKey(period: string | null | undefined): string {
 }
 
 function latestPeriod(rows: Pick<TradeStatRow, "period">[]): string | null {
-  return [...new Set(rows.map((row) => periodKey(row.period)).filter(Boolean))]
-    .sort()
-    .at(-1) ?? null;
+  return (
+    [...new Set(rows.map((row) => periodKey(row.period)).filter(Boolean))].sort().at(-1) ?? null
+  );
 }
 
 function prevYearPeriod(period: string | null): string | null {
@@ -283,14 +301,29 @@ function buildProvisionalSnapshot(rows: TradeStatRow[]): ProvisionalSnapshot {
       if (periodKey(row.period) !== period) continue;
       const key = `${row.stat_type}|${(row.country_code ?? "ALL").toUpperCase()}`;
       const existing = picked.get(key);
-      if (!existing || priodRank(row.priod_dt) >= priodRank(existing.priod_dt)) picked.set(key, row);
+      if (!existing || priodRank(row.priod_dt) >= priodRank(existing.priod_dt))
+        picked.set(key, row);
     }
 
     const allExp = picked.get("provisional_exp|ALL");
     const allImp = picked.get("provisional_imp|ALL");
-    const countryRows = [...picked.values()].filter((row) => (row.country_code ?? "").toUpperCase() !== "ALL");
-    const exportUsd = allExp?.export_usd ?? sum(countryRows.filter((row) => row.stat_type === "provisional_exp").map((row) => row.export_usd ?? 0));
-    const importUsd = allImp?.import_usd ?? sum(countryRows.filter((row) => row.stat_type === "provisional_imp").map((row) => row.import_usd ?? 0));
+    const countryRows = [...picked.values()].filter(
+      (row) => (row.country_code ?? "").toUpperCase() !== "ALL",
+    );
+    const exportUsd =
+      allExp?.export_usd ??
+      sum(
+        countryRows
+          .filter((row) => row.stat_type === "provisional_exp")
+          .map((row) => row.export_usd ?? 0),
+      );
+    const importUsd =
+      allImp?.import_usd ??
+      sum(
+        countryRows
+          .filter((row) => row.stat_type === "provisional_imp")
+          .map((row) => row.import_usd ?? 0),
+      );
     return {
       exportUsd,
       importUsd,
@@ -308,22 +341,29 @@ function buildProvisionalSnapshot(rows: TradeStatRow[]): ProvisionalSnapshot {
     exportUsd: current.exportUsd,
     importUsd: current.importUsd,
     balanceUsd: current.balanceUsd,
-    totalYoY: pctChange((current.exportUsd ?? 0) + (current.importUsd ?? 0), (prev.exportUsd ?? 0) + (prev.importUsd ?? 0)),
+    totalYoY: pctChange(
+      (current.exportUsd ?? 0) + (current.importUsd ?? 0),
+      (prev.exportUsd ?? 0) + (prev.importUsd ?? 0),
+    ),
     exportYoY: pctChange(current.exportUsd, prev.exportUsd),
     importYoY: pctChange(current.importUsd, prev.importUsd),
     balanceYoY: pctChange(current.balanceUsd, prev.balanceUsd),
   };
 }
 
-function buildCountryAgg(rows: TradeStatRow[], region: RegionKey, metric: MetricMode): CountryAgg[] {
+function buildCountryAgg(
+  rows: TradeStatRow[],
+  region: RegionKey,
+  metric: MetricMode,
+): CountryAgg[] {
   const latest = latestPeriod(rows);
   const previous =
     prevYearPeriod(latest) && rows.some((row) => periodKey(row.period) === prevYearPeriod(latest))
       ? prevYearPeriod(latest)
-      : [...new Set(rows.map((row) => periodKey(row.period)).filter(Boolean))]
+      : ([...new Set(rows.map((row) => periodKey(row.period)).filter(Boolean))]
           .sort()
           .filter((period) => period !== latest)
-          .at(-1) ?? null;
+          .at(-1) ?? null);
 
   const prevByCode = new Map<string, number>();
   for (const row of rowsForPeriod(rows, previous)) {
@@ -359,10 +399,10 @@ function buildItemAgg(rows: TradeStatRow[], metric: MetricMode): ItemAgg[] {
   const previous =
     prevYearPeriod(latest) && rows.some((row) => periodKey(row.period) === prevYearPeriod(latest))
       ? prevYearPeriod(latest)
-      : [...new Set(rows.map((row) => periodKey(row.period)).filter(Boolean))]
+      : ([...new Set(rows.map((row) => periodKey(row.period)).filter(Boolean))]
           .sort()
           .filter((period) => period !== latest)
-          .at(-1) ?? null;
+          .at(-1) ?? null);
 
   const prevByHs = new Map<string, number>();
   for (const row of rowsForPeriod(rows, previous)) {
@@ -390,7 +430,10 @@ function buildItemAgg(rows: TradeStatRow[], metric: MetricMode): ItemAgg[] {
   }
 
   return [...byHs.values()]
-    .map((item) => ({ ...item, changePct: pctChange(item.tradeUsd, prevByHs.get(item.code) ?? null) }))
+    .map((item) => ({
+      ...item,
+      changePct: pctChange(item.tradeUsd, prevByHs.get(item.code) ?? null),
+    }))
     .sort((a, b) => metricValue(b, metric) - metricValue(a, metric));
 }
 
@@ -439,7 +482,11 @@ function useTradeModel(bundle: TradeStatisticsBundle, region: RegionKey, metric:
     const latestContinentPeriod = latestPeriod(bundle.continent);
     const latestItemCountryPeriod = latestPeriod(bundle.itemCountry);
     const latestNewnaturePeriod = latestPeriod(bundle.newnature);
-    const totalCountryTrade = sum(rowsForPeriod(bundle.country, latestCountryPeriod).map((row) => (row.export_usd ?? 0) + (row.import_usd ?? 0)));
+    const totalCountryTrade = sum(
+      rowsForPeriod(bundle.country, latestCountryPeriod).map(
+        (row) => (row.export_usd ?? 0) + (row.import_usd ?? 0),
+      ),
+    );
 
     return {
       countries,
@@ -472,10 +519,14 @@ function TradePage() {
   const topCountry = model.countries[0] ?? null;
   const topItem = model.items[0] ?? null;
   const topContinent = model.continents[0] ?? null;
-  const topNewnature = [...model.newnatureRows].sort((a, b) => (b.export_usd ?? 0) + (b.import_usd ?? 0) - ((a.export_usd ?? 0) + (a.import_usd ?? 0)))[0] ?? null;
+  const topNewnature =
+    [...model.newnatureRows].sort(
+      (a, b) =>
+        (b.export_usd ?? 0) + (b.import_usd ?? 0) - ((a.export_usd ?? 0) + (a.import_usd ?? 0)),
+    )[0] ?? null;
 
   return (
-    <main className="bg-[#f5f8fc] text-slate-900">
+    <main className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
       <PageHero
         eyebrow="Trade Insight"
         titleMain="무역 동향"
@@ -494,13 +545,19 @@ function TradePage() {
           },
         ]}
       />
-      <section className="mx-auto max-w-[1540px] px-4 py-5 lg:px-12">
+      <section className="mx-auto max-w-[1540px] px-4 py-[26px] lg:px-12">
         <div className="mb-3 flex items-center justify-end gap-2">
           <ActionButton icon={<Download className="h-4 w-4" />}>리포트 다운로드</ActionButton>
           <ActionButton icon={<Share2 className="h-4 w-4" />}>공유</ActionButton>
         </div>
 
-        <FilterBar region={region} metric={metric} onRegion={setRegion} onMetric={setMetric} model={model} />
+        <FilterBar
+          region={region}
+          metric={metric}
+          onRegion={setRegion}
+          onMetric={setMetric}
+          model={model}
+        />
 
         <section className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <KpiCard
@@ -550,7 +607,9 @@ function TradePage() {
                     onClick={() => setRegion(r)}
                     className={[
                       "rounded-md px-3 py-1.5 text-xs font-black transition",
-                      region === r ? "bg-[#061a35] text-white" : "bg-white text-slate-600 hover:bg-blue-50",
+                      region === r
+                        ? "bg-[#061a35] text-white"
+                        : "bg-white text-slate-600 hover:bg-blue-50",
                     ].join(" ")}
                   >
                     {r}
@@ -587,29 +646,56 @@ function TradePage() {
         </section>
 
         <section className="mt-3 grid gap-3 xl:grid-cols-[repeat(3,minmax(0,1fr))_360px]">
-          <TrendCard title="월별 수출 추이 (USD)" value={money(model.snapshot.exportUsd)} change={model.snapshot.exportYoY}>
+          <TrendCard
+            title="월별 수출 추이 (USD)"
+            value={money(model.snapshot.exportUsd)}
+            change={model.snapshot.exportYoY}
+          >
             <ResponsiveContainer width="100%" height={190}>
               <LineChart data={model.monthly}>
                 <CartesianGrid stroke="#e5edf6" strokeDasharray="3 3" />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                 <YAxis tickFormatter={formatAxisUsd} tick={{ fontSize: 11 }} width={48} />
-                <Tooltip formatter={(v) => moneyUsd(Number(v))} labelFormatter={(label) => `${label}`} />
-                <Line type="monotone" dataKey="exportUsd" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Tooltip
+                  formatter={(v) => moneyUsd(Number(v))}
+                  labelFormatter={(label) => `${label}`}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="exportUsd"
+                  stroke="#2563eb"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </TrendCard>
-          <TrendCard title="월별 수입 추이 (USD)" value={money(model.snapshot.importUsd)} change={model.snapshot.importYoY}>
+          <TrendCard
+            title="월별 수입 추이 (USD)"
+            value={money(model.snapshot.importUsd)}
+            change={model.snapshot.importYoY}
+          >
             <ResponsiveContainer width="100%" height={190}>
               <AreaChart data={model.monthly}>
                 <CartesianGrid stroke="#e5edf6" strokeDasharray="3 3" />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                 <YAxis tickFormatter={formatAxisUsd} tick={{ fontSize: 11 }} width={48} />
                 <Tooltip formatter={(v) => moneyUsd(Number(v))} />
-                <Area type="monotone" dataKey="importUsd" stroke="#0ea5e9" fill="#bfdbfe" strokeWidth={2.5} />
+                <Area
+                  type="monotone"
+                  dataKey="importUsd"
+                  stroke="#0ea5e9"
+                  fill="#bfdbfe"
+                  strokeWidth={2.5}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </TrendCard>
-          <TrendCard title="무역수지 추이 (USD)" value={money(model.snapshot.balanceUsd)} change={model.snapshot.balanceYoY}>
+          <TrendCard
+            title="무역수지 추이 (USD)"
+            value={money(model.snapshot.balanceUsd)}
+            change={model.snapshot.balanceYoY}
+          >
             <ResponsiveContainer width="100%" height={190}>
               <BarChart data={model.monthly}>
                 <CartesianGrid stroke="#e5edf6" strokeDasharray="3 3" />
@@ -637,16 +723,23 @@ function TradePage() {
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-black text-slate-900">대륙별 교역 현황</h2>
-                <p className="text-[11px] font-semibold text-slate-500">`continent` 확정치 · {formatPeriod(model.latestContinentPeriod)}</p>
+                <p className="text-[11px] font-semibold text-slate-500">
+                  `continent` 확정치 · {formatPeriod(model.latestContinentPeriod)}
+                </p>
               </div>
               <span className="text-[11px] font-bold text-slate-400">{metricLabel(metric)}</span>
             </div>
             <div className="grid gap-2 md:grid-cols-3">
               {model.continents.map((continent) => (
-                <div key={continent.code} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div
+                  key={continent.code}
+                  className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-black text-slate-800">{continent.name}</span>
-                    <span className="text-xs font-black text-blue-600">{money(metricValue(continent, metric))}</span>
+                    <span className="text-xs font-black text-blue-600">
+                      {money(metricValue(continent, metric))}
+                    </span>
                   </div>
                   <p className="mt-2 text-[11px] font-semibold text-slate-500">
                     수출 {moneyUsd(continent.exportUsd)} · 수입 {moneyUsd(continent.importUsd)}
@@ -659,18 +752,29 @@ function TradePage() {
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-black text-slate-900">글로벌 주요 지수</h2>
-                <p className="text-[11px] font-semibold text-slate-500">freight_indices 저장 데이터 기준</p>
+                <p className="text-[11px] font-semibold text-slate-500">
+                  freight_indices 저장 데이터 기준
+                </p>
               </div>
-              <span className="text-[11px] font-bold text-slate-400">기준 {indexSnapshot[0]?.latest_date?.slice(0, 10) ?? "-"}</span>
+              <span className="text-[11px] font-bold text-slate-400">
+                기준 {indexSnapshot[0]?.latest_date?.slice(0, 10) ?? "-"}
+              </span>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               {indexSnapshot.map((row) => (
-                <div key={row.index_code} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                <div
+                  key={row.index_code}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-black text-slate-500">{row.index_code}</span>
-                    <span className={`text-xs font-black ${toneFor(row.change_pct)}`}>{pct(row.change_pct)}</span>
+                    <span className={`text-xs font-black ${toneFor(row.change_pct)}`}>
+                      {pct(row.change_pct)}
+                    </span>
                   </div>
-                  <p className="mt-1 text-lg font-black tabular-nums">{formatNumber(row.latest_value, 2)}</p>
+                  <p className="mt-1 text-lg font-black tabular-nums">
+                    {formatNumber(row.latest_value, 2)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -698,7 +802,8 @@ function FilterBar({
     <section className="rounded-lg border border-[#d8e3ef] bg-white p-3 shadow-[0_10px_28px_rgba(15,35,65,0.06)]">
       <div className="grid gap-2 lg:grid-cols-[1.2fr_1fr_1fr_0.8fr_auto]">
         <FilterBox label="기간" icon={<CalendarDays className="h-4 w-4" />}>
-          확정 {formatPeriod(model.latestCountryPeriod)} · 잠정 {formatPeriod(model.snapshot.period)}
+          확정 {formatPeriod(model.latestCountryPeriod)} · 잠정{" "}
+          {formatPeriod(model.snapshot.period)}
         </FilterBox>
         <FilterSelect label="출발국" value="대한민국" />
         <label className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
@@ -740,7 +845,15 @@ function FilterBar({
   );
 }
 
-function FilterBox({ label, icon, children }: { label: string; icon: ReactNode; children: ReactNode }) {
+function FilterBox({
+  label,
+  icon,
+  children,
+}: {
+  label: string;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
       <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
@@ -775,13 +888,27 @@ function ActionButton({ icon, children }: { icon: ReactNode; children: ReactNode
 
 function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-lg border border-[#d8e3ef] bg-white p-4 shadow-[0_10px_28px_rgba(15,35,65,0.06)] ${className}`}>
+    <section
+      className={`rounded-lg border border-[#d8e3ef] bg-white p-4 shadow-[0_10px_28px_rgba(15,35,65,0.06)] ${className}`}
+    >
       {children}
     </section>
   );
 }
 
-function KpiCard({ icon, label, value, change, sub }: { icon: ReactNode; label: string; value: string; change: number | null; sub: string }) {
+function KpiCard({
+  icon,
+  label,
+  value,
+  change,
+  sub,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  change: number | null;
+  sub: string;
+}) {
   return (
     <Panel>
       <div className="flex items-center gap-4">
@@ -818,7 +945,10 @@ function RankingPanel({
       </div>
       <div className="space-y-2">
         {rows.map((row, index) => (
-          <div key={row.key} className="grid grid-cols-[26px_minmax(0,1fr)_auto_auto] items-center gap-2 text-xs">
+          <div
+            key={row.key}
+            className="grid grid-cols-[26px_minmax(0,1fr)_auto_auto] items-center gap-2 text-xs"
+          >
             <span className="text-center font-black text-slate-500">{index + 1}</span>
             <span className="flex min-w-0 items-center gap-1.5 font-bold text-slate-700">
               {row.flagCode ? (
@@ -834,10 +964,14 @@ function RankingPanel({
               <span className="min-w-0 truncate">{compactName(row.name, 18)}</span>
             </span>
             <span className="font-black tabular-nums text-slate-900">{money(row.value)}</span>
-            <span className={`w-14 text-right font-black tabular-nums ${toneFor(row.change)}`}>{pct(row.change)}</span>
+            <span className={`w-14 text-right font-black tabular-nums ${toneFor(row.change)}`}>
+              {pct(row.change)}
+            </span>
           </div>
         ))}
-        {rows.length === 0 && <p className="text-sm font-semibold text-slate-500">표시할 저장 데이터가 없습니다.</p>}
+        {rows.length === 0 && (
+          <p className="text-sm font-semibold text-slate-500">표시할 저장 데이터가 없습니다.</p>
+        )}
       </div>
     </Panel>
   );
@@ -861,7 +995,11 @@ function TradeMapPanel({ countries }: { countries: CountryAgg[] }) {
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_210px]">
       <div className="relative min-h-[280px] overflow-hidden rounded-lg bg-[#f4f8fd]">
         {mounted ? (
-          <ComposableMap projection="geoNaturalEarth1" projectionConfig={{ scale: 165 }} className="h-full w-full">
+          <ComposableMap
+            projection="geoNaturalEarth1"
+            projectionConfig={{ scale: 165 }}
+            className="h-full w-full"
+          >
             <Geographies geography={GEO_URL}>
               {({ geographies }) =>
                 geographies.map((geo) => {
@@ -888,7 +1026,9 @@ function TradeMapPanel({ countries }: { countries: CountryAgg[] }) {
             </Geographies>
           </ComposableMap>
         ) : (
-          <div className="flex h-[280px] items-center justify-center text-sm font-semibold text-slate-400">지도 로딩 중</div>
+          <div className="flex h-[280px] items-center justify-center text-sm font-semibold text-slate-400">
+            지도 로딩 중
+          </div>
         )}
         <div className="absolute bottom-4 left-4 rounded-md bg-white/90 p-2 text-[11px] font-bold text-slate-600 shadow-sm">
           <div className="mb-1">교역액 강도</div>
@@ -906,12 +1046,19 @@ function TradeMapPanel({ countries }: { countries: CountryAgg[] }) {
               <span className="text-sm font-black text-slate-800">
                 {flagEmoji(country.code)} {country.name}
               </span>
-              <span className={`text-xs font-black ${toneFor(country.changePct)}`}>{pct(country.changePct)}</span>
+              <span className={`text-xs font-black ${toneFor(country.changePct)}`}>
+                {pct(country.changePct)}
+              </span>
             </div>
             <div className="mt-2 h-1.5 rounded-full bg-slate-100">
-              <div className="h-1.5 rounded-full bg-blue-600" style={{ width: `${Math.max((country.tradeUsd / max) * 100, 5)}%` }} />
+              <div
+                className="h-1.5 rounded-full bg-blue-600"
+                style={{ width: `${Math.max((country.tradeUsd / max) * 100, 5)}%` }}
+              />
             </div>
-            <p className="mt-1 text-[11px] font-bold text-slate-500">교역액 {moneyUsd(country.tradeUsd)}</p>
+            <p className="mt-1 text-[11px] font-bold text-slate-500">
+              교역액 {moneyUsd(country.tradeUsd)}
+            </p>
           </div>
         ))}
       </div>
@@ -919,7 +1066,17 @@ function TradeMapPanel({ countries }: { countries: CountryAgg[] }) {
   );
 }
 
-function TrendCard({ title, value, change, children }: { title: string; value: string; change: number | null; children: ReactNode }) {
+function TrendCard({
+  title,
+  value,
+  change,
+  children,
+}: {
+  title: string;
+  value: string;
+  change: number | null;
+  children: ReactNode;
+}) {
   return (
     <Panel>
       <div className="mb-2 flex items-start justify-between gap-2">
@@ -980,7 +1137,12 @@ function InsightPanel({
       ? {
           title: balance >= 0 ? "무역수지 흑자" : "무역수지 적자",
           body: `잠정 전체 기준 무역수지는 ${moneyUsd(balance)}입니다.`,
-          icon: balance >= 0 ? <ArrowUpRight className="h-5 w-5" /> : <ArrowDownRight className="h-5 w-5" />,
+          icon:
+            balance >= 0 ? (
+              <ArrowUpRight className="h-5 w-5" />
+            ) : (
+              <ArrowDownRight className="h-5 w-5" />
+            ),
         }
       : null,
   ].filter((x): x is { title: string; body: string; icon: ReactNode } => Boolean(x));

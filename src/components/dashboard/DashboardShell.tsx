@@ -22,7 +22,7 @@ export function DashboardShell({
   children,
 }: Props) {
   return (
-    <>
+    <div className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
       <PageHero
         eyebrow={eyebrow}
         titleMain={title}
@@ -31,9 +31,9 @@ export function DashboardShell({
         chips={chips}
         action={toolbar}
       />
-      <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+      <main className="mx-auto max-w-[1540px] px-4 py-[26px] lg:px-12">
         <div className="space-y-6">{children}</div>
       </main>
-    </>
+    </div>
   );
 }

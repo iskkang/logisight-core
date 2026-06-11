@@ -665,7 +665,7 @@ function RatesPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#eaf2fb] text-slate-900">
+    <main className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
       <DashboardTicker items={tickerItems} />
       <PageHero
         eyebrow="Rates Control Tower"
@@ -682,7 +682,7 @@ function RatesPage() {
         ]}
       />
 
-      <div className="relative z-10 mx-auto mt-3 flex w-full max-w-[1540px] flex-col gap-3 px-4 pb-4 lg:px-12">
+      <div className="relative z-10 mx-auto flex w-full max-w-[1540px] flex-col gap-3 px-4 py-[26px] lg:px-12">
         <FilterBar
           mode={mode}
           setMode={setMode}

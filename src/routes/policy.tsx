@@ -25,10 +25,10 @@ export const Route = createFileRoute("/policy")({
   },
   head: () => ({
     meta: [
-      { title: "리스크 인텔리전스 — Logisight" },
+      { title: "포트 리스크 인텔리전스 — Logisight" },
       {
         name: "description",
-        content: "해상 병목, 항만 혼잡, 규제 이벤트 리스크 모니터.",
+        content: "항만 혼잡, 해상 병목, 초크포인트와 규제 이벤트 리스크 모니터.",
       },
     ],
   }),
@@ -646,10 +646,10 @@ function PolicyPage() {
 
   return (
     <DashboardShell
-      eyebrow="Risk Intelligence"
-      title="리스크"
-      titleAccent="인텔리전스"
-      subtitle="해상 병목·항만 혼잡·초크포인트·호르무즈 통항을 모니터링합니다."
+      eyebrow="Port Risk Intelligence"
+      title="포트"
+      titleAccent="리스크"
+      subtitle="항만 혼잡·해상 병목·초크포인트·호르무즈 통항을 한 화면에서 모니터링합니다."
       toolbar={
         <button
           type="button"

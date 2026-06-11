@@ -78,10 +78,17 @@ function ForecastsPage() {
     (m, f) => (f.published_at && (!m || f.published_at > m) ? f.published_at : m),
     null,
   );
-  const modules = [...new Set(allOpen.map((f) => f.module))].map((k) => ({ key: k, label: MODULE_LABEL[k] }));
+  const modules = [...new Set(allOpen.map((f) => f.module))].map((k) => ({
+    key: k,
+    label: MODULE_LABEL[k],
+  }));
 
   const open = search.mod ? allOpen.filter((f) => f.module === search.mod) : allOpen;
-  const filter: ForecastFilter = { cadence: search.cadence, dir: search.dir, series: search.series };
+  const filter: ForecastFilter = {
+    cadence: search.cadence,
+    dir: search.dir,
+    series: search.series,
+  };
   // 기본 정렬: displayOrder(중요도 순) — 보드·카드·상세 공통 단일 소스.
   const filtered = applyFilter(open, filter).sort((a, b) => displayOrderOf(a) - displayOrderOf(b));
   const selectedId = search.sel ?? filtered[0]?.id ?? null;
@@ -99,7 +106,10 @@ function ForecastsPage() {
   const setSel = (id: string) =>
     navigate({ search: (prev: Search) => ({ ...prev, sel: id }), replace: true });
   const setMod = (key: string | null) =>
-    navigate({ search: (prev: Search) => ({ ...prev, mod: key ?? undefined, sel: undefined }), replace: true });
+    navigate({
+      search: (prev: Search) => ({ ...prev, mod: key ?? undefined, sel: undefined }),
+      replace: true,
+    });
 
   const heroChips: { label: string; value: string; color: string }[] = [];
   if (kpis.hitRate.rate != null)
@@ -120,44 +130,56 @@ function ForecastsPage() {
   });
 
   return (
-    <>
-    <ForecastHero
-      lastUpdated={lastUpdated}
-      modules={modules}
-      activeModule={search.mod ?? null}
-      onModule={setMod}
-      chips={heroChips}
-    />
-    <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
-      <div>
-        <ForecastKpiStrip kpis={kpis} />
-      </div>
-
-      {open.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-border bg-card px-6 py-16 text-center">
-          <p className="text-sm font-medium text-foreground">데이터 수집 중</p>
-          <p className="mt-1 text-xs text-muted-foreground">검수를 통과한 전망이 게재되면 이곳에 표시됩니다.</p>
+    <main className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
+      <ForecastHero
+        lastUpdated={lastUpdated}
+        modules={modules}
+        activeModule={search.mod ?? null}
+        onModule={setMod}
+        chips={heroChips}
+      />
+      <div className="mx-auto max-w-[1540px] px-4 py-[26px] lg:px-12">
+        <div>
+          <ForecastKpiStrip kpis={kpis} />
         </div>
-      ) : (
-        <div className="mt-7 grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[180px_minmax(0,1fr)_320px]">
-          <ForecastFilters value={filter} onChange={setFilter} seriesCounts={seriesCounts} />
-          <div className="space-y-5">
-            <div>
-              <div className="mb-3 text-sm font-semibold text-foreground">전망 카드</div>
-              <ForecastCardGrid forecasts={filtered} series={series} selectedId={selectedId} onSelect={setSel} />
+
+        {open.length === 0 ? (
+          <div className="mt-10 rounded-xl border border-dashed border-border bg-card px-6 py-16 text-center">
+            <p className="text-sm font-medium text-foreground">데이터 수집 중</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              검수를 통과한 전망이 게재되면 이곳에 표시됩니다.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-7 grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[180px_minmax(0,1fr)_320px]">
+            <ForecastFilters value={filter} onChange={setFilter} seriesCounts={seriesCounts} />
+            <div className="space-y-5">
+              <div>
+                <div className="mb-3 text-sm font-semibold text-foreground">전망 카드</div>
+                <ForecastCardGrid
+                  forecasts={filtered}
+                  series={series}
+                  selectedId={selectedId}
+                  onSelect={setSel}
+                />
+              </div>
+              {selected && <ForecastDetailPanel f={selected} series={series[selected.id]} />}
             </div>
-            {selected && <ForecastDetailPanel f={selected} series={series[selected.id]} />}
+            <div className="lg:col-span-2 xl:col-span-1">
+              <div className="mb-3 text-sm font-semibold text-foreground">분석자 패널</div>
+              <ForecastAnalystPanel
+                forecast={selected}
+                forecasts={open}
+                dataUpdates={dataUpdates}
+                riskNotes={riskNotes}
+              />
+            </div>
           </div>
-          <div className="lg:col-span-2 xl:col-span-1">
-            <div className="mb-3 text-sm font-semibold text-foreground">분석자 패널</div>
-            <ForecastAnalystPanel forecast={selected} forecasts={open} dataUpdates={dataUpdates} riskNotes={riskNotes} />
-          </div>
-        </div>
-      )}
+        )}
 
-      <ForecastMethodology />
-    </div>
-    </>
+        <ForecastMethodology />
+      </div>
+    </main>
   );
 }
 

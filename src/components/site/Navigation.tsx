@@ -19,7 +19,7 @@ const SUB_GNB = [
   { to: "/eurasia", label: "유라시아" },
   { to: "/policy", label: "포트" },
   { to: "/trade", label: "무역" },
-  { to: "/industries", label: "산업별" },
+  { to: "/industries", label: "산업" },
 ] as const;
 
 // 대시보드(다크 토글 허용) 영역
@@ -44,10 +44,7 @@ export function Navigation() {
 
   return (
     <header className="sticky top-0 z-50">
-      <div
-        className="border-b border-white/10"
-        style={{ background: "var(--color-navy-900)" }}
-      >
+      <div className="border-b border-white/10" style={{ background: "var(--color-navy-900)" }}>
         <div className="mx-auto flex h-14 max-w-[1540px] items-center gap-4 px-4 lg:px-12">
           <Logo className="text-lg lg:text-xl" />
 
@@ -143,7 +140,7 @@ export function Navigation() {
         )}
       </div>
 
-      {/* 대시보드 서브 GNB — 종합 | 전망 | 운임 | 유라시아 | 포트 | 무역 | 산업별 */}
+      {/* 대시보드 서브 GNB — 종합 | 전망 | 운임 | 유라시아 | 포트 | 무역 | 산업 */}
       {inDash && (
         <div
           className="hidden border-b border-white/10 lg:block"
