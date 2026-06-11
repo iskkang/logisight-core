@@ -31,14 +31,14 @@ import {
 
 import { alertCandidatesQueryOptions, type AlertCandidate } from "@/lib/api/alerts";
 import {
-  bunkerHistoryQueryOptions,
+  iataJetFuelQueryOptions,
   computeMoM,
   formatNumber,
   indexStatsQueryOptions,
   kitaAirRatesQueryOptions,
   kitaSeaRatesQueryOptions,
   latestByRoute,
-  type BunkerPriceRow,
+  type IataJetFuelRow,
   type IndexStats,
   type KitaAirRateRow,
   type KitaSeaRateRow,
@@ -75,7 +75,7 @@ export const Route = createFileRoute("/dashboard")({
     context.queryClient.ensureQueryData(eurasiaDisruptionsActiveQueryOptions());
     context.queryClient.ensureQueryData(eurasiaDelaysQueryOptions());
     context.queryClient.ensureQueryData(latestExchangeRateQueryOptions());
-    context.queryClient.ensureQueryData(bunkerHistoryQueryOptions());
+    context.queryClient.ensureQueryData(iataJetFuelQueryOptions());
     context.queryClient.ensureQueryData(publishedForecastsQueryOptions());
     context.queryClient.ensureQueryData(forecastSeriesQueryOptions());
     context.queryClient.ensureQueryData(riskNotesQueryOptions());
@@ -1186,62 +1186,44 @@ function ExchangeRateMiniPanel({ exRate }: { exRate: ExchangeRateRow | null }) {
   );
 }
 
-function JetFuelChartCard({ rows }: { rows: BunkerPriceRow[] }) {
-  const grades = useMemo(() => [...new Set(rows.map((r) => r.grade))].sort(), [rows]);
-
-  const jetGrade = useMemo(
-    () => grades.find((g) => /jet|kerosene|atf|avgas/i.test(g)) ?? grades[0] ?? null,
-    [grades],
+function JetFuelChartCard({ rows }: { rows: IataJetFuelRow[] }) {
+  const chartData = useMemo(
+    () =>
+      rows
+        .filter((r) => r.price_usd_bbl != null)
+        .map((r) => ({ date: r.as_of.slice(5), price: r.price_usd_bbl as number, full: r.as_of })),
+    [rows],
   );
 
-  const chartData = useMemo(() => {
-    const filtered = jetGrade ? rows.filter((r) => r.grade === jetGrade) : [];
-    const byDate = new Map<string, { sum: number; count: number }>();
-    for (const r of filtered) {
-      if (r.price_usd == null) continue;
-      const entry = byDate.get(r.obs_date) ?? { sum: 0, count: 0 };
-      entry.sum += r.price_usd;
-      entry.count += 1;
-      byDate.set(r.obs_date, entry);
-    }
-    return [...byDate.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, { sum, count }]) => ({
-        date: date.slice(5),
-        price: Math.round(sum / count),
-      }));
-  }, [rows, jetGrade]);
-
-  const latest = chartData.at(-1);
-  const prev = chartData.at(-2);
-  const mom =
-    latest && prev && prev.price > 0
-      ? ((latest.price - prev.price) / prev.price) * 100
-      : null;
-  const momUp = mom !== null && mom >= 0;
+  const latest = rows.at(-1);
+  const wow = latest?.fuel_wow_pct ?? null;
+  const wowUp = wow !== null && wow >= 0;
 
   return (
     <Panel>
-      <SectionTitle>항공유 가격 {jetGrade ? `(${jetGrade})` : ""}</SectionTitle>
+      <SectionTitle
+        link={
+          latest ? (
+            <span className="text-[10px] text-slate-400">IATA/Platts</span>
+          ) : undefined
+        }
+      >
+        항공유 가격
+      </SectionTitle>
       {chartData.length === 0 ? (
         <div className="rounded-md bg-slate-50 px-3 py-3 text-center text-[11px] text-slate-400">
-          {grades.length > 0
-            ? `수집 등급: ${grades.join(", ")}`
-            : "데이터 수집 중"}
+          데이터 수집 중
         </div>
       ) : (
         <>
           <div className="mb-2 flex items-baseline justify-between">
             <span className="text-xl font-black text-slate-900">
-              ${latest?.price.toLocaleString("en-US")}
-              <span className="ml-1 text-xs font-bold text-slate-400">/MT</span>
+              ${latest?.price_usd_bbl?.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+              <span className="ml-1 text-xs font-bold text-slate-400">/bbl</span>
             </span>
-            {mom !== null && (
-              <span
-                className={`text-xs font-black ${momUp ? "text-emerald-600" : "text-rose-600"}`}
-              >
-                {momUp ? "+" : ""}
-                {mom.toFixed(1)}%
+            {wow !== null && (
+              <span className={`text-xs font-black ${wowUp ? "text-emerald-600" : "text-rose-600"}`}>
+                {wowUp ? "+" : ""}{wow.toFixed(1)}% WoW
               </span>
             )}
           </div>
@@ -1257,13 +1239,9 @@ function JetFuelChartCard({ rows }: { rows: BunkerPriceRow[] }) {
                 <XAxis dataKey="date" hide />
                 <YAxis domain={["auto", "auto"]} hide />
                 <Tooltip
-                  contentStyle={{
-                    borderRadius: 8,
-                    border: "1px solid #e2e8f0",
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}
-                  formatter={(v: number) => [`$${v.toLocaleString("en-US")}`, "USD/MT"]}
+                  contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 11, fontWeight: 700 }}
+                  formatter={(v: number) => [`$${v.toFixed(2)}/bbl`, "Jet Fuel"]}
+                  labelFormatter={(l) => `기준일 ${l}`}
                 />
                 <Area
                   type="monotone"
@@ -1277,7 +1255,7 @@ function JetFuelChartCard({ rows }: { rows: BunkerPriceRow[] }) {
             </ResponsiveContainer>
           </div>
           <div className="mt-1 text-right text-[10px] text-slate-400">
-            기준일 {latest?.date}
+            기준일 {latest?.as_of?.slice(0, 10)}
           </div>
         </>
       )}
@@ -1327,7 +1305,7 @@ function DashboardPage() {
   const { data: disruptions } = useSuspenseQuery(eurasiaDisruptionsActiveQueryOptions());
   const { data: delays } = useSuspenseQuery(eurasiaDelaysQueryOptions());
   const { data: exRate } = useSuspenseQuery(latestExchangeRateQueryOptions());
-  const { data: bunkerHistory } = useSuspenseQuery(bunkerHistoryQueryOptions());
+  const { data: jetFuelHistory } = useSuspenseQuery(iataJetFuelQueryOptions());
   const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
   const { data: series } = useSuspenseQuery(forecastSeriesQueryOptions());
   const { data: riskNotes } = useSuspenseQuery(riskNotesQueryOptions());
@@ -1387,7 +1365,7 @@ function DashboardPage() {
               modelVersion={modelVersion}
             />
             <ExchangeRateMiniPanel exRate={exRate ?? null} />
-            <JetFuelChartCard rows={bunkerHistory} />
+            <JetFuelChartCard rows={jetFuelHistory} />
           </aside>
 
           <section className="min-w-0 space-y-3">

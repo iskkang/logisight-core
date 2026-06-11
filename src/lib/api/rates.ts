@@ -6,10 +6,13 @@ import {
   getFreightRates,
   getBunkerPrices,
   getBunkerHistory,
+  getIataJetFuelHistory,
   getKitaAirRates,
   getKitaSeaRates,
   getIndexStats,
 } from "./rates.functions";
+
+export type { IataJetFuelRow } from "./rates.functions";
 
 export type FreightIndexHistoryRow = {
   index_code: string;
@@ -100,6 +103,13 @@ export const bunkerHistoryQueryOptions = () =>
     queryKey: ["bunker_prices", "history"],
     queryFn: () => getBunkerHistory(),
     staleTime: 10 * 60 * 1000,
+  });
+
+export const iataJetFuelQueryOptions = () =>
+  queryOptions({
+    queryKey: ["iata_jet_fuel", "history"],
+    queryFn: () => getIataJetFuelHistory(),
+    staleTime: 60 * 60 * 1000,
   });
 
 // KITA air rates: kg100/300/500 are KRW/kg. chg fields are absolute KRW/kg deltas.

@@ -253,6 +253,29 @@ export const getIndexStats = createServerFn({ method: "GET" }).handler(
   },
 );
 
+export type IataJetFuelRow = {
+  as_of: string;
+  price_usd_bbl: number | null;
+  fuel_wow_pct: number | null;
+  span_label: string | null;
+  source: string | null;
+};
+
+export const getIataJetFuelHistory = createServerFn({ method: "GET" }).handler(
+  async (): Promise<IataJetFuelRow[]> => {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - 6);
+    const { data, error } = await supabasePublicServer
+      .from("iata_jet_fuel_weekly")
+      .select("as_of,price_usd_bbl,fuel_wow_pct,span_label,source")
+      .gte("as_of", cutoff.toISOString().split("T")[0])
+      .order("as_of", { ascending: true })
+      .limit(30);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as unknown as IataJetFuelRow[];
+  },
+);
+
 export const getBunkerHistory = createServerFn({ method: "GET" }).handler(
   async (): Promise<BunkerPriceRow[]> => {
     const cutoff = new Date();
