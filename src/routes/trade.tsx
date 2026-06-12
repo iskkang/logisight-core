@@ -1,34 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import {
-  ArrowDownRight,
-  ArrowUpRight,
-  Box,
-  CalendarDays,
-  Database,
-  Download,
-  Globe2,
-  Package,
-  RefreshCw,
-  Scale,
-  Share2,
-  Sparkles,
-} from "lucide-react";
-import {
-  Area,
-  AreaChart,
   Bar,
-  BarChart,
   CartesianGrid,
+  ComposedChart,
+  Legend,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 
 import {
   formatPeriod,
@@ -39,9 +22,19 @@ import {
 } from "@/lib/api/trade";
 import { indexStatsQueryOptions, formatNumber } from "@/lib/api/rates";
 import { PageHero } from "@/components/site/PageHero";
-import { ISO2_TO_NUMERIC, flagEmoji } from "@/lib/iso-country-codes";
-
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+import {
+  Collecting,
+  DeltaValue,
+  Donut,
+  FilterSeg,
+  Panel,
+  PBadge,
+  PCard,
+  tdStyle,
+  thStyle,
+  TreemapChart,
+} from "@/components/proto/Kit";
+import { flagEmoji } from "@/lib/iso-country-codes";
 
 export const Route = createFileRoute("/trade")({
   loader: async ({ context }) => {
@@ -238,16 +231,6 @@ function money(v: number | null | undefined): string {
 function moneyUsd(v: number | null | undefined): string {
   const m = money(v);
   return m === "-" ? m : `$${m}`;
-}
-
-function pct(v: number | null | undefined, digits = 1): string {
-  if (v == null || !Number.isFinite(v)) return "-";
-  return `${v >= 0 ? "+" : ""}${v.toFixed(digits)}%`;
-}
-
-function toneFor(v: number | null | undefined): string {
-  if (v == null || v === 0) return "text-slate-500";
-  return v > 0 ? "text-emerald-600" : "text-red-500";
 }
 
 function sum(values: number[]): number {
@@ -508,22 +491,39 @@ function useTradeModel(bundle: TradeStatisticsBundle, region: RegionKey, metric:
   }, [bundle, region, metric]);
 }
 
+const METRIC_KO = ["교역액", "수출액", "수입액", "무역수지"] as const;
+type MetricKo = (typeof METRIC_KO)[number];
+const METRIC_BY_KO: Record<MetricKo, MetricMode> = {
+  교역액: "total",
+  수출액: "export",
+  수입액: "import",
+  무역수지: "balance",
+};
+
 function TradePage() {
   const { data: bundle } = useSuspenseQuery(tradeStatisticsBundleQueryOptions());
   const { data: indexStats } = useSuspenseQuery(indexStatsQueryOptions());
   const [region, setRegion] = useState<RegionKey>("전체");
-  const [metric, setMetric] = useState<MetricMode>("total");
+  const [metricKo, setMetricKo] = useState<MetricKo>("교역액");
+  const metric = METRIC_BY_KO[metricKo];
 
   const model = useTradeModel(bundle, region, metric);
   const indexSnapshot = indexStats.filter((s) => s.latest_value != null).slice(0, 6);
-  const topCountry = model.countries[0] ?? null;
-  const topItem = model.items[0] ?? null;
-  const topContinent = model.continents[0] ?? null;
-  const topNewnature =
-    [...model.newnatureRows].sort(
-      (a, b) =>
-        (b.export_usd ?? 0) + (b.import_usd ?? 0) - ((a.export_usd ?? 0) + (a.import_usd ?? 0)),
-    )[0] ?? null;
+
+  const donutSegments = useMemo(() => {
+    const tops = model.continents
+      .slice(0, 4)
+      .map((c) => ({ label: c.name, value: Math.max(0, metricValue(c, metric)) }));
+    const rest = model.continents
+      .slice(4)
+      .reduce((s, c) => s + Math.max(0, metricValue(c, metric)), 0);
+    return rest > 0 ? [...tops, { label: "기타", value: rest }] : tops;
+  }, [model.continents, metric]);
+
+  const provisionalBadge = model.snapshot.period
+    ? `잠정 ${formatPeriod(model.snapshot.period)}`
+    : "수집 중";
+  const monthly = model.monthly.slice(-12);
 
   return (
     <main className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
@@ -545,627 +545,333 @@ function TradePage() {
           },
         ]}
       />
-      <section className="mx-auto max-w-[1540px] px-4 py-[26px] lg:px-12">
-        <div className="mb-3 flex items-center justify-end gap-2">
-          <ActionButton icon={<Download className="h-4 w-4" />}>리포트 다운로드</ActionButton>
-          <ActionButton icon={<Share2 className="h-4 w-4" />}>공유</ActionButton>
+      <section className="mx-auto max-w-[1540px] space-y-4 px-4 py-[26px] lg:px-12">
+        {/* 필터 — 목적 권역 + 지표 */}
+        <PCard pad="md">
+          <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+            <FilterSeg label="목적 권역" options={REGIONS} value={region} onChange={setRegion} />
+            <FilterSeg label="지표" options={METRIC_KO} value={metricKo} onChange={setMetricKo} />
+            <span
+              style={{
+                marginLeft: "auto",
+                fontSize: 11.5,
+                color: "var(--ink-muted)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              확정 {formatPeriod(model.latestCountryPeriod)} · 잠정{" "}
+              {formatPeriod(model.snapshot.period)}
+            </span>
+          </div>
+        </PCard>
+
+        {/* KPI — 잠정 스냅샷 (provisional_exp/imp) */}
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          <TradeKpi
+            label="전체 교역액"
+            value={moneyUsd(model.totalTrade)}
+            yoy={model.totalTradeYoY}
+            badge={provisionalBadge}
+          />
+          <TradeKpi
+            label="수출액"
+            value={moneyUsd(model.snapshot.exportUsd)}
+            yoy={model.snapshot.exportYoY}
+            badge={provisionalBadge}
+          />
+          <TradeKpi
+            label="수입액"
+            value={moneyUsd(model.snapshot.importUsd)}
+            yoy={model.snapshot.importYoY}
+            badge={provisionalBadge}
+          />
+          <TradeKpi
+            label="무역수지"
+            value={moneyUsd(model.snapshot.balanceUsd)}
+            yoy={model.snapshot.balanceYoY}
+            badge={provisionalBadge}
+            sub={
+              model.snapshot.balanceUsd != null
+                ? model.snapshot.balanceUsd >= 0
+                  ? "흑자"
+                  : "적자"
+                : undefined
+            }
+          />
         </div>
 
-        <FilterBar
-          region={region}
-          metric={metric}
-          onRegion={setRegion}
-          onMetric={setMetric}
-          model={model}
-        />
+        {/* 월별 콤보 차트 + 대륙별 도넛 */}
+        <div className="grid items-start gap-4 xl:grid-cols-[1.5fr_1fr]">
+          <Panel title="월별 수출·수입·무역수지" badge={<PBadge>country 확정 집계 · USD</PBadge>}>
+            {monthly.length >= 2 ? (
+              <ResponsiveContainer width="100%" height={236}>
+                <ComposedChart data={monthly} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                  <CartesianGrid stroke="var(--border)" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 10, fill: "var(--ink-muted)" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={formatAxisUsd}
+                    width={52}
+                    tick={{ fontSize: 10, fill: "var(--ink-muted)" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    formatter={(v) => moneyUsd(Number(v))}
+                    contentStyle={{
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar name="수출" dataKey="exportUsd" fill="var(--navy-600)" radius={[3, 3, 0, 0]} />
+                  <Bar name="수입" dataKey="importUsd" fill="#b6c5dc" radius={[3, 3, 0, 0]} />
+                  <Line
+                    name="무역수지"
+                    type="monotone"
+                    dataKey="balanceUsd"
+                    stroke="var(--status-caution)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <Collecting note="월별 확정 집계가 누적되면 추이가 표시됩니다." />
+            )}
+          </Panel>
+          <Panel
+            title="대륙별 교역 비중"
+            badge={<PBadge>continent 확정 · {formatPeriod(model.latestContinentPeriod)}</PBadge>}
+          >
+            <Donut
+              segments={donutSegments}
+              centerLabel={moneyUsd(donutSegments.reduce((s, x) => s + x.value, 0))}
+              centerSub={metricKo}
+              format={(v) => moneyUsd(v)}
+            />
+          </Panel>
+        </div>
 
-        <section className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <KpiCard
-            icon={<Globe2 className="h-6 w-6" />}
-            label="전체 교역액(USD)"
-            value={money(model.totalTrade)}
-            change={model.totalTradeYoY}
-            sub={`잠정 전체 · ${formatPeriod(model.snapshot.period)} ${model.snapshot.priodDt ?? ""}`}
-          />
-          <KpiCard
-            icon={<ArrowUpRight className="h-6 w-6" />}
-            label="수출액(USD)"
-            value={money(model.snapshot.exportUsd)}
-            change={model.snapshot.exportYoY}
-            sub="provisional_exp 전체값"
-          />
-          <KpiCard
-            icon={<Box className="h-6 w-6" />}
-            label="수입액(USD)"
-            value={money(model.snapshot.importUsd)}
-            change={model.snapshot.importYoY}
-            sub="provisional_imp 전체값"
-          />
-          <KpiCard
-            icon={<Scale className="h-6 w-6" />}
-            label="무역수지(USD)"
-            value={money(model.snapshot.balanceUsd)}
-            change={model.snapshot.balanceYoY}
-            sub="수출액 - 수입액"
-          />
-        </section>
+        {/* 국가별 트리맵 */}
+        <Panel
+          title="국가별 교역액 트리맵"
+          badge={<PBadge>상위 10개국 · 면적 = {metricKo}</PBadge>}
+        >
+          {model.countries.length === 0 ? (
+            <Collecting />
+          ) : (
+            <TreemapChart
+              items={model.countries
+                .slice(0, 10)
+                .map((c) => ({ label: c.name, value: metricValue(c, metric) }))}
+              height={300}
+              format={(v) => moneyUsd(v)}
+            />
+          )}
+        </Panel>
 
-        <section className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)]">
-          <Panel className="min-h-[360px]">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h2 className="text-sm font-black text-slate-900">국가별 교역액(USD)</h2>
-                <p className="text-[11px] font-semibold text-slate-500">
-                  {formatPeriod(model.latestCountryPeriod)} · {model.countries.length}개국
-                </p>
+        {/* 주요국 TOP 10 + 잠정 안내 / 상위 품목 */}
+        <div className="grid items-start gap-4 xl:grid-cols-[1.5fr_1fr]">
+          <Panel
+            title="주요국 교역 TOP 10"
+            badge={
+              <PBadge>
+                {metricKo} 기준 · {formatPeriod(model.latestCountryPeriod)}
+              </PBadge>
+            }
+            bodyPad={0}
+          >
+            {model.countries.length === 0 ? (
+              <Collecting />
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle("left")}>순위</th>
+                      <th style={thStyle("left")}>국가</th>
+                      <th style={thStyle("right")}>{metricKo} (USD)</th>
+                      <th style={thStyle("right")}>전년대비</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {model.countries.slice(0, 10).map((c, i) => (
+                      <tr key={c.code}>
+                        <td style={{ ...tdStyle("left"), fontFamily: "var(--font-mono)", color: "var(--ink-muted)" }}>
+                          {i + 1}
+                        </td>
+                        <td style={{ ...tdStyle("left"), fontWeight: 600, color: "var(--ink)" }}>
+                          <span style={{ marginRight: 8 }}>{flagEmoji(c.code)}</span>
+                          {c.name}
+                          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--ink-muted)" }}>{c.region}</span>
+                        </td>
+                        <td style={{ ...tdStyle("right"), fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--ink)" }}>
+                          {moneyUsd(metricValue(c, metric))}
+                        </td>
+                        <td style={tdStyle("right")}>
+                          <DeltaValue value={c.changePct} size={12} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div className="flex flex-wrap gap-1">
-                {REGIONS.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setRegion(r)}
-                    className={[
-                      "rounded-md px-3 py-1.5 text-xs font-black transition",
-                      region === r
-                        ? "bg-[#061a35] text-white"
-                        : "bg-white text-slate-600 hover:bg-blue-50",
-                    ].join(" ")}
+            )}
+          </Panel>
+
+          <div className="space-y-4">
+            <Panel title="잠정 데이터 안내" bodyPad={16}>
+              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: "var(--ink-muted)" }}>
+                {formatPeriod(model.snapshot.period)} 데이터는{" "}
+                <b style={{ color: "var(--ink)" }}>
+                  잠정{model.snapshot.priodDt ? ` (${model.snapshot.priodDt} 집계)` : ""}
+                </b>
+                으로 부분집계입니다. 확정치는 익월 갱신됩니다. 수출액 − 수입액 = 무역수지가
+                화면에서 일치합니다.
+              </p>
+            </Panel>
+            <Panel
+              title="상위 품목 TOP 5"
+              badge={<PBadge>item · {formatPeriod(model.latestItemPeriod)}</PBadge>}
+              bodyPad={16}
+            >
+              {model.items.length === 0 ? (
+                <Collecting />
+              ) : (
+                <>
+                  {model.items.slice(0, 5).map((item, i) => (
+                    <div
+                      key={item.code}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        padding: "9px 0",
+                        borderTop: i ? "1px solid var(--border)" : "none",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 13,
+                          color: "var(--ink)",
+                          minWidth: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {compactName(item.name, 16)}
+                      </span>
+                      <span style={{ display: "flex", alignItems: "baseline", gap: 10, flexShrink: 0 }}>
+                        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--ink)" }}>
+                          {moneyUsd(metricValue(item, metric))}
+                        </span>
+                        <DeltaValue value={item.changePct} size={11} />
+                      </span>
+                    </div>
+                  ))}
+                  <Link
+                    to="/industries"
+                    className="mt-3 inline-flex w-full items-center justify-center rounded-md border border-border px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
                   >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <TradeMapPanel countries={model.countries} />
-          </Panel>
-
-          <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-1">
-            <RankingPanel
-              title="주요 국가 TOP 10"
-              caption={`${metricLabel(metric)} · country`}
-              rows={model.countries.slice(0, 10).map((country) => ({
-                key: country.code,
-                flagCode: country.code,
-                name: country.name,
-                value: metricValue(country, metric),
-                change: country.changePct,
-              }))}
-            />
-            <RankingPanel
-              title="상위 품목 TOP 10"
-              caption={`${metricLabel(metric)} · item ${formatPeriod(model.latestItemPeriod)}`}
-              rows={model.items.slice(0, 10).map((item) => ({
-                key: item.code,
-                name: item.name,
-                value: metricValue(item, metric),
-                change: item.changePct,
-              }))}
-            />
+                    산업별(HS) 랭킹 보기
+                  </Link>
+                </>
+              )}
+            </Panel>
           </div>
-        </section>
+        </div>
 
-        <section className="mt-3 grid gap-3 xl:grid-cols-[repeat(3,minmax(0,1fr))_360px]">
-          <TrendCard
-            title="월별 수출 추이 (USD)"
-            value={money(model.snapshot.exportUsd)}
-            change={model.snapshot.exportYoY}
-          >
-            <ResponsiveContainer width="100%" height={190}>
-              <LineChart data={model.monthly}>
-                <CartesianGrid stroke="#e5edf6" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={formatAxisUsd} tick={{ fontSize: 11 }} width={48} />
-                <Tooltip
-                  formatter={(v) => moneyUsd(Number(v))}
-                  labelFormatter={(label) => `${label}`}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="exportUsd"
-                  stroke="#2563eb"
-                  strokeWidth={2.5}
-                  dot={{ r: 3 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </TrendCard>
-          <TrendCard
-            title="월별 수입 추이 (USD)"
-            value={money(model.snapshot.importUsd)}
-            change={model.snapshot.importYoY}
-          >
-            <ResponsiveContainer width="100%" height={190}>
-              <AreaChart data={model.monthly}>
-                <CartesianGrid stroke="#e5edf6" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={formatAxisUsd} tick={{ fontSize: 11 }} width={48} />
-                <Tooltip formatter={(v) => moneyUsd(Number(v))} />
-                <Area
-                  type="monotone"
-                  dataKey="importUsd"
-                  stroke="#0ea5e9"
-                  fill="#bfdbfe"
-                  strokeWidth={2.5}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </TrendCard>
-          <TrendCard
-            title="무역수지 추이 (USD)"
-            value={money(model.snapshot.balanceUsd)}
-            change={model.snapshot.balanceYoY}
-          >
-            <ResponsiveContainer width="100%" height={190}>
-              <BarChart data={model.monthly}>
-                <CartesianGrid stroke="#e5edf6" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={formatAxisUsd} tick={{ fontSize: 11 }} width={48} />
-                <Tooltip formatter={(v) => moneyUsd(Number(v))} />
-                <Bar dataKey="balanceUsd" fill="#60a5fa" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </TrendCard>
-
-          <aside className="space-y-3">
-            <InsightPanel
-              topContinent={topContinent}
-              topCountry={topCountry}
-              topItem={topItem}
-              topNewnature={topNewnature}
-              balance={model.snapshot.balanceUsd}
-            />
-          </aside>
-        </section>
-
-        <section className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <Panel>
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-black text-slate-900">대륙별 교역 현황</h2>
-                <p className="text-[11px] font-semibold text-slate-500">
-                  `continent` 확정치 · {formatPeriod(model.latestContinentPeriod)}
-                </p>
-              </div>
-              <span className="text-[11px] font-bold text-slate-400">{metricLabel(metric)}</span>
-            </div>
-            <div className="grid gap-2 md:grid-cols-3">
-              {model.continents.map((continent) => (
-                <div
-                  key={continent.code}
-                  className="rounded-lg border border-slate-200 bg-slate-50 p-3"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-black text-slate-800">{continent.name}</span>
-                    <span className="text-xs font-black text-blue-600">
-                      {money(metricValue(continent, metric))}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-[11px] font-semibold text-slate-500">
-                    수출 {moneyUsd(continent.exportUsd)} · 수입 {moneyUsd(continent.importUsd)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Panel>
-          <Panel>
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-black text-slate-900">글로벌 주요 지수</h2>
-                <p className="text-[11px] font-semibold text-slate-500">
-                  freight_indices 저장 데이터 기준
-                </p>
-              </div>
-              <span className="text-[11px] font-bold text-slate-400">
-                기준 {indexSnapshot[0]?.latest_date?.slice(0, 10) ?? "-"}
-              </span>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
+        {/* 글로벌 주요 지수 */}
+        <Panel
+          title="글로벌 주요 지수"
+          badge={
+            <PBadge>
+              freight_indices · 기준 {indexSnapshot[0]?.latest_date?.slice(0, 10) ?? "—"}
+            </PBadge>
+          }
+        >
+          {indexSnapshot.length === 0 ? (
+            <Collecting />
+          ) : (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
               {indexSnapshot.map((row) => (
-                <div
-                  key={row.index_code}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-black text-slate-500">{row.index_code}</span>
-                    <span className={`text-xs font-black ${toneFor(row.change_pct)}`}>
-                      {pct(row.change_pct)}
-                    </span>
+                <PCard key={row.index_code} pad="md">
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-muted)" }}>
+                    {row.index_code}
                   </div>
-                  <p className="mt-1 text-lg font-black tabular-nums">
+                  <div
+                    style={{
+                      marginTop: 4,
+                      fontSize: 18,
+                      fontWeight: 700,
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--ink)",
+                    }}
+                  >
                     {formatNumber(row.latest_value, 2)}
-                  </p>
-                </div>
+                  </div>
+                  <div style={{ marginTop: 2 }}>
+                    <DeltaValue value={row.change_pct} size={11} />
+                  </div>
+                </PCard>
               ))}
             </div>
-          </Panel>
-        </section>
+          )}
+        </Panel>
       </section>
     </main>
   );
 }
 
-function FilterBar({
-  region,
-  metric,
-  onRegion,
-  onMetric,
-  model,
-}: {
-  region: RegionKey;
-  metric: MetricMode;
-  onRegion: (r: RegionKey) => void;
-  onMetric: (m: MetricMode) => void;
-  model: ReturnType<typeof useTradeModel>;
-}) {
-  return (
-    <section className="rounded-lg border border-[#d8e3ef] bg-white p-3 shadow-[0_10px_28px_rgba(15,35,65,0.06)]">
-      <div className="grid gap-2 lg:grid-cols-[1.2fr_1fr_1fr_0.8fr_auto]">
-        <FilterBox label="기간" icon={<CalendarDays className="h-4 w-4" />}>
-          확정 {formatPeriod(model.latestCountryPeriod)} · 잠정{" "}
-          {formatPeriod(model.snapshot.period)}
-        </FilterBox>
-        <FilterSelect label="출발국" value="대한민국" />
-        <label className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-          <span className="block text-[11px] font-bold text-slate-500">목적권역</span>
-          <select
-            value={region}
-            onChange={(event) => onRegion(event.target.value as RegionKey)}
-            className="mt-1 w-full bg-transparent text-sm font-black outline-none"
-          >
-            {REGIONS.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-          <span className="block text-[11px] font-bold text-slate-500">지표</span>
-          <select
-            value={metric}
-            onChange={(event) => onMetric(event.target.value as MetricMode)}
-            className="mt-1 w-full bg-transparent text-sm font-black outline-none"
-          >
-            <option value="total">교역액</option>
-            <option value="export">수출액</option>
-            <option value="import">수입액</option>
-            <option value="balance">무역수지</option>
-          </select>
-        </label>
-        <button
-          type="button"
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#061a35] px-5 text-sm font-black text-white"
-        >
-          <RefreshCw className="h-4 w-4" />
-          적용하기
-        </button>
-      </div>
-    </section>
-  );
-}
-
-function FilterBox({
-  label,
-  icon,
-  children,
-}: {
-  label: string;
-  icon: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-      <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
-        {icon}
-        {label}
-      </span>
-      <p className="mt-1 text-sm font-black text-slate-800">{children}</p>
-    </div>
-  );
-}
-
-function FilterSelect({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-      <span className="block text-[11px] font-bold text-slate-500">{label}</span>
-      <p className="mt-1 text-sm font-black text-slate-800">{value}</p>
-    </div>
-  );
-}
-
-function ActionButton({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 shadow-sm"
-    >
-      {icon}
-      {children}
-    </button>
-  );
-}
-
-function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return (
-    <section
-      className={`rounded-lg border border-[#d8e3ef] bg-white p-4 shadow-[0_10px_28px_rgba(15,35,65,0.06)] ${className}`}
-    >
-      {children}
-    </section>
-  );
-}
-
-function KpiCard({
-  icon,
+function TradeKpi({
   label,
   value,
-  change,
+  yoy,
+  badge,
   sub,
 }: {
-  icon: ReactNode;
   label: string;
   value: string;
-  change: number | null;
-  sub: string;
+  yoy: number | null;
+  badge: string;
+  sub?: string;
 }) {
   return (
-    <Panel>
-      <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50 text-blue-600">
-          {icon}
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs font-black text-slate-600">{label}</p>
-          <div className="mt-1 flex flex-wrap items-baseline gap-2">
-            <strong className="text-2xl font-black tracking-normal text-slate-950">{value}</strong>
-            <span className={`text-xs font-black ${toneFor(change)}`}>{pct(change)}</span>
-          </div>
-          <p className="mt-1 text-[11px] font-semibold text-slate-500">{sub}</p>
-        </div>
+    <PCard pad="md">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 12, color: "var(--ink-muted)" }}>{label}</span>
+        <PBadge variant="secondary">{badge}</PBadge>
       </div>
-    </Panel>
-  );
-}
-
-function RankingPanel({
-  title,
-  caption,
-  rows,
-}: {
-  title: string;
-  caption: string;
-  rows: { key: string; name: string; value: number; change: number | null; flagCode?: string }[];
-}) {
-  return (
-    <Panel>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-black text-slate-900">{title}</h2>
-        <span className="text-[11px] font-bold text-slate-400">{caption}</span>
+      <div
+        style={{
+          fontSize: 24,
+          fontWeight: 700,
+          fontFamily: "var(--font-mono)",
+          color: "var(--ink)",
+          marginTop: 8,
+        }}
+      >
+        {value}
       </div>
-      <div className="space-y-2">
-        {rows.map((row, index) => (
-          <div
-            key={row.key}
-            className="grid grid-cols-[26px_minmax(0,1fr)_auto_auto] items-center gap-2 text-xs"
-          >
-            <span className="text-center font-black text-slate-500">{index + 1}</span>
-            <span className="flex min-w-0 items-center gap-1.5 font-bold text-slate-700">
-              {row.flagCode ? (
-                <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200">
-                  <img
-                    src={`https://flagcdn.com/w40/${row.flagCode.toLowerCase()}.png`}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                </span>
-              ) : null}
-              <span className="min-w-0 truncate">{compactName(row.name, 18)}</span>
-            </span>
-            <span className="font-black tabular-nums text-slate-900">{money(row.value)}</span>
-            <span className={`w-14 text-right font-black tabular-nums ${toneFor(row.change)}`}>
-              {pct(row.change)}
-            </span>
-          </div>
-        ))}
-        {rows.length === 0 && (
-          <p className="text-sm font-semibold text-slate-500">표시할 저장 데이터가 없습니다.</p>
-        )}
-      </div>
-    </Panel>
-  );
-}
-
-function TradeMapPanel({ countries }: { countries: CountryAgg[] }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const byNumeric = useMemo(() => {
-    const map = new Map<string, CountryAgg>();
-    for (const country of countries) {
-      const numeric = ISO2_TO_NUMERIC[country.code];
-      if (numeric) map.set(numeric, country);
-    }
-    return map;
-  }, [countries]);
-  const max = Math.max(...countries.map((c) => c.tradeUsd), 1);
-  const top = countries.slice(0, 6);
-
-  return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_210px]">
-      <div className="relative min-h-[280px] overflow-hidden rounded-lg bg-[#f4f8fd]">
-        {mounted ? (
-          <ComposableMap
-            projection="geoNaturalEarth1"
-            projectionConfig={{ scale: 165 }}
-            className="h-full w-full"
-          >
-            <Geographies geography={GEO_URL}>
-              {({ geographies }) =>
-                geographies.map((geo) => {
-                  const id = String(geo.id).padStart(3, "0");
-                  const row = byNumeric.get(id);
-                  const ratio = row ? Math.min(Math.max(row.tradeUsd / max, 0.08), 1) : 0;
-                  const fill = row ? `rgba(37, 99, 235, ${0.18 + ratio * 0.68})` : "#dfe8f3";
-                  return (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      fill={fill}
-                      stroke="#ffffff"
-                      strokeWidth={0.45}
-                      style={{
-                        default: { outline: "none" },
-                        hover: { outline: "none", fill: row ? "#1d4ed8" : "#cbd5e1" },
-                        pressed: { outline: "none" },
-                      }}
-                    />
-                  );
-                })
-              }
-            </Geographies>
-          </ComposableMap>
+      <div style={{ marginTop: 4, display: "flex", alignItems: "baseline", gap: 8 }}>
+        {yoy != null ? (
+          <DeltaValue value={yoy} size={12} />
         ) : (
-          <div className="flex h-[280px] items-center justify-center text-sm font-semibold text-slate-400">
-            지도 로딩 중
-          </div>
+          <span style={{ fontSize: 12, color: "var(--ink-muted)" }}>—</span>
         )}
-        <div className="absolute bottom-4 left-4 rounded-md bg-white/90 p-2 text-[11px] font-bold text-slate-600 shadow-sm">
-          <div className="mb-1">교역액 강도</div>
-          <div className="flex items-center gap-1">
-            {["#dbeafe", "#93c5fd", "#3b82f6", "#1d4ed8"].map((c) => (
-              <span key={c} className="h-3 w-5 rounded-sm" style={{ backgroundColor: c }} />
-            ))}
-          </div>
-        </div>
+        <span style={{ fontSize: 11, color: "var(--ink-muted)" }}>
+          전년동기{sub ? ` · ${sub}` : ""}
+        </span>
       </div>
-      <div className="space-y-2">
-        {top.map((country) => (
-          <div key={country.code} className="rounded-lg border border-slate-200 bg-white p-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-black text-slate-800">
-                {flagEmoji(country.code)} {country.name}
-              </span>
-              <span className={`text-xs font-black ${toneFor(country.changePct)}`}>
-                {pct(country.changePct)}
-              </span>
-            </div>
-            <div className="mt-2 h-1.5 rounded-full bg-slate-100">
-              <div
-                className="h-1.5 rounded-full bg-blue-600"
-                style={{ width: `${Math.max((country.tradeUsd / max) * 100, 5)}%` }}
-              />
-            </div>
-            <p className="mt-1 text-[11px] font-bold text-slate-500">
-              교역액 {moneyUsd(country.tradeUsd)}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TrendCard({
-  title,
-  value,
-  change,
-  children,
-}: {
-  title: string;
-  value: string;
-  change: number | null;
-  children: ReactNode;
-}) {
-  return (
-    <Panel>
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <h2 className="text-sm font-black text-slate-900">{title}</h2>
-        <div className="text-right">
-          <p className="text-sm font-black tabular-nums text-slate-900">{value}</p>
-          <p className={`text-xs font-black tabular-nums ${toneFor(change)}`}>{pct(change)}</p>
-        </div>
-      </div>
-      {children}
-    </Panel>
-  );
-}
-
-function InsightPanel({
-  topContinent,
-  topCountry,
-  topItem,
-  topNewnature,
-  balance,
-}: {
-  topContinent: ContinentAgg | null;
-  topCountry: CountryAgg | null;
-  topItem: ItemAgg | null;
-  topNewnature: TradeStatRow | null;
-  balance: number | null | undefined;
-}) {
-  const insights = [
-    topContinent
-      ? {
-          title: `${topContinent.name} 교역 비중 우위`,
-          body: `continent 기준 교역액 ${moneyUsd(topContinent.tradeUsd)}로 최신 확정 기간의 상위 권역입니다.`,
-          icon: <Globe2 className="h-5 w-5" />,
-        }
-      : null,
-    topCountry
-      ? {
-          title: `${topCountry.name} 국가 교역 상위`,
-          body: `country 기준 교역액 ${moneyUsd(topCountry.tradeUsd)}, 변화율 ${pct(topCountry.changePct)}입니다.`,
-          icon: <Sparkles className="h-5 w-5" />,
-        }
-      : null,
-    topItem
-      ? {
-          title: `${topItem.name} 품목 집중`,
-          body: `item 기준 교역액 ${moneyUsd(topItem.tradeUsd)}로 최신 품목 통계의 상위 품목입니다.`,
-          icon: <Package className="h-5 w-5" />,
-        }
-      : null,
-    topNewnature
-      ? {
-          title: `${topNewnature.hs_name ?? topNewnature.hs_code} 신성질 분류`,
-          body: `newnature 저장 행 기준 ${topNewnature.country_name ?? topNewnature.country_code} 교역액 ${moneyUsd((topNewnature.export_usd ?? 0) + (topNewnature.import_usd ?? 0))}입니다.`,
-          icon: <Database className="h-5 w-5" />,
-        }
-      : null,
-    balance != null
-      ? {
-          title: balance >= 0 ? "무역수지 흑자" : "무역수지 적자",
-          body: `잠정 전체 기준 무역수지는 ${moneyUsd(balance)}입니다.`,
-          icon:
-            balance >= 0 ? (
-              <ArrowUpRight className="h-5 w-5" />
-            ) : (
-              <ArrowDownRight className="h-5 w-5" />
-            ),
-        }
-      : null,
-  ].filter((x): x is { title: string; body: string; icon: ReactNode } => Boolean(x));
-
-  return (
-    <Panel>
-      <div className="mb-3 flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-blue-600" />
-        <h2 className="text-sm font-black text-slate-900">시장 인사이트 요약</h2>
-      </div>
-      <div className="space-y-4">
-        {insights.slice(0, 4).map((insight) => (
-          <div key={insight.title} className="flex gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              {insight.icon}
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-800">{insight.title}</h3>
-              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{insight.body}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </Panel>
+    </PCard>
   );
 }

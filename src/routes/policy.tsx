@@ -3,19 +3,26 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
-import { StatusStrip, type StatusItem } from "@/components/dashboard/StatusStrip";
 import { DetailDrawer } from "@/components/dashboard/DetailDrawer";
 import { Sparkline } from "@/components/dashboard/Sparkline";
+import {
+  Collecting,
+  DeltaValue,
+  Panel,
+  PBadge,
+  PCard,
+  RankedBars,
+  StatusPill,
+  tdStyle,
+  thStyle,
+} from "@/components/proto/Kit";
 
 import { policiesQueryOptions, type PolicyRow } from "@/lib/api/policies";
 import {
   riskSnapshotQueryOptions,
   type AiRiskBriefing,
   type ChokepointRiskRow,
-  type HormuzRisk,
-  type MacroRiskRow,
   type MacroTrend,
-  type PortRiskRow,
 } from "@/lib/api/risk";
 
 export const Route = createFileRoute("/policy")({
@@ -95,21 +102,6 @@ function riskTone(value: number | null | undefined): "alert" | "caution" | "norm
   if (value >= 75) return "alert";
   if (value >= 60) return "caution";
   return "normal";
-}
-
-function toneClasses(tone: "alert" | "caution" | "normal"): string {
-  if (tone === "alert") return "border-status-alert/35 bg-status-alert/10 text-status-alert";
-  if (tone === "caution")
-    return "border-status-caution/35 bg-status-caution/10 text-status-caution";
-  return "border-border bg-card text-foreground";
-}
-
-function maxDirectionValue(row: ChokepointRiskRow): number {
-  return Math.max(1, ...row.directions.map((d) => d.value ?? 0));
-}
-
-function highestPortDelay(ports: PortRiskRow[]): PortRiskRow | null {
-  return [...ports].sort((a, b) => (b.delayPercent ?? -1) - (a.delayPercent ?? -1))[0] ?? null;
 }
 
 function strongestChokepointMove(rows: ChokepointRiskRow[]): ChokepointRiskRow | null {
@@ -231,156 +223,6 @@ function PolicyChecklist({
   );
 }
 
-function RiskMetricCard({
-  label,
-  value,
-  note,
-  spark,
-  tone = "normal",
-}: {
-  label: string;
-  value: string;
-  note: string;
-  spark?: (number | null)[];
-  tone?: "alert" | "caution" | "normal";
-}) {
-  return (
-    <div className={["rounded-lg border p-3", toneClasses(tone)].join(" ")}>
-      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
-      <div className="mt-1 flex items-end justify-between gap-3">
-        <p className="text-xl font-semibold tabular-nums text-foreground">{value}</p>
-        {spark && <Sparkline values={spark} color="var(--color-cyan)" />}
-      </div>
-      <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>
-    </div>
-  );
-}
-
-function ChokepointCard({ row }: { row: ChokepointRiskRow }) {
-  const max = maxDirectionValue(row);
-  const tone =
-    row.wowPct == null
-      ? "normal"
-      : Math.abs(row.wowPct) >= 20
-        ? "alert"
-        : Math.abs(row.wowPct) >= 10
-          ? "caution"
-          : "normal";
-
-  return (
-    <div className={["rounded-lg border p-3", toneClasses(tone)].join(" ")}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-foreground">{row.name}</p>
-          <p className="text-[11px] text-muted-foreground">기준 {row.asOf ?? "—"}</p>
-        </div>
-        <Sparkline values={row.spark} color="var(--color-cyan)" />
-      </div>
-      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-        <div>
-          <p className="text-[10px] text-muted-foreground">최신</p>
-          <p className="font-semibold tabular-nums text-foreground">{fmtTeu(row.latestTotalTeu)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-muted-foreground">WoW</p>
-          <p className="font-semibold tabular-nums text-foreground">{fmtPct(row.wowPct)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-muted-foreground">8주 평균</p>
-          <p className="font-semibold tabular-nums text-foreground">{fmtTeu(row.avg8w)}</p>
-        </div>
-      </div>
-      <div className="mt-3 space-y-1.5">
-        {row.directions.map((direction) => (
-          <div key={direction.code} className="space-y-0.5">
-            <div className="flex justify-between gap-2 text-[11px] text-muted-foreground">
-              <span>
-                {direction.name} ({direction.code})
-              </span>
-              <span className="tabular-nums">{fmtTeu(direction.value)}</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded bg-muted">
-              <div
-                className="h-full rounded bg-[var(--color-cyan)]"
-                style={{ width: `${Math.max(2, ((direction.value ?? 0) / max) * 100)}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-      <p className="mt-3 text-[11px] text-muted-foreground">
-        최신 선박 {row.latestCrossings}척
-        {row.topCrossingName ? ` · 최대 ${row.topCrossingName} ${fmtTeu(row.topCrossingTeu)}` : ""}
-      </p>
-    </div>
-  );
-}
-
-function PortsHeatmap({ ports }: { ports: PortRiskRow[] }) {
-  if (ports.length === 0) {
-    return (
-      <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-        EconDB 항만 혼잡 데이터를 가져오지 못했습니다.
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-left text-xs">
-          <thead className="border-b border-border bg-muted/40 text-[11px] text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2">Rank</th>
-              <th className="px-3 py-2">항만</th>
-              <th className="px-3 py-2">지연율</th>
-              <th className="px-3 py-2">혼잡도</th>
-              <th className="px-3 py-2">Import dwell</th>
-              <th className="px-3 py-2">Export dwell</th>
-              <th className="px-3 py-2">TS dwell</th>
-              <th className="px-3 py-2">선석 선박</th>
-              <th className="px-3 py-2">TEU MoM</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ports.map((port) => {
-              const tone = riskTone(port.delayPercent);
-              return (
-                <tr key={`${port.rank}-${port.name}`} className="border-b border-border/70">
-                  <td className="px-3 py-2 tabular-nums text-muted-foreground">
-                    {port.rank ?? "—"}
-                  </td>
-                  <td className="px-3 py-2">
-                    <p className="font-medium text-foreground">{port.name}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {[port.country, port.locode].filter(Boolean).join(" · ") || "—"}
-                    </p>
-                  </td>
-                  <td className="px-3 py-2">
-                    <span
-                      className={["rounded px-2 py-1 font-semibold", toneClasses(tone)].join(" ")}
-                    >
-                      {fmtPct(port.delayPercent)}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 tabular-nums">{fmtNum(port.congestion, 1)}</td>
-                  <td className="px-3 py-2 tabular-nums">{fmtDays(port.importDwell)}</td>
-                  <td className="px-3 py-2 tabular-nums">{fmtDays(port.exportDwell)}</td>
-                  <td className="px-3 py-2 tabular-nums">{fmtDays(port.transshipDwell)}</td>
-                  <td className="px-3 py-2 tabular-nums">{fmtNum(port.vesselsBerthed)}</td>
-                  <td className="px-3 py-2 text-[11px] tabular-nums text-muted-foreground">
-                    수입 {fmtPct(port.importTeuMom)} · 수출 {fmtPct(port.exportTeuMom)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 function AiRiskBriefingPanel({ briefing }: { briefing: AiRiskBriefing | null | undefined }) {
   if (!briefing?.analysisReport) return null;
   return (
@@ -407,124 +249,6 @@ function AiRiskBriefingPanel({ briefing }: { briefing: AiRiskBriefing | null | u
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function MacroIndexGrid({ macro }: { macro: MacroRiskRow[] }) {
-  if (!macro.length) return null;
-  return (
-    <div className="mt-4 grid grid-cols-2 gap-2">
-      {macro.map((m) => {
-        const isNeg = m.change?.startsWith("-") ?? false;
-        return (
-          <div key={m.label} className="rounded border border-border bg-background/60 p-2">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-[10px] text-muted-foreground">{m.label}</p>
-                <p className="text-sm font-semibold tabular-nums text-foreground">
-                  {fmtNum(m.value, 2)}
-                </p>
-              </div>
-              {(m.spark?.length ?? 0) > 1 && (
-                <Sparkline
-                  values={m.spark}
-                  color={isNeg ? "var(--color-status-alert)" : "var(--color-status-normal)"}
-                />
-              )}
-            </div>
-            {m.change && (
-              <p
-                className={[
-                  "mt-0.5 text-[11px] font-medium tabular-nums",
-                  isNeg ? "text-status-alert" : "text-status-normal",
-                ].join(" ")}
-              >
-                {m.change}
-              </p>
-            )}
-            <p className="text-[10px] text-muted-foreground">{m.asOf ?? "—"}</p>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function HormuzPanel({ hormuz }: { hormuz: HormuzRisk }) {
-  return (
-    <div className="grid gap-3 lg:grid-cols-[1fr_1.3fr]">
-      <div className="rounded-lg border border-border bg-card p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-[13px] font-semibold">호르무즈 상황판</h2>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Persian Gulf 선박 수와 Strait of Hormuz 일별 통항 상세
-            </p>
-          </div>
-          <Sparkline values={hormuz.gulfShipSpark} color="var(--color-cyan)" />
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-          <div>
-            <p className="text-[10px] text-muted-foreground">Gulf 선박 수</p>
-            <p className="text-lg font-semibold tabular-nums">{fmtNum(hormuz.gulfShipCount)}</p>
-            <p className="text-[11px] text-muted-foreground">
-              7일 변화 {fmtPct(hormuz.gulfShipWowPct)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground">통항 기준일</p>
-            <p className="text-lg font-semibold tabular-nums">{hormuz.crossingDate}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {hormuz.crossingCount}척 · DWT {fmtNum(hormuz.totalDwt)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground">방향 0 / 1</p>
-            <p className="font-semibold tabular-nums">
-              {hormuz.eastbound} / {hormuz.westbound}척
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground">유조선 / 벌크</p>
-            <p className="font-semibold tabular-nums">
-              {hormuz.tankerCount} / {hormuz.bulkCount}척
-            </p>
-          </div>
-        </div>
-        <MacroIndexGrid macro={hormuz.macro} />
-      </div>
-
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-[13px] font-semibold">호르무즈 최근 뉴스</h2>
-        <div className="mt-3 space-y-3">
-          {hormuz.news.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              Shipfinder 뉴스 데이터를 가져오지 못했습니다.
-            </p>
-          ) : (
-            hormuz.news.slice(0, 3).map((news) => (
-              <a
-                key={`${news.url}-${news.title}`}
-                href={news.url ?? "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-md border border-border bg-background/60 p-3 hover:bg-muted/50"
-              >
-                <p className="text-sm font-medium text-foreground">{news.title}</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {[news.source, news.publishedAt].filter(Boolean).join(" · ") || "—"}
-                </p>
-                {news.summary && (
-                  <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
-                    {news.summary}
-                  </p>
-                )}
-              </a>
-            ))
-          )}
-        </div>
-      </div>
     </div>
   );
 }
@@ -582,46 +306,16 @@ function PolicyPage() {
     return d >= 0 && d <= 30;
   }).length;
   const delayedPorts = risk.ports.filter((p) => (p.delayPercent ?? 0) >= 70).length;
-  const topPort = highestPortDelay(risk.ports);
   const topChokepoint = strongestChokepointMove(risk.chokepoints);
 
-  const statusItems = useMemo(
-    (): StatusItem[] => [
-      {
-        label: "항만 지연 70%+",
-        value: delayedPorts === 0 ? "없음" : `${delayedPorts}곳`,
-        state: delayedPorts >= 5 ? "alert" : delayedPorts > 0 ? "caution" : "normal",
-      },
-      {
-        label: "초크포인트 변동",
-        value: topChokepoint ? `${topChokepoint.name} ${fmtPct(topChokepoint.wowPct)}` : "—",
-        state:
-          Math.abs(topChokepoint?.wowPct ?? 0) >= 20
-            ? "alert"
-            : Math.abs(topChokepoint?.wowPct ?? 0) >= 10
-              ? "caution"
-              : "normal",
-      },
-      {
-        label: "호르무즈 통항",
-        value: `${risk.hormuz.crossingCount}척`,
-        state: risk.hormuz.crossingCount === 0 ? "caution" : "normal",
-      },
-      {
-        label: "DB 이벤트",
-        value: `${policies.length}건 · 예정 ${upcoming30}건`,
-        state: highCount > 0 ? "alert" : unverified > 0 ? "caution" : "normal",
-      },
-    ],
-    [
-      policies.length,
-      upcoming30,
-      highCount,
-      unverified,
-      delayedPorts,
-      topChokepoint,
-      risk.hormuz.crossingCount,
-    ],
+  // 항만 지연율 Top 8 — 지연율 내림차순 (프로토타입 RankedBars·테이블 공통)
+  const top8Ports = useMemo(
+    () =>
+      [...risk.ports]
+        .filter((p) => p.delayPercent != null)
+        .sort((a, b) => (b.delayPercent ?? 0) - (a.delayPercent ?? 0))
+        .slice(0, 8),
+    [risk.ports],
   );
 
   // 내 화물 영향 분석 — HS 챕터·지역으로 DB 리스크 이벤트 필터
@@ -665,100 +359,349 @@ function PolicyPage() {
         </button>
       }
     >
-      <StatusStrip items={statusItems} />
-
-      <section>
-        <div className="mb-2">
-          <h2 className="text-[13px] font-semibold">실시간 리스크 개요</h2>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            EconDB·Shipfinder API를 서버에서 직접 수집해 항만 혼잡, 초크포인트 TEU, 호르무즈 통항,
-            매크로 지표를 화면에 표시합니다.
-          </p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <RiskMetricCard
-            label="최고 항만 지연율"
-            value={topPort ? `${topPort.name} ${fmtPct(topPort.delayPercent)}` : "—"}
-            note={
-              topPort
-                ? `${topPort.country ?? "—"} · 혼잡도 ${fmtNum(topPort.congestion, 1)} · Import dwell ${fmtDays(topPort.importDwell)}`
-                : "EconDB 항만 데이터 없음"
-            }
-            tone={riskTone(topPort?.delayPercent)}
-          />
-          <RiskMetricCard
-            label="초크포인트 최대 변동"
-            value={topChokepoint ? `${topChokepoint.name} ${fmtPct(topChokepoint.wowPct)}` : "—"}
-            note={
-              topChokepoint
-                ? `${fmtTeu(topChokepoint.latestTotalTeu)} · 기준 ${topChokepoint.asOf ?? "—"}`
-                : "EconDB 초크포인트 데이터 없음"
-            }
-            spark={topChokepoint?.spark}
-            tone={
-              Math.abs(topChokepoint?.wowPct ?? 0) >= 20
-                ? "alert"
-                : Math.abs(topChokepoint?.wowPct ?? 0) >= 10
-                  ? "caution"
-                  : "normal"
-            }
-          />
-          <RiskMetricCard
-            label="Persian Gulf 선박"
-            value={fmtNum(risk.hormuz.gulfShipCount)}
-            note={`${risk.hormuz.asOf ?? "—"} · 7일 변화 ${fmtPct(risk.hormuz.gulfShipWowPct)}`}
-            spark={risk.hormuz.gulfShipSpark}
-            tone={Math.abs(risk.hormuz.gulfShipWowPct ?? 0) >= 15 ? "caution" : "normal"}
-          />
-          <RiskMetricCard
-            label="호르무즈 일별 통항"
-            value={`${risk.hormuz.crossingCount}척`}
-            note={`${risk.hormuz.crossingDate} · 유조선 ${risk.hormuz.tankerCount}척 · 벌크 ${risk.hormuz.bulkCount}척`}
-            tone={risk.hormuz.crossingCount === 0 ? "caution" : "normal"}
-          />
-        </div>
-      </section>
+      {/* KPI 4칸 — 프로토타입, 전부 실데이터 */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <PCard pad="md">
+          <div style={{ fontSize: 12, color: "var(--ink-muted)" }}>지연 70%+ 항만</div>
+          <div
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              marginTop: 6,
+              color: delayedPorts > 0 ? "var(--status-alert)" : "var(--ink)",
+              fontFamily: '"Pretendard Variable", Pretendard, sans-serif',
+            }}
+          >
+            {risk.ports.length === 0 ? "—" : `${delayedPorts}곳`}
+          </div>
+        </PCard>
+        <PCard pad="md">
+          <div style={{ fontSize: 12, color: "var(--ink-muted)" }}>초크포인트 최대 변동</div>
+          <div
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              marginTop: 6,
+              color: "var(--status-caution)",
+              fontFamily: '"Pretendard Variable", Pretendard, sans-serif',
+            }}
+          >
+            {topChokepoint ? fmtPct(topChokepoint.wowPct) : "—"}
+          </div>
+          {topChokepoint && (
+            <div style={{ fontSize: 11, color: "var(--ink-muted)", marginTop: 2 }}>
+              {topChokepoint.name} · 기준 {topChokepoint.asOf ?? "—"}
+            </div>
+          )}
+        </PCard>
+        <PCard pad="md">
+          <div style={{ fontSize: 12, color: "var(--ink-muted)" }}>호르무즈 일별 통항</div>
+          <div
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              marginTop: 6,
+              color: "var(--status-observe)",
+              fontFamily: '"Pretendard Variable", Pretendard, sans-serif',
+            }}
+          >
+            {risk.hormuz.crossingCount}척
+          </div>
+          <div style={{ fontSize: 11, color: "var(--ink-muted)", marginTop: 2 }}>
+            {risk.hormuz.crossingDate}
+          </div>
+        </PCard>
+        <PCard pad="md">
+          <div style={{ fontSize: 12, color: "var(--ink-muted)" }}>활성 리스크 이벤트</div>
+          <div
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              marginTop: 6,
+              color: "var(--status-caution)",
+              fontFamily: '"Pretendard Variable", Pretendard, sans-serif',
+            }}
+          >
+            {policies.length}건
+          </div>
+          <div style={{ fontSize: 11, color: "var(--ink-muted)", marginTop: 2 }}>
+            높음 {highCount} · 30일 내 발효 {upcoming30}
+          </div>
+        </PCard>
+      </div>
 
       <AiRiskBriefingPanel briefing={risk.hormuz.aiRiskBriefing} />
 
-      <section>
-        <div className="mb-2">
-          <h2 className="text-[13px] font-semibold">초크포인트 TEU 흐름</h2>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Suez, Panama, Cape, Malacca, Hormuz의 방향별 통과 TEU와 최신 선박 통항 데이터를 함께
-            표시합니다.
-          </p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          {risk.chokepoints.map((row) => (
-            <ChokepointCard key={row.name} row={row} />
-          ))}
-        </div>
-      </section>
+      {/* 항만 지연율 Top 8 — 임계 가이드 60/75 */}
+      <Panel title="항만 지연율 — Top 8" badge={<PBadge>임계 가이드 60 / 75</PBadge>}>
+        {top8Ports.length === 0 ? (
+          <Collecting note="EconDB 항만 혼잡 데이터를 수집 중입니다." />
+        ) : (
+          <RankedBars
+            rows={top8Ports.map((p) => ({
+              label: p.name,
+              value: p.delayPercent ?? 0,
+              color:
+                riskTone(p.delayPercent) === "alert"
+                  ? "var(--status-alert)"
+                  : riskTone(p.delayPercent) === "caution"
+                    ? "var(--status-caution)"
+                    : "var(--status-normal)",
+            }))}
+            max={100}
+            thresholds={[
+              { at: 60, label: "주의 60%", color: "var(--status-caution)" },
+              { at: 75, label: "경보 75%", color: "var(--status-alert)" },
+            ]}
+          />
+        )}
+      </Panel>
 
-      <HormuzPanel hormuz={risk.hormuz} />
+      {/* 초크포인트 TEU 흐름 — 5열 카드 */}
+      <Panel title="초크포인트 TEU 흐름" badge={<PBadge>EconDB · 주간</PBadge>}>
+        {risk.chokepoints.length === 0 ? (
+          <Collecting note="초크포인트 TEU 데이터를 수집 중입니다." />
+        ) : (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+            {risk.chokepoints.map((row) => {
+              const tone =
+                row.wowPct == null
+                  ? "normal"
+                  : Math.abs(row.wowPct) >= 20
+                    ? "alert"
+                    : Math.abs(row.wowPct) >= 10
+                      ? "caution"
+                      : "normal";
+              const dot =
+                tone === "alert"
+                  ? "var(--status-alert)"
+                  : tone === "caution"
+                    ? "var(--status-caution)"
+                    : "var(--status-normal)";
+              return (
+                <PCard key={row.name} pad="md">
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>
+                      {row.name}
+                    </span>
+                    <span style={{ width: 8, height: 8, borderRadius: 999, background: dot }} />
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 10.5,
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--ink-muted)",
+                    }}
+                  >
+                    {row.asOf ?? "—"}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 19,
+                      fontWeight: 700,
+                      color: "var(--ink)",
+                      marginTop: 10,
+                      fontFamily: '"Pretendard Variable", Pretendard, sans-serif',
+                    }}
+                  >
+                    {fmtTeu(row.latestTotalTeu)}
+                  </div>
+                  <div style={{ marginTop: 4, display: "flex", alignItems: "baseline", gap: 6 }}>
+                    <DeltaValue value={row.wowPct} size={11} />
+                    <span style={{ fontSize: 10, color: "var(--ink-muted)" }}>WoW</span>
+                  </div>
+                </PCard>
+              );
+            })}
+          </div>
+        )}
+      </Panel>
 
-      <section>
-        <div className="mb-2">
-          <h2 className="text-[13px] font-semibold">전세계 항만 Top 20</h2>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            지연율 75% 이상은 alert, 60% 이상은 caution으로 표시합니다. dwell time과 TEU MoM은 같은
-            항만 행에서 비교합니다.
-          </p>
-        </div>
-        <PortsHeatmap ports={risk.ports} />
-      </section>
+      {/* 항만 Top 8 테이블 + 호르무즈 상황판/뉴스 */}
+      <div className="grid items-start gap-4 xl:grid-cols-[1.5fr_1fr]">
+        <Panel
+          title="전세계 항만 Top 8 — 지연·혼잡"
+          badge={<PBadge>지연율 ≥75% 경보 · ≥60% 주의</PBadge>}
+          bodyPad={0}
+        >
+          {top8Ports.length === 0 ? (
+            <Collecting note="EconDB 항만 혼잡 데이터를 수집 중입니다." />
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle("left")}>항만</th>
+                    <th style={thStyle("right")}>지연율</th>
+                    <th style={thStyle("right")}>Import dwell</th>
+                    <th style={thStyle("right")}>TEU MoM</th>
+                    <th style={thStyle("left")}>상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {top8Ports.map((port) => {
+                    const tone = riskTone(port.delayPercent);
+                    return (
+                      <tr key={`${port.rank}-${port.name}`}>
+                        <td style={{ ...tdStyle("left"), fontWeight: 600, color: "var(--ink)" }}>
+                          {port.name}
+                          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--ink-muted)" }}>
+                            {port.country ?? ""}
+                          </span>
+                        </td>
+                        <td
+                          style={{
+                            ...tdStyle("right"),
+                            fontFamily: "var(--font-mono)",
+                            fontWeight: 700,
+                            color:
+                              tone === "alert"
+                                ? "var(--status-alert)"
+                                : tone === "caution"
+                                  ? "var(--status-caution)"
+                                  : "var(--ink)",
+                          }}
+                        >
+                          {fmtPct(port.delayPercent)}
+                        </td>
+                        <td
+                          style={{
+                            ...tdStyle("right"),
+                            fontFamily: "var(--font-mono)",
+                            color: "var(--ink-muted)",
+                          }}
+                        >
+                          {fmtDays(port.importDwell)}
+                        </td>
+                        <td style={tdStyle("right")}>
+                          <DeltaValue value={port.importTeuMom} size={12} />
+                        </td>
+                        <td style={tdStyle("left")}>
+                          <StatusPill
+                            state={tone}
+                            label={tone === "alert" ? "경보" : tone === "caution" ? "주의" : "정상"}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
 
-      <section>
-        <div className="mb-2">
-          <h2 className="text-[13px] font-semibold">글로벌 TEU·운임 매크로</h2>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Global exports, Shanghai freight index, Global TEU liftings를 최신 기준일과 변화율로
-            표시합니다.
-          </p>
+        <div className="flex flex-col gap-4">
+          <Panel title="호르무즈 상황판" bodyPad={16}>
+            {(
+              [
+                ["걸프 선박 수", fmtNum(risk.hormuz.gulfShipCount) + "척", risk.hormuz.gulfShipWowPct],
+                ["일별 통항", `${risk.hormuz.crossingCount}척`, null],
+                ["유조선 / 벌크", `${risk.hormuz.tankerCount} / ${risk.hormuz.bulkCount}척`, null],
+                ...risk.hormuz.macro.map(
+                  (m) =>
+                    [m.label, fmtNum(m.value, 2), null, m.change] as [
+                      string,
+                      string,
+                      number | null,
+                      string?,
+                    ],
+                ),
+              ] as [string, string, number | null, string?][]
+            ).map(([k, v, chg, changeText], i) => (
+              <div
+                key={k}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  padding: "8px 0",
+                  borderTop: i ? "1px solid var(--border)" : "none",
+                  fontSize: 12.5,
+                }}
+              >
+                <span style={{ color: "var(--ink-muted)", paddingRight: 10 }}>{k}</span>
+                <span
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "baseline",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--ink)" }}>
+                    {v}
+                  </span>
+                  {chg != null && <DeltaValue value={chg} size={11} />}
+                  {changeText && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontFamily: "var(--font-mono)",
+                        fontWeight: 600,
+                        color: changeText.startsWith("-")
+                          ? "var(--direction-down)"
+                          : "var(--direction-up)",
+                      }}
+                    >
+                      {changeText}
+                    </span>
+                  )}
+                </span>
+              </div>
+            ))}
+            <div style={{ marginTop: 10, fontSize: 10.5, color: "var(--ink-muted)" }}>
+              기준 {risk.hormuz.asOf ?? "—"} · Shipfinder
+            </div>
+          </Panel>
+
+          <Panel title="호르무즈 관련 뉴스" bodyPad={16}>
+            {risk.hormuz.news.length === 0 ? (
+              <Collecting note="Shipfinder 뉴스 수집 중입니다." />
+            ) : (
+              risk.hormuz.news.slice(0, 3).map((news) => (
+                <a
+                  key={`${news.url}-${news.title}`}
+                  href={news.url ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "block",
+                    padding: "10px 4px",
+                    borderTop: "1px solid var(--border)",
+                    textDecoration: "none",
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", lineHeight: 1.4 }}>
+                    {news.title}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--ink-muted)",
+                      marginTop: 3,
+                    }}
+                  >
+                    {[news.source, news.publishedAt?.slice(0, 10)].filter(Boolean).join(" · ") || "—"}
+                  </div>
+                </a>
+              ))
+            )}
+          </Panel>
         </div>
+      </div>
+
+      <Panel title="글로벌 TEU·운임 매크로" badge={<PBadge>EconDB</PBadge>}>
         <MacroTrendGrid trends={risk.macroTrends} />
-      </section>
+      </Panel>
 
       {/* 내 화물 영향 분석 */}
       {showImpact && (

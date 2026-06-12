@@ -1,14 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
-import { StatusStrip, type StatusItem } from "@/components/dashboard/StatusStrip";
-import { IntelTable, type ColDef } from "@/components/dashboard/IntelTable";
 import { DetailDrawer } from "@/components/dashboard/DetailDrawer";
 import { DataQualityBar } from "@/components/dashboard/DataQualityBar";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { ForecastTracking } from "@/components/dashboard/ForecastPanel";
+import {
+  Collecting,
+  KpiCard,
+  Panel,
+  PBadge,
+  StatusPill,
+  tdStyle,
+  thStyle,
+} from "@/components/proto/Kit";
 import { publishedForecastsQueryOptions } from "@/lib/api/forecasts";
 
 import {
@@ -18,7 +34,6 @@ import {
   type LaneRow,
   type DelayWeeklyRow,
 } from "@/lib/api/eurasia"
-import { CorridorMapPanel } from "@/components/dashboard/CorridorMapPanel";
 import {
   eurasiaDisruptionsActiveQueryOptions,
   upsertEurasiaDisruption,
@@ -270,6 +285,41 @@ function positiveDelayDays(lane: LaneWithDelay): number | null {
   return Math.max(0, round1(value));
 }
 
+// --- Delay tier (프로토타입 범례: 정시 / 1–3일 / 3–7일 / 7일+ / 데이터 없음) ---
+const TIER = {
+  ontime: { label: "정시", color: "var(--status-normal)", state: "normal" },
+  t1: { label: "1–3일", color: "var(--status-observe)", state: "observe" },
+  t2: { label: "3–7일", color: "var(--status-caution)", state: "caution" },
+  t3: { label: "7일+", color: "var(--status-alert)", state: "alert" },
+  none: { label: "데이터 없음", color: "var(--ink-muted)", state: "none" },
+} as const;
+
+type TierKey = keyof typeof TIER;
+
+function tierOf(delay: number | null): TierKey {
+  if (delay === null) return "none";
+  if (delay >= 7) return "t3";
+  if (delay >= 3) return "t2";
+  if (delay >= 1) return "t1";
+  return "ontime";
+}
+
+function TierLegend() {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+      {Object.values(TIER).map((t) => (
+        <span
+          key={t.label}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--ink-muted)" }}
+        >
+          <span style={{ width: 14, height: 5, borderRadius: 999, background: t.color }} />
+          {t.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function baseTransitLabel(lane: LaneRow): string {
   if (lane.transit_min !== null && lane.transit_max !== null) {
     return lane.transit_min === lane.transit_max
@@ -463,100 +513,23 @@ function EurasiaPage() {
     return Math.round(otps.reduce((s, v) => s + v, 0) / otps.length);
   }, [lanesWithDelay]);
 
-  // --- StatusStrip ---
-  const statusItems = useMemo((): StatusItem[] => {
-    const activeCount = disruptions.length;
-    return [
-      {
-        label: "현재 병목",
-        value: activeCount === 0 ? "없음" : `${activeCount}건`,
-        state: activeCount === 0 ? "normal" : activeCount >= 3 ? "alert" : "caution",
-      },
-      {
-        label: "평균 추가 지연",
-        value: avgDelay !== null ? `${avgDelay}일` : "—",
-        state: avgDelay === null ? "normal" : avgDelay >= 7 ? "alert" : avgDelay >= 3 ? "caution" : "normal",
-      },
-      {
-        label: "정상 도착 비율",
-        value: avgOtp !== null ? `${avgOtp}%` : "—",
-        state: avgOtp === null ? "normal" : avgOtp < 60 ? "alert" : avgOtp < 80 ? "caution" : "normal",
-      },
-      {
-        label: "기준",
-        value: latestWeek?.slice(0, 10) ?? "—",
-        state: "normal",
-      },
-      ...(latestTcr
-        ? [
-            {
-              label: "TCR 운송중",
-              value: latestTcr.in_transit !== null ? String(latestTcr.in_transit) : "—",
-              state: "normal" as const,
-            },
-          ]
-        : []),
-    ];
-  }, [disruptions, avgDelay, avgOtp, latestWeek, latestTcr]);
-
-  // --- Corridor board columns ---
-  const CORRIDOR_COLS: ColDef<LaneWithDelay>[] = [
-    {
-      key: "name",
-      header: "노선",
-      cell: (r) => (
-        <span className="font-medium text-foreground">{r.name_ko ?? r.name_en ?? r.id}</span>
-      ),
-    },
-    {
-      key: "base_transit",
-      header: "평시 소요",
-      cell: (r) => <span className="text-muted-foreground">{baseTransitLabel(r)}</span>,
-      className: "text-right",
-      headerClassName: "text-right",
-    },
-    {
-      key: "current_transit",
-      header: "현재 예상",
-      cell: (r) => <span className="font-medium text-foreground">{currentTransitLabel(r)}</span>,
-      className: "text-right",
-      headerClassName: "text-right",
-    },
-    {
-      key: "extra_delay",
-      header: "추가 지연",
-      cell: (r) => {
-        const delay = positiveDelayDays(r);
-        return delay !== null ? (
-          <span
-            className={
-              delay >= 7
-                ? "text-status-alert"
-                : delay >= 3
-                ? "text-status-caution"
-                : "text-status-normal"
-            }
-          >
-            +{formatDays(delay)}
-          </span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        );
-      },
-      className: "text-right",
-      headerClassName: "text-right",
-    },
-    {
-      key: "bottleneck",
-      header: "현재 병목",
-      cell: (r) => <span className="line-clamp-2 text-muted-foreground">{bottleneckText(r)}</span>,
-    },
-    {
-      key: "evidence",
-      header: "근거",
-      cell: (r) => <span className="text-muted-foreground text-[11px]">{evidenceText(r)}</span>,
-    },
-  ];
+  // --- Weekly delay index trend (delay_index_weekly, 전 노선 평균) ---
+  const weeklyTrend = useMemo(() => {
+    const byWeek = new Map<string, number[]>();
+    for (const d of delays) {
+      if (!d.week_iso || d.median_delay_d === null || d.median_delay_d === undefined) continue;
+      const arr = byWeek.get(d.week_iso) ?? [];
+      arr.push(Math.max(0, d.median_delay_d));
+      byWeek.set(d.week_iso, arr);
+    }
+    return [...byWeek.entries()]
+      .sort((a, b) => weekIsoToTs(a[0]) - weekIsoToTs(b[0]))
+      .slice(-12)
+      .map(([week, vals]) => ({
+        week: week.replace(/^\d{4}-/, ""),
+        avg: round1(vals.reduce((s, v) => s + v, 0) / vals.length),
+      }));
+  }, [delays]);
 
   // Drawer for selected lane
   const drawerContent = selectedLane ? (
@@ -757,6 +730,23 @@ function EurasiaPage() {
       title="유라시아"
       titleAccent="Control Tower"
       subtitle="한·중–CIS–유럽 철도 회랑의 지연 지수·정시율·활성 병목 — 시장에 공개된 소스가 없는 자체 추적 데이터입니다."
+      chips={[
+        {
+          label: "현재 병목",
+          value: disruptions.length === 0 ? "없음" : `${disruptions.length}건`,
+          color: disruptions.length > 0 ? "var(--status-alert)" : "var(--status-normal)",
+        },
+        {
+          label: "평균 추가 지연",
+          value: avgDelay !== null ? `+${avgDelay}일` : "—",
+          color: "var(--status-caution)",
+        },
+        {
+          label: "TCR 운송중",
+          value: latestTcr?.in_transit != null ? `${latestTcr.in_transit}편` : "—",
+          color: "var(--cyan)",
+        },
+      ]}
       toolbar={
         <button
           type="button"
@@ -767,9 +757,41 @@ function EurasiaPage() {
         </button>
       }
     >
-      <StatusStrip items={statusItems} />
-
-      <ForecastTracking forecasts={forecasts} module="eurasia" title="유라시아 전망 트래킹" />
+      {/* KPI strip — 프로토타입 4분할 */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <KpiCard
+          label="현재 병목"
+          value={disruptions.length === 0 ? "없음" : `${disruptions.length} 건`}
+          sub="활성 구간 기준"
+          iconColor="var(--status-alert)"
+          icon={<span style={{ fontWeight: 700 }}>!</span>}
+          mono={false}
+        />
+        <KpiCard
+          label="평균 추가 지연"
+          value={avgDelay !== null ? `+${avgDelay} 일` : "—"}
+          sub="평시 대비 (관측 노선)"
+          iconColor="var(--status-caution)"
+          icon={<span style={{ fontWeight: 700 }}>⏱</span>}
+          mono={false}
+        />
+        <KpiCard
+          label="정상 도착 비율"
+          value={avgOtp !== null ? `${avgOtp}%` : "—"}
+          sub="최근 관측 주차 기준"
+          iconColor="var(--status-observe)"
+          icon={<span style={{ fontWeight: 700 }}>◷</span>}
+          mono={false}
+        />
+        <KpiCard
+          label="TCR 운송중"
+          value={latestTcr?.in_transit != null ? `${latestTcr.in_transit} 편` : "—"}
+          sub={latestTcr?.snapshot_date ? `스냅샷 ${latestTcr.snapshot_date}` : "스냅샷 수집 중"}
+          iconColor="var(--cyan)"
+          icon={<span style={{ fontWeight: 700 }}>🚉</span>}
+          mono={false}
+        />
+      </div>
 
       {/* Admin form */}
       {showAdminForm && (
@@ -889,81 +911,177 @@ function EurasiaPage() {
 
       {focusLane && <RouteAnswerPanel lane={focusLane} />}
 
-      {/* Corridor map */}
-      <section>
-        <CorridorMapPanel
-          lanesWithDelay={lanesWithDelay}
-          selectedLaneId={focusLaneId}
-          onLaneSelect={(id) => {
-            const lane = lanesWithDelay.find((l) => l.id === id)
-            if (lane) { setSelectedLane(lane); setFocusLaneId(id) }
-          }}
-        />
-      </section>
-
-      {/* Corridor board */}
-      <section>
-        <h2 className="mb-2 text-[13px] font-semibold">
-          노선별 현재 예상 소요일{" "}
-          <span className="text-[11px] font-normal text-muted-foreground">
-            평시 소요 + 최근 관측 지연
-          </span>
-        </h2>
-        {lanesWithDelay.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">데이터 수집 중</p>
+      {/* Route map — 회랑별 개념도 (프로토타입 Route map 패널) */}
+      <Panel
+        title="Route map"
+        badge={<PBadge variant="navy">{featuredLanes.length}개 회랑</PBadge>}
+        action={<TierLegend />}
+      >
+        {featuredLanes.length === 0 ? (
+          <Collecting note="노선 데이터가 들어오면 회랑 개념도가 표시됩니다." />
         ) : (
-          <IntelTable
-            cols={CORRIDOR_COLS}
-            rows={lanesWithDelay}
-            rowKey={(r) => r.id}
-            onRowClick={(r) => {
-              setSelectedLane(r);
-              setFocusLaneId(r.id);
-            }}
-          />
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {featuredLanes.map((lane, i) => {
+              const tier = TIER[tierOf(positiveDelayDays(lane))];
+              return (
+                <div
+                  key={lane.id}
+                  style={{
+                    paddingTop: i ? 14 : 0,
+                    marginTop: i ? 14 : 0,
+                    borderTop: i ? "1px solid var(--border)" : "none",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}>
+                      {lane.name_ko ?? lane.name_en ?? lane.id}
+                    </span>
+                    <PBadge variant="secondary">{tier.label}</PBadge>
+                    {lane.activeDisruptions.length > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--status-alert)" }}>
+                        활성 병목 {lane.activeDisruptions.length}
+                      </span>
+                    )}
+                  </div>
+                  <CorridorDiagram lane={lane} />
+                </div>
+              );
+            })}
+          </div>
         )}
-      </section>
+        <div style={{ marginTop: 6, fontSize: 11, color: "var(--ink-muted)" }}>
+          ※ 미확인 실시간 위치는 표시하지 않습니다. 국경·환적 지점과 활성 병목(eurasia_disruptions)만 표기합니다.
+        </div>
+      </Panel>
 
-      {/* Corridor concept diagram */}
-      {focusLane && (
-        <section>
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-[13px] font-semibold">
-              선택 노선 병목 구간{" "}
-              <span className="text-[11px] font-normal text-muted-foreground">
-                {focusLane.name_ko ?? focusLane.name_en ?? focusLane.id}
-              </span>
-            </h2>
-            {featuredLanes.length > 1 && (
-              <div className="flex flex-wrap gap-1">
-                {featuredLanes.map((l) => {
-                  const active = l.id === focusLane.id;
+      {/* 주간 지연 지수 추이 */}
+      <Panel title="주간 지연 지수 추이" badge={<PBadge>FESCO · delay_index_weekly</PBadge>}>
+        {weeklyTrend.length >= 2 ? (
+          <ResponsiveContainer width="100%" height={210}>
+            <LineChart data={weeklyTrend} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+              <CartesianGrid stroke="var(--border)" vertical={false} />
+              <XAxis
+                dataKey="week"
+                tick={{ fontSize: 10, fill: "var(--ink-muted)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tickFormatter={(v: number) => `${v}일`}
+                width={40}
+                tick={{ fontSize: 10, fill: "var(--ink-muted)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                formatter={(v: number) => [`${v}일`, "평균 추가 지연"]}
+                contentStyle={{
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="avg"
+                stroke="var(--status-caution)"
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <Collecting note="주간 지연 관측이 2주 이상 누적되면 추이가 표시됩니다." />
+        )}
+      </Panel>
+
+      {/* 노선별 회랑 상태 */}
+      <Panel
+        title="노선별 회랑 상태"
+        badge={<PBadge>{lanesWithDelay.length}개 노선 · 행 클릭 시 상세</PBadge>}
+        bodyPad={0}
+      >
+        {lanesWithDelay.length === 0 ? (
+          <Collecting note="노선 데이터 수집 중" />
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
+              <thead>
+                <tr>
+                  <th style={thStyle("left")}>노선</th>
+                  <th style={thStyle("right")}>평시</th>
+                  <th style={thStyle("right")}>현재 예상</th>
+                  <th style={thStyle("right")}>추가 지연</th>
+                  <th style={thStyle("left")}>상태</th>
+                  <th style={thStyle("left")}>근거</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lanesWithDelay.map((lane) => {
+                  const delay = positiveDelayDays(lane);
+                  const tierKey = tierOf(delay);
+                  const tier = TIER[tierKey];
+                  const collecting = tierKey === "none";
                   return (
-                    <button
-                      key={l.id}
-                      type="button"
-                      onClick={() => setFocusLaneId(l.id)}
-                      className={`rounded-full border px-2.5 py-0.5 text-[11px] transition-colors ${
-                        active
-                          ? "border-[var(--color-cyan)] bg-[var(--color-cyan)]/10 text-foreground"
-                          : "border-border text-muted-foreground hover:bg-muted"
-                      }`}
+                    <tr
+                      key={lane.id}
+                      onClick={() => {
+                        setSelectedLane(lane);
+                        setFocusLaneId(lane.id);
+                      }}
+                      className="cursor-pointer transition-colors hover:bg-muted/40"
+                      style={{ opacity: collecting ? 0.72 : 1 }}
                     >
-                      {l.name_ko ?? l.name_en ?? l.id}
-                    </button>
+                      <td style={{ ...tdStyle("left"), fontWeight: 600, color: "var(--ink)" }}>
+                        {lane.name_ko ?? lane.name_en ?? lane.id}
+                      </td>
+                      <td style={{ ...tdStyle("right"), fontFamily: "var(--font-mono)", color: "var(--ink-muted)" }}>
+                        {baseTransitLabel(lane)}
+                      </td>
+                      <td
+                        style={{
+                          ...tdStyle("right"),
+                          fontFamily: "var(--font-mono)",
+                          fontWeight: 700,
+                          color: collecting ? "var(--ink-muted)" : "var(--ink)",
+                        }}
+                      >
+                        {currentTransitLabel(lane)}
+                      </td>
+                      <td
+                        style={{
+                          ...tdStyle("right"),
+                          fontFamily: "var(--font-mono)",
+                          fontWeight: 700,
+                          color: tier.color,
+                        }}
+                      >
+                        {delay !== null ? `+${formatDays(delay)}` : "—"}
+                      </td>
+                      <td style={tdStyle("left")}>
+                        {collecting ? (
+                          <PBadge variant="outline">수집 중</PBadge>
+                        ) : (
+                          <StatusPill state={tier.state} label={tier.label} />
+                        )}
+                      </td>
+                      <td style={{ ...tdStyle("left"), fontSize: 11.5, fontFamily: "var(--font-mono)", color: "var(--ink-muted)" }}>
+                        {evidenceText(lane)}
+                      </td>
+                    </tr>
                   );
                 })}
-              </div>
-            )}
+              </tbody>
+            </table>
           </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <CorridorDiagram lane={focusLane} />
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              국경/환적 지점과 활성 병목만 표시합니다. 구간별 원인은 eurasia_disruptions 기준이며, 미확인 실시간 위치는 표시하지 않습니다.
-            </p>
-          </div>
-        </section>
-      )}
+        )}
+        <div style={{ padding: "12px 18px", borderTop: "1px solid var(--border)", fontSize: 11.5, color: "var(--ink-muted)" }}>
+          ※ 데이터가 충분치 않은 노선은 추정치를 지어내지 않고 "수집 중"으로 표기합니다.
+        </div>
+      </Panel>
+
+      <ForecastTracking forecasts={forecasts} module="eurasia" title="유라시아 전망 트래킹" />
 
       {/* Active disruptions list */}
       {disruptions.length > 0 && (

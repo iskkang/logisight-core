@@ -6,9 +6,6 @@ import {
   Bar,
   LineChart,
   Line,
-  PieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -21,6 +18,18 @@ import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
 import { PageHero } from "@/components/site/PageHero";
+import {
+  Collecting,
+  DivergingBars,
+  Donut,
+  FilterSeg,
+  Panel,
+  PBadge,
+  PCard,
+  tdStyle,
+  thStyle,
+  TreemapChart,
+} from "@/components/proto/Kit";
 
 import {
   tradeStatisticsQueryOptions,
@@ -74,8 +83,6 @@ export const Route = createFileRoute("/industries")({
   ),
 });
 
-const PIE_COLORS = ["#0F2D5A", "#1B4D8C", "#38BDF8", "#0EA5A4", "#F59E0B", "#94A3B8"];
-
 function IndustriesPage() {
   const { from, to, metric, view } = Route.useSearch();
   const navigate = useNavigate({ from: "/industries" });
@@ -104,10 +111,16 @@ function IndustriesPage() {
   const totalImport = useMemo(() => sum(rows.map((r) => r[impKey] ?? 0)), [rows, impKey]);
   const balance = totalExport - totalImport;
 
+  const chapterAggs = useMemo(
+    () => aggregateByChapter(rows, expKey, impKey),
+    [rows, expKey, impKey],
+  );
+  const surplusChapters = chapterAggs.filter((a) => a.balance > 0).length;
+
   return (
     <div className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
       <Header maxPeriod={maxPeriod} />
-      <main className="mx-auto max-w-[1540px] px-4 py-[26px] lg:px-12">
+      <main className="mx-auto max-w-[1540px] space-y-4 px-4 py-[26px] lg:px-12">
         <Filters
           periods={periods}
           from={periodFrom}
@@ -118,15 +131,23 @@ function IndustriesPage() {
             navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) })
           }
         />
-        <Summary
-          from={periodFrom}
-          to={periodTo}
-          totalExport={totalExport}
-          totalImport={totalImport}
-          balance={balance}
-          fmt={fmt}
-          metricLabel={metric === "usd" ? "수출액" : "중량"}
-        />
+
+        {/* KPI — 프로토타입 4분할 */}
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          <IndustryKpi label="총수출" value={fmt(totalExport)} />
+          <IndustryKpi label="총수입" value={fmt(totalImport)} />
+          <IndustryKpi
+            label="무역수지"
+            value={fmt(balance)}
+            valueColor={balance >= 0 ? "var(--direction-up)" : "var(--direction-down)"}
+            sub={balance >= 0 ? "흑자" : "적자"}
+          />
+          <IndustryKpi
+            label="흑자 챕터"
+            value={chapterAggs.length > 0 ? `${surplusChapters} / ${chapterAggs.length}` : "—"}
+            sub="무역수지 > 0 기준"
+          />
+        </div>
 
         {view === "hs" ? (
           <ChapterSection rows={rows} expKey={expKey} impKey={impKey} fmt={fmt} />
@@ -149,6 +170,36 @@ function sum(arr: number[]) {
   let s = 0;
   for (const v of arr) s += Number.isFinite(v) ? v : 0;
   return s;
+}
+
+function IndustryKpi({
+  label,
+  value,
+  sub,
+  valueColor = "var(--ink)",
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  valueColor?: string;
+}) {
+  return (
+    <PCard pad="md">
+      <div style={{ fontSize: 12, color: "var(--ink-muted)" }}>{label}</div>
+      <div
+        style={{
+          fontSize: 24,
+          fontWeight: 700,
+          fontFamily: "var(--font-mono)",
+          color: valueColor,
+          marginTop: 6,
+        }}
+      >
+        {value}
+      </div>
+      {sub && <div style={{ marginTop: 4, fontSize: 12, color: "var(--ink-muted)" }}>{sub}</div>}
+    </PCard>
+  );
 }
 
 function Header({ maxPeriod }: { maxPeriod: string | undefined }) {
@@ -181,54 +232,58 @@ function Filters({
   ) => void;
 }) {
   return (
-    <section className="mt-6 flex flex-wrap items-end gap-4 rounded-lg border border-border bg-card p-4">
-      <Field label="기간 시작">
-        <select
-          value={from ?? ""}
-          onChange={(e) => onChange({ from: e.target.value })}
-          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
-        >
-          {periods.map((p) => (
-            <option key={p} value={p}>
-              {formatPeriod(p)}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label="기간 종료">
-        <select
-          value={to ?? ""}
-          onChange={(e) => onChange({ to: e.target.value })}
-          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
-        >
-          {periods.map((p) => (
-            <option key={p} value={p}>
-              {formatPeriod(p)}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label="구분">
-        <Toggle
-          options={[
-            { value: "usd", label: "수출액(USD)" },
-            { value: "weight", label: "중량(t)" },
-          ]}
-          value={metric}
-          onChange={(v) => onChange({ metric: v as "usd" | "weight" })}
+    <PCard pad="md">
+      <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+        <FilterSeg
+          label="보기"
+          options={["HS 품목별", "국가별"] as const}
+          value={view === "hs" ? "HS 품목별" : "국가별"}
+          onChange={(v) => onChange({ view: v === "HS 품목별" ? "hs" : "country" })}
         />
-      </Field>
-      <Field label="보기">
-        <Toggle
-          options={[
-            { value: "hs", label: "HS 품목별" },
-            { value: "country", label: "국가별" },
-          ]}
-          value={view}
-          onChange={(v) => onChange({ view: v as "hs" | "country" })}
+        <FilterSeg
+          label="구분"
+          options={["수출액(USD)", "중량(t)"] as const}
+          value={metric === "usd" ? "수출액(USD)" : "중량(t)"}
+          onChange={(v) => onChange({ metric: v === "수출액(USD)" ? "usd" : "weight" })}
         />
-      </Field>
-    </section>
+        <Field label="기간 시작">
+          <select
+            value={from ?? ""}
+            onChange={(e) => onChange({ from: e.target.value })}
+            className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+          >
+            {periods.map((p) => (
+              <option key={p} value={p}>
+                {formatPeriod(p)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="기간 종료">
+          <select
+            value={to ?? ""}
+            onChange={(e) => onChange({ to: e.target.value })}
+            className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+          >
+            {periods.map((p) => (
+              <option key={p} value={p}>
+                {formatPeriod(p)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <span
+          style={{
+            marginLeft: "auto",
+            fontSize: 11.5,
+            color: "var(--ink-muted)",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          기간 {formatPeriod(from ?? "—")} ~ {formatPeriod(to ?? "—")} (확정)
+        </span>
+      </div>
+    </PCard>
   );
 }
 
@@ -240,117 +295,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       </span>
       {children}
     </label>
-  );
-}
-
-function Toggle({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: string; label: string }[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="inline-flex h-9 rounded-md border border-border bg-background p-0.5">
-      {options.map((o) => {
-        const active = o.value === value;
-        return (
-          <button
-            key={o.value}
-            type="button"
-            onClick={() => onChange(o.value)}
-            className={`rounded-[5px] px-3 text-xs font-medium transition-colors ${
-              active
-                ? "bg-[var(--color-navy-900)] text-white"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function Summary({
-  from,
-  to,
-  totalExport,
-  totalImport,
-  balance,
-  fmt,
-  metricLabel,
-}: {
-  from: string | undefined;
-  to: string | undefined;
-  totalExport: number;
-  totalImport: number;
-  balance: number;
-  fmt: (n: number | null) => string;
-  metricLabel: string;
-}) {
-  const data = [
-    { name: "수출", value: Math.max(totalExport, 0) },
-    { name: "수입", value: Math.max(totalImport, 0) },
-  ];
-  return (
-    <section className="mt-6 grid gap-4 lg:grid-cols-[1fr_280px]">
-      <div className="rounded-lg border border-border bg-card p-5">
-        <p className="text-xs text-muted-foreground">
-          {formatPeriod(from ?? "—")} ~ {formatPeriod(to ?? "—")} · {metricLabel} 합계
-        </p>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Stat label="총 수출" value={fmt(totalExport)} tone="positive" />
-          <Stat label="총 수입" value={fmt(totalImport)} tone="neutral" />
-          <Stat
-            label="무역수지"
-            value={fmt(balance)}
-            tone={balance >= 0 ? "positive" : "negative"}
-          />
-        </div>
-      </div>
-      <div className="rounded-lg border border-border bg-card p-3">
-        <p className="px-2 pt-1 text-xs font-medium text-muted-foreground">수출 vs 수입</p>
-        <div className="h-44">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={data} dataKey="value" innerRadius={36} outerRadius={60}>
-                <Cell fill="#0F2D5A" />
-                <Cell fill="#38BDF8" />
-              </Pie>
-              <Tooltip formatter={(v: number) => fmt(v)} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: "positive" | "negative" | "neutral";
-}) {
-  const color =
-    tone === "positive"
-      ? "text-emerald-700"
-      : tone === "negative"
-        ? "text-rose-700"
-        : "text-foreground";
-  return (
-    <div className="rounded-md border border-border/60 bg-background px-3 py-2.5">
-      <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-lg font-semibold ${color}`}>{value}</div>
-    </div>
   );
 }
 
@@ -380,66 +324,140 @@ function ChapterSection({
   const aggs = useMemo(() => aggregateByChapter(rows, expKey, impKey), [rows, expKey, impKey]);
 
   const top5Exp = useMemo(() => buildTopWithOther(aggs, "exp"), [aggs]);
-  const top5Imp = useMemo(() => buildTopWithOther(aggs, "imp"), [aggs]);
+
+  const divergingRows = useMemo(
+    () =>
+      aggs.slice(0, 6).map((a) => ({
+        label: `HS ${a.chapter}`,
+        left: a.imp,
+        right: a.exp,
+      })),
+    [aggs],
+  );
+
+  const treemapItems = useMemo(
+    () => aggs.map((a) => ({ label: `HS ${a.chapter} ${a.name}`, value: a.exp })),
+    [aggs],
+  );
 
   return (
     <>
-      <section className="mt-10">
-        <SectionTitle
-          title="HS 챕터 랭킹"
-          subtitle="선택된 지표 내림차순. 실제 데이터가 있는 챕터만 표시됩니다."
-        />
+      <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
+        <Panel
+          title="수출 vs 수입 — 상위 HS 챕터"
+          badge={<PBadge variant="outline">상위 {divergingRows.length}개 챕터</PBadge>}
+        >
+          {divergingRows.length === 0 ? (
+            <Collecting />
+          ) : (
+            <DivergingBars
+              rows={divergingRows}
+              leftLabel="수입"
+              rightLabel="수출"
+              format={(v) => fmt(v)}
+            />
+          )}
+        </Panel>
+        <Panel title="수출 비중 (HS)" badge={<PBadge variant="outline">Top 5 + 기타</PBadge>}>
+          {top5Exp.length === 0 ? (
+            <Collecting />
+          ) : (
+            <Donut
+              segments={top5Exp.map((d) => ({ label: d.name, value: d.value }))}
+              centerLabel={fmt(top5Exp.reduce((s, d) => s + d.value, 0))}
+              centerSub="수출 합계"
+              format={(v) => fmt(v)}
+            />
+          )}
+        </Panel>
+      </div>
+
+      <Panel
+        title="HS 챕터 수출 트리맵"
+        badge={<PBadge variant="secondary">{aggs.length}개 챕터</PBadge>}
+      >
+        <TreemapChart items={treemapItems} format={(v) => fmt(v)} />
+      </Panel>
+
+      <Panel
+        title="HS 챕터 랭킹"
+        badge={<PBadge variant="secondary">{aggs.length}개 챕터 · 상세 클릭 시 드릴다운</PBadge>}
+        bodyPad={0}
+      >
         {aggs.length === 0 ? (
-          <EmptyState />
+          <div style={{ padding: 18 }}>
+            <Collecting />
+          </div>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="overflow-x-auto">
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">#</th>
-                  <th className="px-4 py-3 text-left font-medium">HS 챕터</th>
-                  <th className="px-4 py-3 text-right font-medium">수출</th>
-                  <th className="px-4 py-3 text-right font-medium">수입</th>
-                  <th className="px-4 py-3 text-right font-medium">무역수지</th>
-                  <th className="px-4 py-3" />
+                  <th style={thStyle()}>#</th>
+                  <th style={thStyle()}>품목 (HS 챕터)</th>
+                  <th style={thStyle("right")}>수출</th>
+                  <th style={thStyle("right")}>수입</th>
+                  <th style={thStyle("right")}>무역수지</th>
+                  <th style={thStyle("right")}>상세</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {aggs.map((a, i) => {
                   const open = expanded === a.chapter;
                   return (
                     <Row key={a.chapter} open={open}>
-                      <tr className="bg-card">
-                        <td className="px-4 py-3 text-muted-foreground">{i + 1}</td>
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-foreground">
-                            HS {a.chapter} · {a.name}
-                          </div>
+                      <tr style={{ borderTop: "1px solid var(--border)" }}>
+                        <td style={{ ...tdStyle(), color: "var(--ink-muted)" }}>{i + 1}</td>
+                        <td style={tdStyle()}>
+                          <span
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              color: "var(--navy-600)",
+                              fontWeight: 700,
+                              marginRight: 8,
+                            }}
+                          >
+                            HS {a.chapter}
+                          </span>
+                          {a.name}
                         </td>
-                        <td className="px-4 py-3 text-right">{fmt(a.exp)}</td>
-                        <td className="px-4 py-3 text-right">{fmt(a.imp)}</td>
+                        <td style={{ ...tdStyle("right"), fontFamily: "var(--font-mono)" }}>
+                          {fmt(a.exp)}
+                        </td>
+                        <td style={{ ...tdStyle("right"), fontFamily: "var(--font-mono)" }}>
+                          {fmt(a.imp)}
+                        </td>
                         <td
-                          className={`px-4 py-3 text-right font-medium ${
-                            a.balance >= 0 ? "text-emerald-700" : "text-rose-700"
-                          }`}
+                          style={{
+                            ...tdStyle("right"),
+                            fontFamily: "var(--font-mono)",
+                            fontWeight: 600,
+                            color:
+                              a.balance >= 0 ? "var(--direction-up)" : "var(--direction-down)",
+                          }}
                         >
                           {fmt(a.balance)}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td style={tdStyle("right")}>
                           <button
                             type="button"
                             onClick={() =>
                               setExpanded((cur) => (cur === a.chapter ? null : a.chapter))
                             }
-                            className="text-xs font-medium text-[var(--color-navy-600)] hover:underline"
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: "var(--navy-600)",
+                              cursor: "pointer",
+                            }}
                           >
                             {open ? "닫기" : "상세"}
                           </button>
                         </td>
                       </tr>
                       {open ? (
-                        <tr className="bg-muted/20">
-                          <td colSpan={6} className="px-4 py-5">
+                        <tr style={{ borderTop: "1px solid var(--border)", background: "var(--surface-alt)" }}>
+                          <td colSpan={6} style={{ padding: "18px 16px" }}>
                             <ChapterDetail
                               chapter={a.chapter}
                               chapterName={a.name}
@@ -456,14 +474,19 @@ function ChapterSection({
                 })}
               </tbody>
             </table>
+            <div
+              style={{
+                padding: "10px 16px",
+                borderTop: "1px solid var(--border)",
+                fontSize: 11.5,
+                color: "var(--ink-muted)",
+              }}
+            >
+              ※ HS 챕터 무역수지 = 수출 − 수입. 실제 데이터가 있는 챕터만 표시됩니다.
+            </div>
           </div>
         )}
-      </section>
-
-      <section className="mt-10 grid gap-4 lg:grid-cols-2">
-        <DonutCard title="수출 비중 (HS 챕터)" data={top5Exp} fmt={fmt} />
-        <DonutCard title="수입 비중 (HS 챕터)" data={top5Imp} fmt={fmt} />
-      </section>
+      </Panel>
     </>
   );
 }
@@ -511,44 +534,6 @@ function buildTopWithOther(
   const restSum = rest.reduce((s, a) => s + a[key], 0);
   if (restSum > 0) result.push({ name: "기타", value: restSum });
   return result;
-}
-
-function DonutCard({
-  title,
-  data,
-  fmt,
-}: {
-  title: string;
-  data: { name: string; value: number }[];
-  fmt: (n: number | null) => string;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-      {data.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">수집 예정</p>
-      ) : (
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={data} dataKey="value" innerRadius={50} outerRadius={90} paddingAngle={1}>
-                {data.map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v: number) => fmt(v)} />
-              <Legend
-                layout="vertical"
-                verticalAlign="middle"
-                align="right"
-                wrapperStyle={{ fontSize: 10, maxWidth: 160 }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-    </div>
-  );
 }
 
 function ChapterDetail({
@@ -691,34 +676,46 @@ function CountrySection({
   }, [aggs]);
 
   return (
-    <>
-      <section className="mt-10">
-        <SectionTitle title="국가별 교역 랭킹" subtitle="선택된 지표 내림차순." />
+    <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
+      <Panel
+        title="국가별 교역 랭킹"
+        badge={<PBadge variant="secondary">상위 30개국 · 수출액 내림차순</PBadge>}
+        bodyPad={0}
+      >
         {aggs.length === 0 ? (
-          <EmptyState />
+          <div style={{ padding: 18 }}>
+            <Collecting />
+          </div>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="overflow-x-auto">
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">#</th>
-                  <th className="px-4 py-3 text-left font-medium">국가</th>
-                  <th className="px-4 py-3 text-right font-medium">수출</th>
-                  <th className="px-4 py-3 text-right font-medium">수입</th>
-                  <th className="px-4 py-3 text-right font-medium">무역수지</th>
+                  <th style={thStyle()}>#</th>
+                  <th style={thStyle()}>국가</th>
+                  <th style={thStyle("right")}>수출</th>
+                  <th style={thStyle("right")}>수입</th>
+                  <th style={thStyle("right")}>무역수지</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {aggs.slice(0, 30).map((a, i) => (
-                  <tr key={a.country} className="bg-card">
-                    <td className="px-4 py-3 text-muted-foreground">{i + 1}</td>
-                    <td className="px-4 py-3 font-medium text-foreground">{a.country}</td>
-                    <td className="px-4 py-3 text-right">{fmt(a.exp)}</td>
-                    <td className="px-4 py-3 text-right">{fmt(a.imp)}</td>
+                  <tr key={a.country} style={{ borderTop: "1px solid var(--border)" }}>
+                    <td style={{ ...tdStyle(), color: "var(--ink-muted)" }}>{i + 1}</td>
+                    <td style={{ ...tdStyle(), fontWeight: 600 }}>{a.country}</td>
+                    <td style={{ ...tdStyle("right"), fontFamily: "var(--font-mono)" }}>
+                      {fmt(a.exp)}
+                    </td>
+                    <td style={{ ...tdStyle("right"), fontFamily: "var(--font-mono)" }}>
+                      {fmt(a.imp)}
+                    </td>
                     <td
-                      className={`px-4 py-3 text-right font-medium ${
-                        a.balance >= 0 ? "text-emerald-700" : "text-rose-700"
-                      }`}
+                      style={{
+                        ...tdStyle("right"),
+                        fontFamily: "var(--font-mono)",
+                        fontWeight: 600,
+                        color: a.balance >= 0 ? "var(--direction-up)" : "var(--direction-down)",
+                      }}
                     >
                       {fmt(a.balance)}
                     </td>
@@ -728,12 +725,21 @@ function CountrySection({
             </table>
           </div>
         )}
-      </section>
+      </Panel>
 
-      <section className="mt-10">
-        <DonutCard title="국가별 수출 비중 Top 5 + 기타" data={top5Exp} fmt={fmt} />
-      </section>
-    </>
+      <Panel title="국가별 수출 비중" badge={<PBadge variant="outline">Top 5 + 기타</PBadge>}>
+        {top5Exp.length === 0 ? (
+          <Collecting />
+        ) : (
+          <Donut
+            segments={top5Exp.map((d) => ({ label: d.name, value: d.value }))}
+            centerLabel={fmt(top5Exp.reduce((s, d) => s + d.value, 0))}
+            centerSub="수출 합계"
+            format={(v) => fmt(v)}
+          />
+        )}
+      </Panel>
+    </div>
   );
 }
 
@@ -769,43 +775,53 @@ function MonthlyTrend({
   }, [rows, expKey, impKey]);
 
   return (
-    <section className="mt-10">
-      <SectionTitle title="월별 교역 추이" subtitle="기간 전체 합산. 막대=수출/수입, 선=합계." />
-      {data.length === 0 ? (
-        <EmptyState />
+    <Panel
+      title="월별 교역 추이"
+      badge={<PBadge variant="outline">막대=수출·수입 · 선=합계</PBadge>}
+    >
+      {data.length < 2 ? (
+        <Collecting note="월별 추이는 2개 이상 기간 데이터 확보 후 표시됩니다." />
       ) : (
-        <div className="mt-4 h-80 rounded-lg border border-border bg-card p-4">
+        <div style={{ height: 300 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="period" fontSize={11} />
-              <YAxis tickFormatter={(v) => fmt(v)} fontSize={11} />
-              <Tooltip formatter={(v: number) => fmt(v)} />
+              <CartesianGrid stroke="var(--border)" vertical={false} />
+              <XAxis
+                dataKey="period"
+                tick={{ fontSize: 10, fill: "var(--ink-muted)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tickFormatter={(v) => fmt(v)}
+                tick={{ fontSize: 10, fill: "var(--ink-muted)" }}
+                axisLine={false}
+                tickLine={false}
+                width={76}
+              />
+              <Tooltip
+                formatter={(v: number) => fmt(v)}
+                contentStyle={{
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+              />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="수출" fill="#0F2D5A" />
-              <Bar dataKey="수입" fill="#38BDF8" />
-              <Line type="monotone" dataKey="합계" stroke="#F59E0B" strokeWidth={2} dot={false} />
+              <Bar dataKey="수출" fill="var(--navy-600)" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="수입" fill="#b6c5dc" radius={[3, 3, 0, 0]} />
+              <Line
+                type="monotone"
+                dataKey="합계"
+                stroke="var(--status-caution)"
+                strokeWidth={2}
+                dot={false}
+              />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
       )}
-    </section>
-  );
-}
-
-function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div>
-      <h2 className="text-xl font-semibold">{title}</h2>
-      {subtitle ? <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p> : null}
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <p className="mt-4 rounded-md border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-      수집 예정
-    </p>
+    </Panel>
   );
 }

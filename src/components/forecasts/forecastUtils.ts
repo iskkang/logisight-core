@@ -211,3 +211,30 @@ export function computeKpis(forecasts: Forecast[], now = Date.now()): Kpis {
     leadTimeDays,
   };
 }
+
+// 주간 방향 적중률 추이 — 각 주말 시점의 트레일링 12주 적중률(분모 = resolved 전수, 표본 빼기 금지).
+export type HitTrendPoint = { label: string; rate: number | null; sample: number };
+export function hitRateTrend(forecasts: Forecast[], weeks = 12, now = Date.now()): HitTrendPoint[] {
+  const ws = weekStartMonday(now);
+  const pts: HitTrendPoint[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const end = ws - i * 7 * DAY + 7 * DAY; // 해당 주 종료(배타)
+    const resolved = forecasts.filter(
+      (f) =>
+        f.status === "resolved" &&
+        f.resolved_at &&
+        Date.parse(f.resolved_at) < end &&
+        Date.parse(f.resolved_at) >= end - 12 * 7 * DAY,
+    );
+    const hit = resolved.filter((f) => f.outcome === "hit").length;
+    const partial = resolved.filter((f) => f.outcome === "partial").length;
+    const sample = resolved.length;
+    const d = new Date(end - 7 * DAY);
+    pts.push({
+      label: `${d.getUTCMonth() + 1}/${d.getUTCDate()}`,
+      rate: sample ? Math.round(((hit + partial * 0.5) / sample) * 100) : null,
+      sample,
+    });
+  }
+  return pts;
+}
