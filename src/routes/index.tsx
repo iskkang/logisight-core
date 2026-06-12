@@ -358,7 +358,7 @@ function WeeklyBriefingBlock() {
             <span>
               {formatBriefingDate(briefing.published_at)} 발행 · 매주 월요일
             </span>
-            <Link to="/news" className="font-semibold text-[var(--color-navy-600)]">
+            <Link to="/briefing" className="font-semibold text-[var(--color-navy-600)]">
               전체 분석 읽기 →
             </Link>
           </div>
