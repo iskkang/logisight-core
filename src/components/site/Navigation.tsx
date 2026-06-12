@@ -9,7 +9,7 @@ import { useDarkMode } from "@/hooks/useDarkMode";
 const GNB = [
   { to: "/", label: "홈" },
   { to: "/news", label: "뉴스" },
-  { to: "/dashboard", label: "대시보드" },
+  { to: "/dashboard", label: "인사이트" },
 ] as const;
 
 const SUB_GNB = [
@@ -34,7 +34,9 @@ export function Navigation() {
   const { dark, toggle } = useDarkMode();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const inDash = isDashboardPath(pathname);
-  const showThemeToggle = inDash;
+  // 종합(/dashboard)은 라이트 전용 디자인(dashboard.css) → 다크 토글 숨김.
+  const isInsightHome = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+  const showThemeToggle = inDash && !isInsightHome;
 
   const topActive = (to: string): boolean => {
     if (to === "/") return pathname === "/";
@@ -108,7 +110,7 @@ export function Navigation() {
               ))}
               <div className="mt-1 border-t border-white/10 pt-1">
                 <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
-                  Dashboard
+                  Insight
                 </p>
                 {SUB_GNB.map((item) => (
                   <Link
@@ -148,7 +150,7 @@ export function Navigation() {
         >
           <div className="mx-auto flex h-11 max-w-[1540px] items-center gap-0.5 overflow-x-auto px-4 lg:px-12">
             <span className="mr-2.5 whitespace-nowrap text-[10.5px] font-bold tracking-[0.14em] text-white/45">
-              DASHBOARD
+              INSIGHT
             </span>
             {SUB_GNB.map((item) => {
               const active = pathname === item.to || pathname.startsWith(`${item.to}/`);

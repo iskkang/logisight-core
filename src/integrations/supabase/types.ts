@@ -1037,18 +1037,33 @@ export type Database = {
       exchange_rates: {
         Row: {
           rate_date: string
+          eur_krw: number | null
+          cny_krw: number | null
+          jpy_krw: number | null
+          rub_krw: number | null
+          source_url: string | null
           usd_krw: number
           source: string
           fetched_at: string
         }
         Insert: {
           rate_date: string
+          eur_krw?: number | null
+          cny_krw?: number | null
+          jpy_krw?: number | null
+          rub_krw?: number | null
+          source_url?: string | null
           usd_krw: number
           source?: string
           fetched_at?: string
         }
         Update: {
           rate_date?: string
+          eur_krw?: number | null
+          cny_krw?: number | null
+          jpy_krw?: number | null
+          rub_krw?: number | null
+          source_url?: string | null
           usd_krw?: number
           source?: string
           fetched_at?: string

@@ -18,6 +18,7 @@ import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
 import { PageHero } from "@/components/site/PageHero";
+import { RouteBreadcrumb } from "@/components/site/Breadcrumb";
 import {
   Collecting,
   DivergingBars,
@@ -121,6 +122,7 @@ function IndustriesPage() {
     <div className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
       <Header maxPeriod={maxPeriod} />
       <main className="mx-auto max-w-[1540px] space-y-4 px-4 py-[26px] lg:px-12">
+        <RouteBreadcrumb />
         <Filters
           periods={periods}
           from={periodFrom}

@@ -12,6 +12,7 @@ import {
 import { formatPublishedAt, isInternalNewsItem } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
 import { normalizeArticleContent } from "@/lib/article-content";
+import { Breadcrumb } from "@/components/site/Breadcrumb";
 
 export const Route = createFileRoute("/article/$slug")({
   loader: async ({ params, context }) => {
@@ -140,6 +141,10 @@ function ArticlePage() {
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-10 lg:py-14">
+      <Breadcrumb
+        className="mb-6"
+        items={[{ label: "홈", to: "/" }, { label: "뉴스", to: "/news" }, { label: article.title }]}
+      />
       <header className="border-b border-[var(--color-line)] pb-6">
         <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.15em]">
           {article.category && (

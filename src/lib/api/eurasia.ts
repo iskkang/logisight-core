@@ -28,6 +28,10 @@ export type DelayWeeklyRow = {
   median_delay_d: number | null;
   p90_delay_d: number | null;
   milestone: string | null;
+  // 세그먼트(milestone) 위치 매핑 + 표기용. delay_index_weekly 실제 컬럼.
+  destination: string | null;
+  route_pattern: string | null;
+  data_quality: string | null;
 };
 
 export type DisruptionRow = {

@@ -38,6 +38,7 @@ import {
 } from "@/lib/api/forecasts";
 
 import { PageHero } from "@/components/site/PageHero";
+import { RouteBreadcrumb } from "@/components/site/Breadcrumb";
 import "./dashboard.css";
 
 const JUDGMENT_TAB_CODES = ["KCCI", "WCI", "SCFI"] as const;
@@ -321,33 +322,6 @@ function LdSparkline({ points, trend }: { points: number[]; trend?: "up" | "down
     <svg className={cls} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
       <polyline points={coords} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-  );
-}
-
-// ── Ticker bar ────────────────────────────────────────────────────────────────
-
-function LdTickerBar({
-  items,
-  asOf,
-}: {
-  items: { code: string; value: string; changePct: number | null }[];
-  asOf: string;
-}) {
-  return (
-    <div className="ld-ticker-row">
-      <div className="ld-ticker-track ld-shell">
-        {items.map((item) => (
-          <div className="ld-ticker-item" key={item.code}>
-            <span className="ld-ticker-label">{item.code}</span>
-            <strong>{item.value}</strong>
-            <span className={`ld-trend ${trendCls(item.changePct)}`}>
-              {trendSym(item.changePct)} {pctText(item.changePct)}
-            </span>
-          </div>
-        ))}
-        <div className="ld-ticker-date">기준일 {asOf} (KST)</div>
-      </div>
-    </div>
   );
 }
 
@@ -1122,18 +1096,8 @@ function DashboardPage() {
     [kcciStat, stats, alertCount, disruptions.length, openForecasts.length],
   );
 
-  // Ticker items
-  const tickerItems = orderedIndexRows.map((s) => ({
-    code: s.index_code,
-    value: s.latest_value!.toLocaleString("en-US", { maximumFractionDigits: 2 }),
-    changePct: s.change_pct,
-  }));
-
   return (
     <div className="ld-dash">
-      {/* Ticker */}
-      <LdTickerBar items={tickerItems} asOf={asOf} />
-
       {/* Hero — 다크 네이비 + 컨테이너선 블리드 (프로토타입 PageHero) */}
       <LdHeroSection
         today={today}
@@ -1143,6 +1107,10 @@ function DashboardPage() {
         disruptions={disruptions.length}
         aiSummary={heroSummary}
       />
+
+      <div className="ld-shell pt-4">
+        <RouteBreadcrumb />
+      </div>
 
       {/* Main grid: Intelligence Panel + Right Sidebar */}
       <section className="ld-main-grid ld-shell">

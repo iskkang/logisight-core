@@ -112,7 +112,10 @@
   --font-sans:
     "Pretendard Variable", Pretendard, Inter, -apple-system,
     BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  /* 숫자 표기도 Pretendard로 통일(역할 변수명은 유지). tabular-nums로 정렬 보존. */
+  --font-mono:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, "Segoe UI", Roboto, sans-serif;
 }
 
 :root {
@@ -319,6 +322,82 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+
+  /*
+   * Re-resolve the --color-* aliases in this scope. @theme declares them as
+   * --color-x: var(--x), which is computed once at :root/.dark and inherited
+   * down — so overriding the base --x tokens above does NOT update the aliases
+   * inside the .dark subtree. Editorial components use var(--color-*), so we
+   * must recompute the aliases here for the force-light scope to actually win.
+   */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-600: var(--navy-600);
+  --color-heading: var(--heading);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-status-normal: var(--status-normal);
+  --color-status-observe: var(--status-observe);
+  --color-status-caution: var(--status-caution);
+  --color-status-alert: var(--status-alert);
+  --color-direction-up: var(--direction-up);
+  --color-direction-down: var(--direction-down);
+  --color-direction-flat: var(--direction-flat);
+  --color-demand-0: var(--demand-0);
+  --color-demand-1: var(--demand-1);
+  --color-demand-2: var(--demand-2);
+  --color-demand-3: var(--demand-3);
+  /* Invariant today (no .dark override), re-aliased for consistency + future-proofing. */
+  --color-cyan: var(--cyan);
+  --color-cyan-soft: var(--cyan-soft);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-cat-sea-bg: var(--cat-sea-bg);
+  --color-cat-sea-fg: var(--cat-sea-fg);
+  --color-cat-air-bg: var(--cat-air-bg);
+  --color-cat-air-fg: var(--cat-air-fg);
+  --color-cat-rail-bg: var(--cat-rail-bg);
+  --color-cat-rail-fg: var(--cat-rail-fg);
+  --color-cat-logi-bg: var(--cat-logi-bg);
+  --color-cat-logi-fg: var(--cat-logi-fg);
+  --color-cat-trade-bg: var(--cat-trade-bg);
+  --color-cat-trade-fg: var(--cat-trade-fg);
 }
 
 @layer base {

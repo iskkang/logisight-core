@@ -7,6 +7,7 @@ import {
   formatBriefingDate,
 } from "@/lib/api/briefing";
 import type { BriefingPoint } from "@/lib/api/briefing";
+import { RouteBreadcrumb } from "@/components/site/Breadcrumb";
 
 const SLOTS = [
   { key: "shipping", label: "시황" },
@@ -84,6 +85,7 @@ function BriefingPage() {
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-10 lg:py-14">
+      <RouteBreadcrumb className="mb-6" />
       <header className="border-b border-[var(--color-line)] pb-6">
         <span
           className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"

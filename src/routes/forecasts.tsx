@@ -16,6 +16,7 @@ import { ForecastDetailPanel } from "@/components/forecasts/ForecastDetailPanel"
 import { ForecastAnalystPanel } from "@/components/forecasts/ForecastAnalystPanel";
 import { ForecastHero } from "@/components/forecasts/ForecastHero";
 import { ForecastMethodology } from "@/components/forecasts/ForecastMethodology";
+import { RouteBreadcrumb } from "@/components/site/Breadcrumb";
 import { Collecting, KpiCard, Panel, PBadge, Segment } from "@/components/proto/Kit";
 import { MODULE_LABEL } from "@/lib/api/forecasts";
 import {
@@ -176,6 +177,7 @@ function ForecastsPage() {
         chips={heroChips}
       />
       <div className="mx-auto max-w-[1540px] px-4 py-[26px] lg:px-12">
+        <RouteBreadcrumb className="mb-4" />
         {/* KPI 5칸 — 프로토타입 ls-grid-5, 전부 실데이터 */}
         <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
           <KpiCard
@@ -312,11 +314,11 @@ function ForecastsPage() {
               />
             </div>
 
-            {/* 선택 전망 상세 + 분석자 패널 */}
-            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+            {/* 선택 전망 상세 위에, 분석자 패널을 전체폭으로 그 아래 스택 */}
+            <div className="mt-6 space-y-6">
               {selected && <ForecastDetailPanel f={selected} series={series[selected.id]} />}
               <div>
-                <div className="mb-3 text-sm font-semibold text-foreground">분석자 패널</div>
+                <div className="mb-3 text-sm font-semibold text-foreground">분석 패널</div>
                 <ForecastAnalystPanel
                   forecast={selected}
                   forecasts={open}

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { PageHero, type HeroChip } from "@/components/site/PageHero";
+import { RouteBreadcrumb } from "@/components/site/Breadcrumb";
 
 type Props = {
   title: string;
@@ -32,6 +33,7 @@ export function DashboardShell({
         action={toolbar}
       />
       <main className="mx-auto max-w-[1540px] px-4 py-[26px] lg:px-12">
+        <RouteBreadcrumb className="mb-4" />
         <div className="space-y-6">{children}</div>
       </main>
     </div>

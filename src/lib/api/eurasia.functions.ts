@@ -27,7 +27,7 @@ export const getEurasiaDelays = createServerFn({ method: "GET" }).handler(
     const { data, error } = await supabasePublicServer
       .from("delay_index_weekly")
       .select(
-        "lane_id,week_iso,on_time_rate,otp_pct,sample_count,median_delay_d,p90_delay_d,milestone",
+        "lane_id,week_iso,on_time_rate,otp_pct,sample_count,median_delay_d,p90_delay_d,milestone,destination,route_pattern,data_quality",
       )
       .order("week_iso", { ascending: true })
       .limit(2000);

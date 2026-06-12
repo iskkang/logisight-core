@@ -11,7 +11,6 @@ import {
 
 import appCss from "../styles.css?url";
 import { Navigation } from "@/components/site/Navigation";
-import { IndexBar } from "@/components/site/IndexBar";
 import { Footer } from "@/components/site/Footer";
 
 // Minimal shell without IndexBar — safe to use outside QueryClientProvider
@@ -178,38 +177,30 @@ function RootComponent() {
   );
 }
 
-// Dashboards keep the dark/light toggle; everything else (editorial pages) is
-// pinned light via the .theme-light scope.
-const DASHBOARD_PREFIXES = [
+// Product pages keep the dark/light toggle; editorial pages are pinned light
+// via the .theme-light scope. 종합(/dashboard)은 dashboard.css 라이트 전용 디자인이라
+// 토글에서 제외하고 강제 라이트로 둔다(전역 다크가 켜져 있어도 일관 라이트).
+const THEME_TOGGLE_PREFIXES = [
   "/rates",
   "/trade",
   "/policy",
   "/eurasia",
-  "/dashboard",
   "/forecasts",
   "/industries",
 ];
 
 function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isDashboard = DASHBOARD_PREFIXES.some(
+  const isThemeTogglePage = THEME_TOGGLE_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
-  // 종합(/dashboard)과 운임(/rates)은 freight_indices 전용 자체 티커(DashboardTicker)를 그리므로
-  // 전역 NYFI IndexBar는 숨긴다(이중 티커·가공 NYFI 라벨 방지).
-  const hideGlobalTicker =
-    pathname === "/dashboard" ||
-    pathname.startsWith("/dashboard/") ||
-    pathname === "/rates" ||
-    pathname.startsWith("/rates/");
 
   return (
     <div
-      className={`flex min-h-screen flex-col ${isDashboard ? "" : "theme-light"}`}
+      className={`flex min-h-screen flex-col ${isThemeTogglePage ? "" : "theme-light"}`}
       style={{ background: "var(--color-surface)" }}
     >
       <Navigation />
-      {!hideGlobalTicker && <IndexBar />}
       <main className="flex-1">{children}</main>
       <Footer />
     </div>

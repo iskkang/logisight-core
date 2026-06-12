@@ -181,6 +181,21 @@ export type IndexStats = {
   source: string | null;
 };
 
+// 운임 티커 표기 순서(가공 라벨 금지 — freight_indices 실코드만). 운임/홈 공통.
+export const INDEX_TICKER_ORDER = ["SCFI", "KCCI", "CCFI", "FBX", "WCI", "BDI"];
+
+// 티커 노출용: 값 결측 제외 + 표기 순서 정렬.
+export function orderedTickerStats(stats: IndexStats[]): IndexStats[] {
+  const rank = new Map(INDEX_TICKER_ORDER.map((code, index) => [code, index]));
+  return [...stats]
+    .filter((stat) => stat.latest_value != null)
+    .sort(
+      (a, b) =>
+        (rank.get(a.index_code) ?? INDEX_TICKER_ORDER.length) -
+        (rank.get(b.index_code) ?? INDEX_TICKER_ORDER.length),
+    );
+}
+
 export const indexStatsQueryOptions = () =>
   queryOptions({
     queryKey: ["freight_indices", "stats"],

@@ -7,6 +7,7 @@
  *   SUPABASE_SERVICE_ROLE_KEY  - service_role 키
  */
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -16,9 +17,12 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+  realtime: { transport: ws },
+});
 
-const CURRENCIES = ["FX_USDKRW", "FX_EURKRW", "FX_CNYKRW", "FX_JPYKRW"];
+const CURRENCIES = ["FX_USDKRW", "FX_EURKRW", "FX_CNYKRW", "FX_JPYKRW", "FX_RUBKRW"];
 const BASE_URL = "https://api.stock.naver.com/marketindex/exchange";
 const HEADERS = { "User-Agent": "Mozilla/5.0 (compatible; logisight-collector/1.0)" };
 
@@ -67,6 +71,7 @@ async function main() {
     eur_krw: results["FX_EURKRW"]?.value ?? null,
     cny_krw: results["FX_CNYKRW"]?.value ?? null,
     jpy_krw: results["FX_JPYKRW"]?.value ?? null,
+    rub_krw: results["FX_RUBKRW"]?.value ?? null,
     source: "naver_finance",
   };
 

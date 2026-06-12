@@ -12,8 +12,8 @@ import {
   YAxis,
 } from "recharts";
 
-import { DashboardTicker } from "@/components/dashboard/DashboardTicker";
 import { PageHero } from "@/components/site/PageHero";
+import { RouteBreadcrumb } from "@/components/site/Breadcrumb";
 import {
   Collecting,
   DeltaValue,
@@ -29,12 +29,10 @@ import {
   bunkerPricesQueryOptions,
   computeMoM,
   freightIndicesHistoryQueryOptions,
-  indexStatsQueryOptions,
   kitaAirRatesQueryOptions,
   kitaSeaRatesQueryOptions,
   latestByRoute,
   type FreightIndexHistoryRow,
-  type IndexStats,
   type KitaAirRateRow,
   type KitaSeaRateRow,
 } from "@/lib/api/rates";
@@ -44,7 +42,6 @@ export const Route = createFileRoute("/rates")({
   loader: async ({ context }) => {
     await Promise.all([
       context.queryClient.ensureQueryData(freightIndicesHistoryQueryOptions()),
-      context.queryClient.ensureQueryData(indexStatsQueryOptions()),
       context.queryClient.ensureQueryData(bunkerPricesQueryOptions()),
       context.queryClient.ensureQueryData(kitaAirRatesQueryOptions()),
       context.queryClient.ensureQueryData(kitaSeaRatesQueryOptions()),
@@ -112,8 +109,6 @@ const INDEX_COLORS: Record<string, string> = {
   WCI: "#8b5cf6",
   CCFI: "#0891b2",
 };
-
-const INDEX_TICKER_ORDER = ["SCFI", "KCCI", "CCFI", "FBX", "WCI", "BDI"];
 
 const CMP_COLORS = [
   "var(--navy-600)",
@@ -286,17 +281,6 @@ function indexSeries(history: FreightIndexHistoryRow[], code: string) {
     .sort((a, b) => a.week_date.localeCompare(b.week_date));
 }
 
-function orderedTickerStats(stats: IndexStats[]) {
-  const rank = new Map(INDEX_TICKER_ORDER.map((code, index) => [code, index]));
-  return [...stats]
-    .filter((stat) => stat.latest_value != null)
-    .sort(
-      (a, b) =>
-        (rank.get(a.index_code) ?? INDEX_TICKER_ORDER.length) -
-        (rank.get(b.index_code) ?? INDEX_TICKER_ORDER.length),
-    );
-}
-
 function formatSeaRate(row: RouteMetric) {
   return `$${fmtNumber(row.rate)}/${row.unit}`;
 }
@@ -316,7 +300,6 @@ function shortReportTitle(statement: string, date: string) {
 
 function RatesPage() {
   const { data: history } = useSuspenseQuery(freightIndicesHistoryQueryOptions());
-  const { data: stats } = useSuspenseQuery(indexStatsQueryOptions());
   const { data: bunker } = useSuspenseQuery(bunkerPricesQueryOptions());
   const { data: seaRates } = useSuspenseQuery(kitaSeaRatesQueryOptions());
   const { data: airRates } = useSuspenseQuery(kitaAirRatesQueryOptions());
@@ -466,22 +449,12 @@ function RatesPage() {
 
   const ratesForecasts = forecasts.filter((forecast) => forecast.module === "rates").slice(0, 4);
   const latestBunker = bunker.at(0);
-  const tickerItems = useMemo(
-    () =>
-      orderedTickerStats(stats).map((stat) => ({
-        code: stat.index_code,
-        value: stat.latest_value!.toLocaleString("en-US", { maximumFractionDigits: 2 }),
-        changePct: stat.change_pct,
-      })),
-    [stats],
-  );
 
   const fx = exchangeRate?.usd_krw ?? null;
   const fxDate = exchangeRate?.rate_date?.slice(0, 10) ?? null;
 
   return (
     <main className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
-      <DashboardTicker items={tickerItems} />
       <PageHero
         eyebrow="Rates Control Tower"
         titleMain="운임"
@@ -498,6 +471,7 @@ function RatesPage() {
       />
 
       <div className="relative z-10 mx-auto flex w-full max-w-[1540px] flex-col gap-4 px-4 py-[26px] lg:px-12">
+        <RouteBreadcrumb />
         <PCard pad="md">
           <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
             <FilterSeg

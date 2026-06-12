@@ -18,7 +18,9 @@ import {
   kitaAirRatesQueryOptions,
   latestByRoute,
   computeMoM,
+  orderedTickerStats,
 } from "@/lib/api/rates";
+import { DashboardTicker } from "@/components/dashboard/DashboardTicker";
 import {
   computeOceanPressureSignal,
   computeGlobalMomentumSignal,
@@ -146,8 +148,16 @@ function HeroStatusChips() {
 }
 
 function Index() {
+  const { data: stats } = useSuspenseQuery(indexStatsQueryOptions());
+  const tickerItems = orderedTickerStats(stats).map((stat) => ({
+    code: stat.index_code,
+    value: stat.latest_value!.toLocaleString("en-US", { maximumFractionDigits: 2 }),
+    changePct: stat.change_pct,
+  }));
+
   return (
     <>
+    <DashboardTicker items={tickerItems} />
     <section
       className="relative overflow-hidden"
       style={{

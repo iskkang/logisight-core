@@ -22,6 +22,7 @@ import {
 } from "@/lib/api/trade";
 import { indexStatsQueryOptions, formatNumber } from "@/lib/api/rates";
 import { PageHero } from "@/components/site/PageHero";
+import { RouteBreadcrumb } from "@/components/site/Breadcrumb";
 import {
   Collecting,
   DeltaValue,
@@ -546,6 +547,7 @@ function TradePage() {
         ]}
       />
       <section className="mx-auto max-w-[1540px] space-y-4 px-4 py-[26px] lg:px-12">
+        <RouteBreadcrumb />
         {/* 필터 — 목적 권역 + 지표 */}
         <PCard pad="md">
           <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>

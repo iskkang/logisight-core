@@ -12,6 +12,7 @@ import {
 import type { NewsItem } from "@/lib/api/news";
 import { articleParam } from "@/lib/api/article";
 import { NewsletterForm } from "@/components/site/NewsletterForm";
+import { RouteBreadcrumb } from "@/components/site/Breadcrumb";
 
 const newsSearchSchema = z.object({
   cat: z.string().min(1).max(40).optional(),
@@ -72,6 +73,9 @@ function NewsPage() {
 
   return (
     <div className="bg-[var(--color-card)]">
+      <div className="mx-auto max-w-[1280px] px-4 pt-4 lg:px-6">
+        <RouteBreadcrumb />
+      </div>
       {/* Masthead */}
       <header className="border-b-[3px] border-double border-[var(--color-navy-900)] bg-[var(--color-card)]">
         <div className="mx-auto max-w-[1280px] px-4 pb-3 pt-8 text-center lg:px-6">
