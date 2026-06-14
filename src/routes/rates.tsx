@@ -119,7 +119,9 @@ const CMP_COLORS = [
   "var(--navy-600)",
   "var(--cyan)",
   "var(--status-caution)",
-  "var(--status-observe)",
+  "var(--status-normal)",
+  "var(--status-alert)",
+  "oklch(0.55 0.18 300)",
 ];
 
 /** 비현실적 MoM 변동률 플래그 기준(%) — 플래그 행은 상승·하락 집계와 정렬 비교에서 분리 */
@@ -381,15 +383,10 @@ function RatesPage() {
   const flatCount = unflagged.length - risingCount - fallingCount;
   const flaggedCount = visibleMetrics.length - unflagged.length;
 
-  // 노선 운임 추이 비교 — 해상 그룹만 (mode-group 분리)
-  const cmpRoutes = useMemo(
-    () => seaVisible.filter((row) => !isFlagged(row)).slice(0, 4),
-    [seaVisible],
-  );
-
+  // 노선 운임 추이 비교 — 히트맵과 동일한 고정 노선(HEATMAP_ROUTES)
   const cmpData = useMemo(() => {
     const byMonth = new Map<string, Record<string, number | string>>();
-    for (const route of cmpRoutes) {
+    for (const route of HEATMAP_ROUTES) {
       for (const item of scopedSea) {
         if (item.origin !== route.origin || item.dest !== route.dest) continue;
         const month = compactMonth(item.year_mon);
@@ -403,7 +400,7 @@ function RatesPage() {
     return [...byMonth.values()]
       .sort((a, b) => String(a.month).localeCompare(String(b.month)))
       .map((point) => ({ ...point, month: fmtMonth(String(point.month)) }));
-  }, [cmpRoutes, scopedSea]);
+  }, [scopedSea]);
 
   // 전월대비 변동률 히트맵 — 고정 노선(HEATMAP_ROUTES), 최근 6개월 실측 MoM
   const heatmap = useMemo(() => {
@@ -539,7 +536,7 @@ function RatesPage() {
             title="노선 운임 추이 비교"
             badge={<PBadge variant="secondary">해상 · $/FEU·TEU</PBadge>}
           >
-            {cmpData.length < 2 || cmpRoutes.length === 0 ? (
+            {cmpData.length < 2 ? (
               <Collecting note="비교 가능한 해상 노선 시계열이 2개월 이상 확보되면 표시됩니다." />
             ) : (
               <div style={{ height: 250 }}>
@@ -568,9 +565,9 @@ function RatesPage() {
                         fontSize: 12,
                       }}
                     />
-                    {cmpRoutes.map((route, index) => (
+                    {HEATMAP_ROUTES.map((route, index) => (
                       <Line
-                        key={route.id}
+                        key={`${route.origin}-${route.dest}`}
                         type="monotone"
                         dataKey={`${route.origin} → ${route.dest}`}
                         stroke={CMP_COLORS[index % CMP_COLORS.length]}
@@ -591,9 +588,9 @@ function RatesPage() {
                     color: "var(--ink-muted)",
                   }}
                 >
-                  {cmpRoutes.map((route, index) => (
+                  {HEATMAP_ROUTES.map((route, index) => (
                     <span
-                      key={route.id}
+                      key={`${route.origin}-${route.dest}`}
                       style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
                     >
                       <span
