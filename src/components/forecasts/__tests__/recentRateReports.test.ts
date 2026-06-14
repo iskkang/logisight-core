@@ -16,7 +16,7 @@ function mk(p: Partial<Forecast>): Forecast {
     status: "published",
     outcome: null,
     outcome_note: null,
-    metric_ref: null,
+    metric_ref: "WCI",
     created_at: "2026-06-01T00:00:00Z",
     published_at: null,
     resolved_at: null,
@@ -27,33 +27,37 @@ function mk(p: Partial<Forecast>): Forecast {
 describe("recentRateReports", () => {
   it("splits statement into lead (first sentence) and outlook (rest)", () => {
     const [r] = recentRateReports([
-      mk({ id: "a", statement: "첫 문장이다. 둘째 문장이다. 셋째 문장이다." }),
+      mk({ id: "a", metric_ref: "WCI", statement: "첫 문장이다. 둘째 문장이다. 셋째 문장이다." }),
     ]);
     expect(r.lead).toBe("첫 문장이다.");
     expect(r.outlook).toBe("둘째 문장이다. 셋째 문장이다.");
   });
 
-  it("titles WCI composite and WCI lane distinctly (fixes duplicate-title bug)", () => {
+  it("includes only WCI/SCFI/KCCI composite indices, with clean titles", () => {
     const reports = recentRateReports([
-      mk({ id: "wci", metric_ref: "WCI", statement: "WCI 종합 지수 상승. 근거." }),
+      mk({ id: "wci", metric_ref: "WCI", statement: "WCI 종합. 근거." }),
+      mk({ id: "scfi", metric_ref: "SCFI", statement: "SCFI 종합. 근거." }),
+      mk({ id: "kcci", metric_ref: "KCCI", statement: "KCCI 종합. 근거." }),
       mk({ id: "lane", metric_ref: "WCI_SHA_RTM", statement: "상하이발 WCI. 근거." }),
+      mk({ id: "kita", metric_ref: "kita_sea_rates:부산-뉴욕", statement: "부산발 뉴욕. 근거." }),
     ]);
-    const titles = reports.map((r) => r.title);
-    expect(new Set(titles).size).toBe(2); // 서로 다른 제목
-    expect(titles).toContain("WCI");
-    expect(titles).not.toContain("[저장 전망]"); // 내부 라벨 제거
+    expect(reports.map((r) => r.id).sort()).toEqual(["kcci", "scfi", "wci"]);
+    expect(reports.map((r) => r.title).sort()).toEqual(["KCCI", "SCFI", "WCI"]);
+    expect(reports.some((r) => r.title.includes("[저장 전망]"))).toBe(false);
   });
 
   it("excludes records whose lead AND outlook are both empty", () => {
     const reports = recentRateReports([
-      mk({ id: "empty", statement: "" }),
-      mk({ id: "ok", statement: "내용 있음." }),
+      mk({ id: "empty", metric_ref: "WCI", statement: "" }),
+      mk({ id: "ok", metric_ref: "SCFI", statement: "내용 있음." }),
     ]);
     expect(reports.map((r) => r.id)).toEqual(["ok"]);
   });
 
   it("keeps a single-sentence record (outlook empty, lead present)", () => {
-    const [r] = recentRateReports([mk({ id: "solo", statement: "한 문장뿐이다." })]);
+    const [r] = recentRateReports([
+      mk({ id: "solo", metric_ref: "KCCI", statement: "한 문장뿐이다." }),
+    ]);
     expect(r.lead).toBe("한 문장뿐이다.");
     expect(r.outlook).toBe("");
   });
@@ -74,38 +78,35 @@ describe("recentRateReports", () => {
     expect(reports).toHaveLength(1);
   });
 
-  it("caps at 5, newest published first, ignores non-rates", () => {
+  it("caps at 3, newest published first, ignores non-composite and non-rates", () => {
     const reports = recentRateReports([
       mk({
-        id: "old",
+        id: "wci",
         metric_ref: "WCI",
-        published_at: "2026-06-01T00:00:00Z",
-        statement: "A. B.",
-      }),
-      mk({
-        id: "n1",
-        metric_ref: "SCFI",
         published_at: "2026-06-09T00:00:00Z",
         statement: "A. B.",
       }),
       mk({
-        id: "n2",
-        metric_ref: "KCCI",
+        id: "scfi",
+        metric_ref: "SCFI",
         published_at: "2026-06-08T00:00:00Z",
         statement: "A. B.",
       }),
       mk({
-        id: "n3",
-        metric_ref: "CCFI",
+        id: "kcci",
+        metric_ref: "KCCI",
         published_at: "2026-06-07T00:00:00Z",
         statement: "A. B.",
       }),
-      mk({ id: "n4", metric_ref: "FBX", published_at: "2026-06-06T00:00:00Z", statement: "A. B." }),
-      mk({ id: "n5", metric_ref: "BDI", published_at: "2026-06-05T00:00:00Z", statement: "A. B." }),
-      mk({ id: "other", module: "trade", statement: "A. B." }),
+      mk({
+        id: "lane",
+        metric_ref: "WCI_SHA_RTM",
+        published_at: "2026-06-10T00:00:00Z",
+        statement: "A. B.",
+      }),
+      mk({ id: "other", module: "trade", metric_ref: "WCI", statement: "A. B." }),
     ]);
-    expect(reports).toHaveLength(5);
-    expect(reports[0].id).toBe("n1"); // 최신
-    expect(reports.map((r) => r.id)).not.toContain("other");
+    expect(reports).toHaveLength(3);
+    expect(reports.map((r) => r.id)).toEqual(["wci", "scfi", "kcci"]);
   });
 });

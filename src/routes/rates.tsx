@@ -125,6 +125,16 @@ const CMP_COLORS = [
 /** 비현실적 MoM 변동률 플래그 기준(%) — 플래그 행은 상승·하락 집계와 정렬 비교에서 분리 */
 const FLAG_MOM_THRESHOLD = 50;
 
+// 전월대비 히트맵 고정 노선(부산발) — KITA 해상운임 기준. 데이터 없는 노선은 "—"로 표기.
+const HEATMAP_ROUTES: { origin: string; dest: string }[] = [
+  { origin: "부산", dest: "롱비치" },
+  { origin: "부산", dest: "서배너" },
+  { origin: "부산", dest: "함부르크" },
+  { origin: "부산", dest: "하이퐁" },
+  { origin: "부산", dest: "모스크바" },
+  { origin: "부산", dest: "타슈켄트" },
+];
+
 function RatesPending() {
   return (
     <main className="flex min-h-[62vh] items-center justify-center bg-[#edf3fb] px-4 text-slate-900">
@@ -395,7 +405,7 @@ function RatesPage() {
       .map((point) => ({ ...point, month: fmtMonth(String(point.month)) }));
   }, [cmpRoutes, scopedSea]);
 
-  // 전월대비 변동률 히트맵 — 해상 그룹, 최근 6개월 실측 MoM
+  // 전월대비 변동률 히트맵 — 고정 노선(HEATMAP_ROUTES), 최근 6개월 실측 MoM
   const heatmap = useMemo(() => {
     const monthSet = new Set<string>();
     for (const item of scopedSea) {
@@ -403,7 +413,7 @@ function RatesPage() {
       if (month) monthSet.add(month);
     }
     const months = [...monthSet].sort().slice(-6);
-    const rows = cmpRoutes.map((route) => {
+    const rows = HEATMAP_ROUTES.map((route) => {
       const series = new Map<string, number>();
       for (const item of scopedSea) {
         if (item.origin !== route.origin || item.dest !== route.dest) continue;
@@ -423,7 +433,7 @@ function RatesPage() {
       return { label: `${route.origin} → ${route.dest}`, cells };
     });
     return { months, rows };
-  }, [cmpRoutes, scopedSea]);
+  }, [scopedSea]);
 
   const trendData = useMemo(() => {
     const codes = ["SCFI", "KCCI", "BDI", "WCI"];

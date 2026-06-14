@@ -116,12 +116,16 @@ export type RateReport = {
   outlook: string;
 };
 
-export function recentRateReports(forecasts: Forecast[], limit = 5): RateReport[] {
+// "최근 리포트"는 종합 지수 3종(WCI·SCFI·KCCI)만 노출 — 노선/권역 전망은 제외.
+const RATE_REPORT_CODES = ["WCI", "SCFI", "KCCI"];
+
+export function recentRateReports(forecasts: Forecast[], limit = 3): RateReport[] {
   const seenId = new Set<string>();
   const seenKey = new Set<string>();
   const rows: { f: Forecast; r: RateReport }[] = [];
   for (const f of forecasts) {
     if (f.module !== "rates") continue;
+    if (!RATE_REPORT_CODES.includes(f.metric_ref ?? "")) continue;
     if (seenId.has(f.id)) continue;
     const stamp = f.published_at ?? f.created_at ?? "";
     const key = `${f.metric_ref ?? ""}|${stamp}`;
