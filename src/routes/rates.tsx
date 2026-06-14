@@ -432,18 +432,31 @@ function RatesPage() {
     return { months, rows };
   }, [scopedSea]);
 
+  // 글로벌 지수 추이 — 최신 주 기준 최근 6개월, week_date로 정렬(연말 버킷 오류 방지)
   const trendData = useMemo(() => {
     const codes = ["SCFI", "KCCI", "BDI", "WCI"];
-    const byDate = new Map<string, Record<string, number | string>>();
-    for (const row of history.filter(
+    const rows = history.filter(
       (item) => codes.includes(item.index_code) && item.value != null,
-    )) {
-      const key = row.week_date.slice(5, 10);
-      const point = byDate.get(key) ?? { label: key };
+    );
+    const latest = rows
+      .map((row) => row.week_date)
+      .sort()
+      .at(-1);
+    if (!latest) return [];
+    const cutoff = new Date(latest);
+    cutoff.setMonth(cutoff.getMonth() - 6);
+    const cutoffIso = cutoff.toISOString().slice(0, 10);
+    const byDate = new Map<string, Record<string, number | string>>();
+    for (const row of rows) {
+      if (row.week_date < cutoffIso) continue;
+      const point = byDate.get(row.week_date) ?? {
+        label: row.week_date.slice(5, 10),
+        date: row.week_date,
+      };
       point[row.index_code] = row.value ?? 0;
-      byDate.set(key, point);
+      byDate.set(row.week_date, point);
     }
-    return [...byDate.values()].slice(-8);
+    return [...byDate.values()].sort((a, b) => String(a.date).localeCompare(String(b.date)));
   }, [history]);
 
   const ratesReports = recentRateReports(forecasts);
