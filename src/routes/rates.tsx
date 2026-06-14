@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
-import { FileText, Search } from "lucide-react";
+import { ChevronDown, FileText, Search } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -25,6 +25,11 @@ import {
   thStyle,
 } from "@/components/proto/Kit";
 import { publishedForecastsQueryOptions } from "@/lib/api/forecasts";
+import {
+  recentRateReports,
+  SERIES_LABEL,
+  type RateReport,
+} from "@/components/forecasts/forecastUtils";
 import {
   bunkerPricesQueryOptions,
   computeMoM,
@@ -285,19 +290,6 @@ function formatSeaRate(row: RouteMetric) {
   return `$${fmtNumber(row.rate)}/${row.unit}`;
 }
 
-function shortReportTitle(statement: string, date: string) {
-  const firstSentence = statement.split(/[.!?。]/)[0]?.trim() || statement.trim();
-  const code = ["KCCI", "SCFI", "WCI", "CCFI", "BDI"].find((item) => statement.includes(item));
-  const routeMatch = statement.match(/([가-힣A-Za-z]+발\s*[가-힣A-Za-z]+향)/);
-  const label = code
-    ? `${code} 운임 전망`
-    : routeMatch?.[1]
-      ? `${routeMatch[1]} 운임 동향`
-      : firstSentence;
-  const clipped = label.length > 28 ? `${label.slice(0, 28)}...` : label;
-  return `[저장 전망] ${clipped} (${date.slice(0, 10)})`;
-}
-
 function RatesPage() {
   const { data: history } = useSuspenseQuery(freightIndicesHistoryQueryOptions());
   const { data: bunker } = useSuspenseQuery(bunkerPricesQueryOptions());
@@ -447,7 +439,7 @@ function RatesPage() {
     return [...byDate.values()].slice(-8);
   }, [history]);
 
-  const ratesForecasts = forecasts.filter((forecast) => forecast.module === "rates").slice(0, 4);
+  const ratesReports = recentRateReports(forecasts);
   const latestBunker = bunker.at(0);
 
   const fx = exchangeRate?.usd_krw ?? null;
@@ -789,8 +781,8 @@ function RatesPage() {
               </div>
             )}
           </Panel>
-          <Panel title="최근 리포트" badge={<PBadge variant="outline">저장 데이터</PBadge>}>
-            <ReportList forecasts={ratesForecasts} bunkerLabel={latestBunker?.grade ?? null} />
+          <Panel title="최근 리포트" badge={<PBadge variant="outline">운임 전망</PBadge>}>
+            <ReportCards reports={ratesReports} bunkerLabel={latestBunker?.grade ?? null} />
             <div
               style={{
                 marginTop: 12,
@@ -1077,17 +1069,17 @@ function TinySparkline({ values, positive }: { values: number[]; positive: boole
   );
 }
 
-function ReportList({
-  forecasts,
+function ReportCards({
+  reports,
   bunkerLabel,
 }: {
-  forecasts: { id: string; statement: string; published_at: string | null; created_at: string }[];
+  reports: RateReport[];
   bunkerLabel: string | null;
 }) {
-  if (forecasts.length === 0) {
+  if (reports.length === 0) {
     return (
       <div>
-        <EmptyState>저장된 운임 리포트가 없습니다.</EmptyState>
+        <EmptyState>발행된 운임 전망 리포트가 아직 없습니다.</EmptyState>
         {bunkerLabel ? (
           <div
             style={{
@@ -1106,40 +1098,118 @@ function ReportList({
     );
   }
   return (
-    <div>
-      {forecasts.map((forecast, index) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {reports.map((report) => (
+        <ReportCard key={report.id} report={report} />
+      ))}
+    </div>
+  );
+}
+
+function ReportCard({ report }: { report: RateReport }) {
+  const [open, setOpen] = useState(false);
+  const hasOutlook = report.outlook.trim().length > 0;
+  const chip = report.indexCode ? SERIES_LABEL[report.indexCode] : null;
+
+  return (
+    <div
+      style={{
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        background: "var(--card)",
+        overflow: "hidden",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => hasOutlook && setOpen((value) => !value)}
+        aria-expanded={hasOutlook ? open : undefined}
+        disabled={!hasOutlook}
+        style={{
+          display: "block",
+          width: "100%",
+          textAlign: "left",
+          border: "none",
+          background: "transparent",
+          padding: "12px 14px",
+          cursor: hasOutlook ? "pointer" : "default",
+          font: "inherit",
+          color: "inherit",
+          touchAction: "manipulation",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <FileText size={15} color="var(--ink-muted)" style={{ flex: "none" }} />
+          <span
+            style={{
+              flex: "1 1 auto",
+              minWidth: 0,
+              fontSize: 13,
+              fontWeight: 700,
+              color: "var(--ink)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {report.title}
+          </span>
+          {chip ? (
+            <PBadge variant="secondary" style={{ flex: "none" }}>
+              {chip}
+            </PBadge>
+          ) : null}
+          <span
+            style={{
+              flex: "none",
+              fontSize: 11.5,
+              color: "var(--ink-muted)",
+              fontFamily: "var(--font-mono)",
+            }}
+          >
+            {report.date}
+          </span>
+          {hasOutlook ? (
+            <ChevronDown
+              size={16}
+              color="var(--ink-muted)"
+              style={{
+                flex: "none",
+                transition: "transform 0.18s ease",
+                transform: open ? "rotate(180deg)" : "rotate(0deg)",
+              }}
+            />
+          ) : null}
+        </div>
+        {report.lead ? (
+          <p
+            style={{
+              margin: "6px 0 0 23px",
+              fontSize: 12.5,
+              lineHeight: 1.5,
+              color: "var(--ink-muted)",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {report.lead}
+          </p>
+        ) : null}
+      </button>
+      {open && hasOutlook ? (
         <div
-          key={forecast.id}
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            padding: "12px 0",
-            borderTop: index ? "1px solid var(--border)" : "none",
+            padding: "0 14px 12px 37px",
+            fontSize: 12.5,
+            lineHeight: 1.6,
+            color: "var(--ink)",
           }}
         >
-          <div style={{ display: "flex", minWidth: 0, alignItems: "center", gap: 10 }}>
-            <FileText size={15} color="var(--ink-muted)" style={{ flex: "none" }} />
-            <p
-              style={{
-                margin: 0,
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--ink)",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {shortReportTitle(forecast.statement, forecast.published_at ?? forecast.created_at)}
-            </p>
-          </div>
-          <span style={{ flex: "none", fontSize: 11.5, color: "var(--ink-muted)" }}>
-            {(forecast.published_at ?? forecast.created_at).slice(0, 10)}
-          </span>
+          {report.outlook}
         </div>
-      ))}
+      ) : null}
     </div>
   );
 }

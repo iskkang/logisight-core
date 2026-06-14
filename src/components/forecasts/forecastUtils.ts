@@ -105,6 +105,54 @@ export function sentences(s: string): string[] {
   return (s || "").split(/(?<=[.!?。])\s+/).map((x) => x.trim()).filter(Boolean);
 }
 
+// /rates "최근 리포트" 인라인 카드용 — rates 모듈 published 전망에서 파생.
+// lead=첫 문장(항상 노출), outlook=나머지 문장(클릭 시 펼침). 제목은 metric_ref 기반(WCI 중복 제목 버그 방지).
+export type RateReport = {
+  id: string;
+  title: string;
+  indexCode: SeriesClass | null;
+  date: string;
+  lead: string;
+  outlook: string;
+};
+
+export function recentRateReports(forecasts: Forecast[], limit = 5): RateReport[] {
+  const seenId = new Set<string>();
+  const seenKey = new Set<string>();
+  const rows: { f: Forecast; r: RateReport }[] = [];
+  for (const f of forecasts) {
+    if (f.module !== "rates") continue;
+    if (seenId.has(f.id)) continue;
+    const stamp = f.published_at ?? f.created_at ?? "";
+    const key = `${f.metric_ref ?? ""}|${stamp}`;
+    if (seenKey.has(key)) continue;
+    const sents = sentences(f.statement ?? "");
+    const lead = sents[0] ?? "";
+    const outlook = sents.slice(1).join(" ");
+    if (!lead.trim() && !outlook.trim()) continue; // lead·outlook 둘 다 비면 제외(빈 껍데기 금지)
+    seenId.add(f.id);
+    seenKey.add(key);
+    rows.push({
+      f,
+      r: {
+        id: f.id,
+        title: displayLabelOf(f),
+        indexCode: seriesClassOf(f),
+        date: stamp.slice(0, 10),
+        lead,
+        outlook,
+      },
+    });
+  }
+  rows.sort(
+    (a, b) =>
+      b.r.date.localeCompare(a.r.date) || // 최신 발행일 순
+      displayOrderOf(a.f) - displayOrderOf(b.f) || // 동일 발행일 tiebreak
+      a.r.id.localeCompare(b.r.id),
+  );
+  return rows.slice(0, limit).map((x) => x.r);
+}
+
 export function dDay(horizon: string | null | undefined): string | null {
   if (!horizon) return null;
   const d = Math.round((Date.parse(`${horizon}T00:00:00Z`) - Date.now()) / 86400000);
