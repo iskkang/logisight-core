@@ -131,8 +131,8 @@ const HEATMAP_ROUTES: { origin: string; dest: string }[] = [
   { origin: "부산", dest: "서배너" },
   { origin: "부산", dest: "함부르크" },
   { origin: "부산", dest: "하이퐁" },
-  { origin: "부산", dest: "모스크바" },
-  { origin: "부산", dest: "타슈켄트" },
+  { origin: "부산", dest: "코페르" },
+  { origin: "부산", dest: "알렉산드리아" },
 ];
 
 function RatesPending() {
