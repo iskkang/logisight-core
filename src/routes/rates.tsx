@@ -435,9 +435,7 @@ function RatesPage() {
   // 글로벌 지수 추이 — 최신 주 기준 최근 6개월, week_date로 정렬(연말 버킷 오류 방지)
   const trendData = useMemo(() => {
     const codes = ["SCFI", "KCCI", "BDI", "WCI"];
-    const rows = history.filter(
-      (item) => codes.includes(item.index_code) && item.value != null,
-    );
+    const rows = history.filter((item) => codes.includes(item.index_code) && item.value != null);
     const latest = rows
       .map((row) => row.week_date)
       .sort()
