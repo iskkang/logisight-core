@@ -51,6 +51,7 @@ import {
 } from "@/lib/api/rates";
 import { latestExchangeRateQueryOptions } from "@/lib/api/exchange-rates";
 import { publishedPartnerRatesQueryOptions } from "@/lib/api/partner-rates";
+import { regionOfCountry } from "@/lib/api/partner-rates.normalize";
 
 export const Route = createFileRoute("/rates")({
   loader: async ({ context }) => {
@@ -321,13 +322,7 @@ function RatesPage() {
         />
 
         {mode === "sea" && (
-          <PartnerRatesPanel
-            rows={partnerRates as PartnerRateRow[]}
-            regionPorts={ports}
-            portSelected={portSelected}
-            port={port}
-            label={portSelected ? `${ORIGIN_BY_MODE[mode]} → ${port}` : `${region} 권역`}
-          />
+          <PartnerRatesPanel rows={partnerRates as PartnerRateRow[]} region={region} />
         )}
 
         <div className="grid items-start gap-4 xl:grid-cols-[1.16fr_1.5fr]">
@@ -793,38 +788,25 @@ type PartnerRateRow = {
   id: string;
   pol: string | null;
   pod: string | null;
+  country: string | null;
   carrier: string | null;
   rate_20: number | null;
   rate_40: number | null;
   sheet?: { source: string | null; valid_until: string | null } | null;
 };
 
-function PartnerRatesPanel({
-  rows,
-  regionPorts,
-  portSelected,
-  port,
-  label,
-}: {
-  rows: PartnerRateRow[];
-  regionPorts: string[];
-  portSelected: boolean;
-  port: string;
-  label: string;
-}) {
-  // 선택한 권역(또는 항만)에 매핑된(kita_dest) 실측만 노출
-  const visible = rows.filter(
-    (r) => r.kita_dest != null && (portSelected ? r.kita_dest === port : regionPorts.includes(r.kita_dest)),
-  );
+function PartnerRatesPanel({ rows, region }: { rows: PartnerRateRow[]; region: string }) {
+  // 국가 기준 권역 매칭 — 선택한 권역의 실측만 노출(KITA에 없는 항만도 포함)
+  const visible = rows.filter((r) => regionOfCountry(r.country) === region);
   return (
     <Panel
       title="선사별 실시간 운임"
-      badge={<PBadge variant="secondary">실측 · {label}</PBadge>}
+      badge={<PBadge variant="secondary">실측 · {region}</PBadge>}
       bodyPad={0}
     >
       {visible.length === 0 ? (
         <div style={{ padding: 18 }}>
-          <Collecting note={`${label}에 매핑된 실측 운임이 없습니다.`} />
+          <Collecting note={`${region} 권역에 실측 운임이 없습니다.`} />
         </div>
       ) : (
         <div style={{ overflowX: "auto", maxHeight: 360, overflowY: "auto" }}>

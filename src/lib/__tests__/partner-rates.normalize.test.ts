@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { numUSD, parseTransit, normRouteType, isExpired } from "../api/partner-rates.normalize";
+import { numUSD, parseTransit, normRouteType, isExpired, regionOfCountry } from "../api/partner-rates.normalize";
 
 describe("numUSD", () => {
   it("strips currency symbols and commas", () => {
@@ -39,5 +39,18 @@ describe("isExpired", () => {
     expect(isExpired("2026-06-15", "2026-06-15")).toBe(false);
     expect(isExpired("2026-06-30", "2026-06-15")).toBe(false);
     expect(isExpired(null, "2026-06-15")).toBe(false);
+  });
+});
+
+describe("regionOfCountry", () => {
+  it("maps countries to KITA regions", () => {
+    expect(regionOfCountry("MEXICO")).toBe("중남미");
+    expect(regionOfCountry("Chile")).toBe("중남미");
+    expect(regionOfCountry("INDIA")).toBe("아시아");
+    expect(regionOfCountry("방글라")).toBe("아시아");
+    expect(regionOfCountry("NIGERIA")).toBe("아프리카");
+    expect(regionOfCountry("SOUTH AFRICA")).toBe("아프리카");
+    expect(regionOfCountry(null)).toBeNull();
+    expect(regionOfCountry("ATLANTIS")).toBeNull();
   });
 });
