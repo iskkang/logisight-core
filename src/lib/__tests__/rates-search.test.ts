@@ -7,7 +7,7 @@ import {
   routeSeries,
   regionPortsLatest,
   topPorts,
-} from "../rates.search";
+} from "../rates-search";
 
 type Row = { origin: string; dest: string; region: string | null; year_mon: string; feu: number | null };
 const mk = (p: Partial<Row>): Row =>
