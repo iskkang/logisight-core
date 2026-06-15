@@ -320,7 +320,15 @@ function RatesPage() {
           rows={scoped as KitaSeaRateRow[] | KitaAirRateRow[]} regionLatest={regionLatest}
         />
 
-        <PartnerRatesPanel rows={partnerRates as PartnerRateRow[]} />
+        {mode === "sea" && (
+          <PartnerRatesPanel
+            rows={partnerRates as PartnerRateRow[]}
+            regionPorts={ports}
+            portSelected={portSelected}
+            port={port}
+            label={portSelected ? `${ORIGIN_BY_MODE[mode]} → ${port}` : `${region} 권역`}
+          />
+        )}
 
         <div className="grid items-start gap-4 xl:grid-cols-[1.16fr_1.5fr]">
           <Panel
@@ -791,20 +799,36 @@ type PartnerRateRow = {
   sheet?: { source: string | null; valid_until: string | null } | null;
 };
 
-function PartnerRatesPanel({ rows }: { rows: PartnerRateRow[] }) {
+function PartnerRatesPanel({
+  rows,
+  regionPorts,
+  portSelected,
+  port,
+  label,
+}: {
+  rows: PartnerRateRow[];
+  regionPorts: string[];
+  portSelected: boolean;
+  port: string;
+  label: string;
+}) {
+  // 선택한 권역(또는 항만)에 매핑된(kita_dest) 실측만 노출
+  const visible = rows.filter(
+    (r) => r.kita_dest != null && (portSelected ? r.kita_dest === port : regionPorts.includes(r.kita_dest)),
+  );
   return (
     <Panel
       title="선사별 실시간 운임"
-      badge={<PBadge variant="secondary">실측 · 파트너</PBadge>}
+      badge={<PBadge variant="secondary">실측 · {label}</PBadge>}
       bodyPad={0}
     >
-      {rows.length === 0 ? (
+      {visible.length === 0 ? (
         <div style={{ padding: 18 }}>
-          <Collecting note="업로드·발행된 실측 운임이 아직 없습니다. (/admin/partner-rates 에서 업로드)" />
+          <Collecting note={`${label}에 매핑된 실측 운임이 없습니다.`} />
         </div>
       ) : (
         <div style={{ overflowX: "auto", maxHeight: 360, overflowY: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
             <thead>
               <tr>
                 <th style={thStyle()}>노선</th>
@@ -812,11 +836,10 @@ function PartnerRatesPanel({ rows }: { rows: PartnerRateRow[] }) {
                 <th style={thStyle("right")}>20&apos;</th>
                 <th style={thStyle("right")}>40&apos;/HQ</th>
                 <th style={thStyle()}>VALID UNTIL</th>
-                <th style={thStyle()}>출처</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {visible.map((r) => (
                 <tr key={r.id} style={{ borderTop: "1px solid var(--border)" }}>
                   <td style={{ ...tdStyle(), fontWeight: 600 }}>
                     {(r.pol ?? "-")} → {(r.pod ?? "-")}
@@ -831,7 +854,6 @@ function PartnerRatesPanel({ rows }: { rows: PartnerRateRow[] }) {
                   <td style={{ ...tdStyle(), whiteSpace: "nowrap", color: "var(--ink-muted)" }}>
                     {r.sheet?.valid_until ? `~ ${r.sheet.valid_until}` : "-"}
                   </td>
-                  <td style={{ ...tdStyle(), color: "var(--ink-muted)" }}>{r.sheet?.source ?? "-"}</td>
                 </tr>
               ))}
             </tbody>
