@@ -69,9 +69,9 @@ export const extractRateSheet = createServerFn({ method: "POST" })
     const Anthropic = (await import("@anthropic-ai/sdk")).default;
     const client = new Anthropic({ apiKey: process.env["ANTHROPIC_API_KEY"]! });
     const req: any = {
-      model: "claude-opus-4-8",
+      // 비용 절감: haiku-4-5(비전 지원, opus 대비 ~1/5). thinking 미지원이라 생략. 검수 단계가 정확도 보완.
+      model: "claude-haiku-4-5",
       max_tokens: 16000,
-      thinking: { type: "adaptive" },
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
       messages: [{
         role: "user",
