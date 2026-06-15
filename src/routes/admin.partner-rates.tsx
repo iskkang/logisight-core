@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -8,9 +8,11 @@ import {
   extractRateSheet,
   uploadRateImage,
   saveRateSheet,
+  getRateSheetImageUrl,
+  deleteRateSheet,
   type ExtractedSheet,
 } from "@/lib/api/partner-rates.functions";
-import { kitaDestsQueryOptions } from "@/lib/api/partner-rates";
+import { kitaDestsQueryOptions, rateSheetsHistoryQueryOptions } from "@/lib/api/partner-rates";
 
 export const Route = createFileRoute("/admin/partner-rates")({
   head: () => ({
@@ -26,13 +28,18 @@ type EditRow = ExtractedSheet["rows"][number] & { kita_dest: string | null };
 
 function AdminPartnerRates() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
   const { data: dests = [] } = useQuery(kitaDestsQueryOptions());
+  const { data: history = [] } = useQuery(rateSheetsHistoryQueryOptions());
   const [busy, setBusy] = useState(false);
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [sheet, setSheet] = useState<ExtractedSheet["sheet"] | null>(null);
   const [rows, setRows] = useState<EditRow[]>([]);
   const [msg, setMsg] = useState("");
+  const [picked, setPicked] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -72,7 +79,9 @@ function AdminPartnerRates() {
         rows,
       } });
       setMsg(`저장됨 (${status}): ${res.rows}행`);
-      setSheet(null); setRows([]); setImagePath(null);
+      setSheet(null); setRows([]); setImagePath(null); setPicked(null);
+      if (fileRef.current) fileRef.current.value = "";
+      qc.invalidateQueries({ queryKey: ["rate_sheets", "history"] });
     } catch (e) { setMsg("저장 실패: " + (e as Error).message); }
     finally { setBusy(false); }
   }
@@ -81,13 +90,42 @@ function AdminPartnerRates() {
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
 
+  async function openPreview(path: string | null) {
+    if (!path) { setMsg("이미지 경로가 없습니다."); return; }
+    try {
+      const { url } = await getRateSheetImageUrl({ data: { path } });
+      setPreviewUrl(url);
+    } catch (e) { setMsg("미리보기 실패: " + (e as Error).message); }
+  }
+
+  async function onDelete(id: string, image_path: string | null) {
+    if (!window.confirm("이 업로드를 삭제할까요? (행·이미지 모두 삭제)")) return;
+    setBusy(true);
+    try {
+      await deleteRateSheet({ data: { id, image_path } });
+      setMsg("삭제됨.");
+      qc.invalidateQueries({ queryKey: ["rate_sheets", "history"] });
+    } catch (e) { setMsg("삭제 실패: " + (e as Error).message); }
+    finally { setBusy(false); }
+  }
+
   if (!session) return null;
 
   return (
     <main style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
       <h1>실측 운임 업로드</h1>
-      <input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy}
-        onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          style={{ display: "none" }}
+          onChange={(e) => setPicked(e.target.files?.[0] ?? null)}
+        />
+        <button type="button" disabled={busy} onClick={() => fileRef.current?.click()}>찾기</button>
+        <span style={{ fontSize: 13, color: "#555" }}>{picked ? picked.name : "선택된 파일 없음"}</span>
+        <button type="button" disabled={busy || !picked} onClick={() => picked && onFile(picked)}>업로드</button>
+      </div>
       <p>{msg}</p>
 
       {sheet && (
@@ -129,6 +167,54 @@ function AdminPartnerRates() {
             <button disabled={busy} onClick={() => save("published")}>발행(published)</button>
           </div>
         </>
+      )}
+
+      <section style={{ marginTop: 32 }}>
+        <h2 style={{ fontSize: 18 }}>업로드 이력</h2>
+        {history.length === 0 ? (
+          <p style={{ color: "#888", fontSize: 13 }}>업로드된 운임표가 없습니다.</p>
+        ) : (
+          <table border={1} cellPadding={6} style={{ borderCollapse: "collapse", fontSize: 13, width: "100%" }}>
+            <thead><tr>
+              <th>업로드일</th><th>출처</th><th>제목</th><th>유효기간</th><th>상태</th><th>행수</th><th>미리보기</th><th>삭제</th>
+            </tr></thead>
+            <tbody>
+              {history.map((h) => (
+                <tr key={h.id}>
+                  <td style={{ whiteSpace: "nowrap" }}>{h.created_at?.slice(0, 10)}</td>
+                  <td>{h.source ?? "-"}</td>
+                  <td>{h.title ?? "-"}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{h.valid_until ?? "-"}</td>
+                  <td>{h.status === "published" ? "발행" : "임시"}</td>
+                  <td style={{ textAlign: "right" }}>{h.row_count}</td>
+                  <td>
+                    <button type="button" disabled={!h.image_path} onClick={() => openPreview(h.image_path)}>보기</button>
+                  </td>
+                  <td>
+                    <button type="button" disabled={busy} onClick={() => onDelete(h.id, h.image_path)}>삭제</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      {previewUrl && (
+        <div
+          onClick={() => setPreviewUrl(null)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 24,
+          }}
+        >
+          <img
+            src={previewUrl}
+            alt="rate sheet preview"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "95%", maxHeight: "95%", objectFit: "contain", background: "#fff" }}
+          />
+        </div>
       )}
     </main>
   );

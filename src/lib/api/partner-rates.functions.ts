@@ -171,3 +171,46 @@ export const getPublishedPartnerRates = createServerFn({ method: "GET" }).handle
   const byId = new Map(live.map((s: { id: string }) => [s.id, s]));
   return (rows ?? []).map((r: { sheet_id: string }) => ({ ...r, sheet: byId.get(r.sheet_id) }));
 });
+
+export type RateSheetHistory = {
+  id: string; source: string | null; title: string | null;
+  valid_until: string | null; status: string; image_path: string | null;
+  created_at: string; row_count: number;
+};
+
+// 업로드 이력(관리자 — draft·published 전부, 최신순)
+export const listRateSheets = createServerFn({ method: "GET" }).handler(async (): Promise<RateSheetHistory[]> => {
+  const sb = await serviceClient();
+  const { data: sheets, error } = await sb.from("rate_sheets")
+    .select("id,source,title,valid_until,status,image_path,created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  const list = (sheets ?? []) as Omit<RateSheetHistory, "row_count">[];
+  if (list.length === 0) return [];
+  const ids = list.map((s) => s.id);
+  const { data: rows } = await sb.from("partner_rates").select("sheet_id").in("sheet_id", ids);
+  const counts = new Map<string, number>();
+  for (const r of (rows ?? []) as { sheet_id: string }[]) counts.set(r.sheet_id, (counts.get(r.sheet_id) ?? 0) + 1);
+  return list.map((s) => ({ ...s, row_count: counts.get(s.id) ?? 0 }));
+});
+
+// 미리보기용 서명 URL(비공개 버킷)
+export const getRateSheetImageUrl = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ path: z.string() }).parse(d))
+  .handler(async ({ data }): Promise<{ url: string }> => {
+    const sb = await serviceClient();
+    const { data: signed, error } = await sb.storage.from("rate-sheets").createSignedUrl(data.path, 3600);
+    if (error || !signed) throw new Error(error?.message ?? "서명 URL 생성 실패");
+    return { url: signed.signedUrl };
+  });
+
+// 삭제(시트 + partner_rates cascade + 스토리지 이미지)
+export const deleteRateSheet = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ id: z.string(), image_path: z.string().nullable() }).parse(d))
+  .handler(async ({ data }): Promise<{ ok: true }> => {
+    const sb = await serviceClient();
+    if (data.image_path) await sb.storage.from("rate-sheets").remove([data.image_path]);
+    const { error } = await sb.from("rate_sheets").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
