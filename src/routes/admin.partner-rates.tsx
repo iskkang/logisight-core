@@ -37,7 +37,7 @@ function AdminPartnerRates() {
   const [sheet, setSheet] = useState<ExtractedSheet["sheet"] | null>(null);
   const [rows, setRows] = useState<EditRow[]>([]);
   const [msg, setMsg] = useState("");
-  const [picked, setPicked] = useState<File | null>(null);
+  const [queue, setQueue] = useState<File[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -78,12 +78,28 @@ function AdminPartnerRates() {
         sheet: { ...sheet, valid_from: null, image_path: imagePath, status },
         rows,
       } });
-      setMsg(`저장됨 (${status}): ${res.rows}행`);
-      setSheet(null); setRows([]); setImagePath(null); setPicked(null);
-      if (fileRef.current) fileRef.current.value = "";
       qc.invalidateQueries({ queryKey: ["rate_sheets", "history"] });
+      advance(`저장됨 (${status}): ${res.rows}행.`);
     } catch (e) { setMsg("저장 실패: " + (e as Error).message); }
     finally { setBusy(false); }
+  }
+
+  // 현재 파일 처리 종료 → 큐에서 제거하고 다음 파일 자동 추출(없으면 종료)
+  function advance(prefix: string) {
+    const rest = queue.slice(1);
+    setQueue(rest);
+    setSheet(null); setRows([]); setImagePath(null);
+    if (rest.length > 0) {
+      setMsg(`${prefix} 다음 파일 추출 중… (남은 ${rest.length}개)`);
+      void onFile(rest[0]);
+    } else {
+      setMsg(`${prefix} 모든 파일 완료.`);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  function skipCurrent() {
+    advance("건너뜀.");
   }
 
   function setRow(i: number, patch: Partial<EditRow>) {
@@ -118,14 +134,24 @@ function AdminPartnerRates() {
         <input
           ref={fileRef}
           type="file"
+          multiple
           accept="image/png,image/jpeg,image/webp"
           style={{ display: "none" }}
-          onChange={(e) => setPicked(e.target.files?.[0] ?? null)}
+          onChange={(e) => setQueue(Array.from(e.target.files ?? []))}
         />
-        <button type="button" disabled={busy} onClick={() => fileRef.current?.click()}>찾기</button>
-        <span style={{ fontSize: 13, color: "#555" }}>{picked ? picked.name : "선택된 파일 없음"}</span>
-        <button type="button" disabled={busy || !picked} onClick={() => picked && onFile(picked)}>업로드</button>
+        <button type="button" disabled={busy} onClick={() => fileRef.current?.click()}>찾기(여러 개 가능)</button>
+        <span style={{ fontSize: 13, color: "#555" }}>{queue.length ? `${queue.length}개 선택됨` : "선택된 파일 없음"}</span>
+        <button type="button" disabled={busy || queue.length === 0 || !!sheet} onClick={() => void onFile(queue[0])}>업로드 시작</button>
       </div>
+      {queue.length > 0 && (
+        <ol style={{ fontSize: 12, color: "#555", margin: "6px 0" }}>
+          {queue.map((f, i) => (
+            <li key={i} style={{ fontWeight: i === 0 && sheet ? 700 : 400 }}>
+              {f.name}{i === 0 && sheet ? " (검수 중)" : ""}
+            </li>
+          ))}
+        </ol>
+      )}
       <p>{msg}</p>
 
       {sheet && (
@@ -165,6 +191,9 @@ function AdminPartnerRates() {
           <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
             <button disabled={busy} onClick={() => save("draft")}>임시저장(draft)</button>
             <button disabled={busy} onClick={() => save("published")}>발행(published)</button>
+            {queue.length > 1 && (
+              <button type="button" disabled={busy} onClick={skipCurrent}>이 파일 건너뛰기</button>
+            )}
           </div>
         </>
       )}
