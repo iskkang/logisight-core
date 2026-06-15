@@ -51,7 +51,7 @@ import {
 } from "@/lib/api/rates";
 import { latestExchangeRateQueryOptions } from "@/lib/api/exchange-rates";
 import { publishedPartnerRatesQueryOptions } from "@/lib/api/partner-rates";
-import { regionOfCountry } from "@/lib/api/partner-rates.normalize";
+import { regionOf } from "@/lib/api/partner-rates.normalize";
 
 export const Route = createFileRoute("/rates")({
   loader: async ({ context }) => {
@@ -796,8 +796,8 @@ type PartnerRateRow = {
 };
 
 function PartnerRatesPanel({ rows, region }: { rows: PartnerRateRow[]; region: string }) {
-  // 국가 기준 권역 매칭 — 선택한 권역의 실측만 노출(KITA에 없는 항만도 포함)
-  const visible = rows.filter((r) => regionOfCountry(r.country) === region);
+  // 권역 매칭(국가 → POD 폴백) — 선택한 권역의 실측만 노출(KITA에 없는 항만도 포함)
+  const visible = rows.filter((r) => regionOf(r.country, r.pod) === region);
   return (
     <Panel
       title="선사별 실시간 운임"

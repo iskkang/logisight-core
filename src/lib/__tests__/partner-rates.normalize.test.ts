@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { numUSD, parseTransit, normRouteType, isExpired, regionOfCountry } from "../api/partner-rates.normalize";
+import { numUSD, parseTransit, normRouteType, isExpired, regionOfCountry, regionOf } from "../api/partner-rates.normalize";
 
 describe("numUSD", () => {
   it("strips currency symbols and commas", () => {
@@ -52,5 +52,15 @@ describe("regionOfCountry", () => {
     expect(regionOfCountry("SOUTH AFRICA")).toBe("아프리카");
     expect(regionOfCountry(null)).toBeNull();
     expect(regionOfCountry("ATLANTIS")).toBeNull();
+  });
+});
+
+describe("regionOf (POD fallback)", () => {
+  it("uses country first, then POD country name, then bare port", () => {
+    expect(regionOf("MEXICO", "MANZANILLO, MEXICO")).toBe("중남미"); // country
+    expect(regionOf(null, "MANZANILLO, MEXICO")).toBe("중남미"); // POD에 국가명
+    expect(regionOf(null, "KARACHI")).toBe("아시아"); // 단일 항만 사전
+    expect(regionOf("", "DURBAN, SOUTH AFRICA")).toBe("아프리카");
+    expect(regionOf(null, "UNKNOWNPORT")).toBeNull();
   });
 });

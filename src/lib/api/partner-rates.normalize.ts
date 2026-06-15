@@ -54,3 +54,28 @@ export function regionOfCountry(country: string | null | undefined): string | nu
   if (k === "방글라" || k.includes("BANGLA")) return "아시아";
   return COUNTRY_REGION[k] ?? null;
 }
+
+// country 없을 때 폴백용 — 국가명이 안 붙는 단일 항만명 사전.
+const PORT_REGION: Record<string, string> = {
+  KARACHI: "아시아", CHENNAI: "아시아", KOLKATA: "아시아", VISAKHAPATNAM: "아시아",
+  "NHAVA SHEVA": "아시아", PIPAVAV: "아시아", MUNDRA: "아시아", COLOMBO: "아시아", CHITTAGONG: "아시아",
+};
+
+// 권역 결정: country 우선 → POD에 박힌 국가명 → 단일 항만 사전.
+export function regionOf(
+  country: string | null | undefined,
+  pod: string | null | undefined,
+): string | null {
+  const byCountry = regionOfCountry(country);
+  if (byCountry) return byCountry;
+  if (!pod) return null;
+  const up = pod.toUpperCase();
+  if (up.includes("BANGLA")) return "아시아";
+  for (const c of Object.keys(COUNTRY_REGION)) {
+    if (up.includes(c)) return COUNTRY_REGION[c];
+  }
+  for (const p of Object.keys(PORT_REGION)) {
+    if (up.includes(p)) return PORT_REGION[p];
+  }
+  return null;
+}
