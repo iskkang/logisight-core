@@ -50,6 +50,7 @@ import {
   type KitaSeaRateRow,
 } from "@/lib/api/rates";
 import { latestExchangeRateQueryOptions } from "@/lib/api/exchange-rates";
+import { publishedPartnerRatesQueryOptions } from "@/lib/api/partner-rates";
 
 export const Route = createFileRoute("/rates")({
   loader: async ({ context }) => {
@@ -60,6 +61,7 @@ export const Route = createFileRoute("/rates")({
       context.queryClient.ensureQueryData(kitaSeaRatesQueryOptions()),
       context.queryClient.ensureQueryData(latestExchangeRateQueryOptions()),
       context.queryClient.ensureQueryData(publishedForecastsQueryOptions()),
+      context.queryClient.ensureQueryData(publishedPartnerRatesQueryOptions()),
     ]);
   },
   pendingMs: 0,
@@ -129,6 +131,7 @@ function RatesPage() {
   const { data: airRates } = useSuspenseQuery(kitaAirRatesQueryOptions());
   const { data: exchangeRate } = useSuspenseQuery(latestExchangeRateQueryOptions());
   const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
+  const { data: partnerRates } = useSuspenseQuery(publishedPartnerRatesQueryOptions());
 
   const [mode, setMode] = useState<Mode2>("sea");
   const [region, setRegion] = useState<string>("");
@@ -316,6 +319,8 @@ function RatesPage() {
           portSelected={portSelected} port={port}
           rows={scoped as KitaSeaRateRow[] | KitaAirRateRow[]} regionLatest={regionLatest}
         />
+
+        <PartnerRatesPanel rows={partnerRates as PartnerRateRow[]} />
 
         <div className="grid items-start gap-4 xl:grid-cols-[1.16fr_1.5fr]">
           <Panel
@@ -772,5 +777,67 @@ function EmptyState({ children }: { children: ReactNode }) {
     >
       {children}
     </div>
+  );
+}
+
+// 선사별 실시간 운임 — 업로드·발행된 실측 파트너 운임(getPublishedPartnerRates)
+type PartnerRateRow = {
+  id: string;
+  pol: string | null;
+  pod: string | null;
+  carrier: string | null;
+  rate_20: number | null;
+  rate_40: number | null;
+  sheet?: { source: string | null; valid_until: string | null } | null;
+};
+
+function PartnerRatesPanel({ rows }: { rows: PartnerRateRow[] }) {
+  return (
+    <Panel
+      title="선사별 실시간 운임"
+      badge={<PBadge variant="secondary">실측 · 파트너</PBadge>}
+      bodyPad={0}
+    >
+      {rows.length === 0 ? (
+        <div style={{ padding: 18 }}>
+          <Collecting note="업로드·발행된 실측 운임이 아직 없습니다. (/admin/partner-rates 에서 업로드)" />
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto", maxHeight: 360, overflowY: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
+            <thead>
+              <tr>
+                <th style={thStyle()}>노선</th>
+                <th style={thStyle()}>선사</th>
+                <th style={thStyle("right")}>20&apos;</th>
+                <th style={thStyle("right")}>40&apos;/HQ</th>
+                <th style={thStyle()}>VALID UNTIL</th>
+                <th style={thStyle()}>출처</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} style={{ borderTop: "1px solid var(--border)" }}>
+                  <td style={{ ...tdStyle(), fontWeight: 600 }}>
+                    {(r.pol ?? "-")} → {(r.pod ?? "-")}
+                  </td>
+                  <td style={tdStyle()}>{r.carrier ?? "-"}</td>
+                  <td style={{ ...tdStyle("right"), fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>
+                    {r.rate_20 != null ? `$${fmtNumber(r.rate_20)}` : "-"}
+                  </td>
+                  <td style={{ ...tdStyle("right"), fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>
+                    {r.rate_40 != null ? `$${fmtNumber(r.rate_40)}` : "-"}
+                  </td>
+                  <td style={{ ...tdStyle(), whiteSpace: "nowrap", color: "var(--ink-muted)" }}>
+                    {r.sheet?.valid_until ? `~ ${r.sheet.valid_until}` : "-"}
+                  </td>
+                  <td style={{ ...tdStyle(), color: "var(--ink-muted)" }}>{r.sheet?.source ?? "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
   );
 }
