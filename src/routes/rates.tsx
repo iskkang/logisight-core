@@ -510,20 +510,22 @@ function RateResultChart(props: {
       {props.data.length < 2 || props.lines.length === 0 ? (
         <Collecting note="선택 조건의 시계열이 2개월 이상 확보되면 표시됩니다." />
       ) : (
-        <div style={{ height: 250 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={props.data} margin={{ top: 12, right: 18, bottom: 0, left: 0 }}>
-              <CartesianGrid stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--ink-muted)" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "var(--ink-muted)" }} axisLine={false} tickLine={false} width={52}
-                tickFormatter={(v: number) => `${cur}${Math.round(v).toLocaleString()}`} />
-              <Tooltip formatter={(v: number) => `${cur}${Math.round(v).toLocaleString()}`}
-                contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
-              {props.lines.map((p, i) => (
-                <Line key={p} type="monotone" dataKey={p} stroke={CMP_LINE_COLORS[i % CMP_LINE_COLORS.length]} strokeWidth={2} dot={false} connectNulls />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
+        <>
+          <div style={{ height: 250 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={props.data} margin={{ top: 12, right: 18, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--ink-muted)" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "var(--ink-muted)" }} axisLine={false} tickLine={false} width={52}
+                  tickFormatter={(v: number) => `${cur}${Math.round(v).toLocaleString()}`} />
+                <Tooltip formatter={(v: number) => `${cur}${Math.round(v).toLocaleString()}`}
+                  contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
+                {props.lines.map((p, i) => (
+                  <Line key={p} type="monotone" dataKey={p} stroke={CMP_LINE_COLORS[i % CMP_LINE_COLORS.length]} strokeWidth={2} dot={false} connectNulls />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, fontSize: 11.5, color: "var(--ink-muted)" }}>
             {props.lines.map((p, i) => (
               <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -532,7 +534,7 @@ function RateResultChart(props: {
               </span>
             ))}
           </div>
-        </div>
+        </>
       )}
     </Panel>
   );
