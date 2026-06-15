@@ -44,9 +44,13 @@ function AdminPartnerRates() {
   async function onFile(file: File) {
     setBusy(true); setMsg("추출 중…");
     try {
-      const buf = new Uint8Array(await file.arrayBuffer());
-      let bin = ""; for (const b of buf) bin += String.fromCharCode(b);
-      const base64 = btoa(bin);
+      // 네이티브 base64 변환(대용량 캡처에서 문자열 concat 2차 비용 회피)
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
       const ext: "png" | "jpg" | "webp" = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
       const media: "image/png" | "image/jpeg" | "image/webp" = file.type === "image/png" ? "image/png" : file.type === "image/webp" ? "image/webp" : "image/jpeg";
       const up = await uploadRateImage({ data: { imageBase64: base64, ext } });
