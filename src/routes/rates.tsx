@@ -10,6 +10,7 @@ import {
   routeSeries,
   regionPortsLatest,
   topPorts,
+  heatmapMoM,
   type PortLatest,
 } from "@/lib/rates-search";
 import {
@@ -93,16 +94,6 @@ const INDEX_COLORS: Record<string, string> = {
   CCFI: "#0891b2",
 };
 
-// 전월대비 히트맵 고정 노선(부산발) — KITA 해상운임 기준. 데이터 없는 노선은 "—"로 표기.
-const HEATMAP_ROUTES: { origin: string; dest: string }[] = [
-  { origin: "부산", dest: "롱비치" },
-  { origin: "부산", dest: "서배너" },
-  { origin: "부산", dest: "함부르크" },
-  { origin: "부산", dest: "하이퐁" },
-  { origin: "부산", dest: "코페르" },
-  { origin: "부산", dest: "알렉산드리아" },
-];
-
 function RatesPending() {
   return (
     <main className="flex min-h-[62vh] items-center justify-center bg-[#edf3fb] px-4 text-slate-900">
@@ -129,10 +120,6 @@ function fmtMonth(value: string | null | undefined) {
   const digits = value.replace(/\D/g, "");
   if (digits.length < 6) return value;
   return `${digits.slice(0, 4)}.${digits.slice(4, 6)}`;
-}
-
-function compactMonth(value: string) {
-  return value.replace(/\D/g, "").slice(0, 6);
 }
 
 function RatesPage() {
@@ -209,35 +196,12 @@ function RatesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartPorts, scoped, metric, mode]);
 
-  // 전월대비 변동률 히트맵 — 고정 노선(HEATMAP_ROUTES), 최근 6개월 실측 MoM
-  const heatmap = useMemo(() => {
-    const monthSet = new Set<string>();
-    for (const item of seaRates) {
-      const month = compactMonth(item.year_mon);
-      if (month) monthSet.add(month);
-    }
-    const months = [...monthSet].sort().slice(-6);
-    const rows = HEATMAP_ROUTES.map((route) => {
-      const series = new Map<string, number>();
-      for (const item of seaRates) {
-        if (item.origin !== route.origin || item.dest !== route.dest) continue;
-        const month = compactMonth(item.year_mon);
-        const value = item.feu ?? item.teu;
-        if (month && value != null) series.set(month, value);
-      }
-      const sortedMonths = [...series.keys()].sort();
-      const cells = months.map((month) => {
-        const value = series.get(month);
-        if (value == null) return null;
-        const prevMonth = sortedMonths[sortedMonths.indexOf(month) - 1];
-        const prev = prevMonth ? series.get(prevMonth) : undefined;
-        if (prev == null || prev === 0) return null;
-        return ((value - prev) / prev) * 100;
-      });
-      return { label: `${route.origin} → ${route.dest}`, cells };
-    });
-    return { months, rows };
-  }, [seaRates]);
+  // 전월대비 변동률 히트맵 — 검색 노선(chartPorts)에 연동, 최근 6개월 실측 MoM
+  const heatmap = useMemo(
+    () => heatmapMoM(scoped, chartPorts, valueOf, 6),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [scoped, chartPorts, metric, mode],
+  );
 
   // 글로벌 지수 추이 — 최신 주 기준 최근 6개월, week_date로 정렬(연말 버킷 오류 방지)
   const trendData = useMemo(() => {
@@ -306,7 +270,7 @@ function RatesPage() {
             title={portSelected ? `운임 추이 — ${ORIGIN_BY_MODE[mode]} → ${port}` : `권역별 운임 추이 — ${region}`}
             mode={mode} metric={metric} setMetric={setMetric} lines={chartPorts} data={chartData}
           />
-          <Panel title="전월대비 변동률 히트맵" badge={<PBadge variant="secondary">해상 · 최근 {heatmap.months.length}개월</PBadge>}>
+          <Panel title="전월대비 변동률 히트맵" badge={<PBadge variant="secondary">{mode === "sea" ? "해상" : "항공"} · 최근 {heatmap.months.length}개월</PBadge>}>
             {heatmap.rows.length === 0 || heatmap.months.length < 2 ? (
               <Collecting note="월별 MoM 산출에 필요한 시계열이 확보되면 표시됩니다." />
             ) : (
@@ -333,7 +297,10 @@ function RatesPage() {
                     </span>
                   ))}
                   {heatmap.rows.map((row) => (
-                    <HeatmapRow key={row.label} row={row} />
+                    <HeatmapRow
+                      key={row.dest}
+                      row={{ label: `${ORIGIN_BY_MODE[mode]} → ${row.dest}`, cells: row.cells }}
+                    />
                   ))}
                 </div>
                 <div style={{ marginTop: 12, fontSize: 11, color: "var(--ink-muted)" }}>

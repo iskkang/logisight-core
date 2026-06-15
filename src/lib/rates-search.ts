@@ -56,3 +56,39 @@ export function regionPortsLatest<T extends { region: string | null; dest: strin
 export function topPorts(latest: PortLatest[], n: number): string[] {
   return latest.filter((p) => p.value != null).slice(0, n).map((p) => p.dest);
 }
+
+// 전월대비 변동률 히트맵 격자 — 주어진 dest들에 대해 최근 monthsBack개월의 MoM(%) 셀.
+// prev는 "데이터가 있는 직전 월"(결측월 건너뜀) 기준. 셀 결측은 null.
+export function heatmapMoM<T extends { dest: string; year_mon: string }>(
+  rows: T[],
+  dests: string[],
+  value: (r: T) => number | null,
+  monthsBack = 6,
+): { months: string[]; rows: { dest: string; cells: (number | null)[] }[] } {
+  const monthSet = new Set<string>();
+  for (const r of rows) {
+    const m = ym6(r.year_mon);
+    if (m.length === 6) monthSet.add(m);
+  }
+  const months = [...monthSet].sort().slice(-monthsBack);
+  const out = dests.map((dest) => {
+    const series = new Map<string, number>();
+    for (const r of rows) {
+      if (r.dest !== dest) continue;
+      const m = ym6(r.year_mon);
+      const v = value(r);
+      if (m.length === 6 && v != null) series.set(m, v);
+    }
+    const sorted = [...series.keys()].sort();
+    const cells = months.map((m) => {
+      const v = series.get(m);
+      if (v == null) return null;
+      const prevM = sorted[sorted.indexOf(m) - 1];
+      const prev = prevM ? series.get(prevM) : undefined;
+      if (prev == null || prev === 0) return null;
+      return ((v - prev) / prev) * 100;
+    });
+    return { dest, cells };
+  });
+  return { months, rows: out };
+}

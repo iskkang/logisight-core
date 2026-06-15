@@ -7,6 +7,7 @@ import {
   routeSeries,
   regionPortsLatest,
   topPorts,
+  heatmapMoM,
 } from "../rates-search";
 
 type Row = { origin: string; dest: string; region: string | null; year_mon: string; feu: number | null };
@@ -77,5 +78,29 @@ describe("topPorts", () => {
     ];
     expect(topPorts(latest, 1)).toEqual(["a"]);
     expect(topPorts(latest, 5)).toEqual(["a", "c"]);
+  });
+});
+
+describe("heatmapMoM", () => {
+  it("builds last-N months and per-dest MoM cells, null where no prior month", () => {
+    const rows = [
+      mk({ dest: "롱비치", year_mon: "202604", feu: 2000 }),
+      mk({ dest: "롱비치", year_mon: "202605", feu: 2900 }),
+      mk({ dest: "롱비치", year_mon: "202606", feu: 4950 }),
+      mk({ dest: "서배너", year_mon: "202606", feu: 5100 }),
+    ];
+    const { months, rows: hm } = heatmapMoM(rows, ["롱비치", "서배너"], (r) => r.feu, 6);
+    expect(months).toEqual(["202604", "202605", "202606"]);
+    const lb = hm.find((r) => r.dest === "롱비치")!;
+    expect(lb.cells[0]).toBeNull(); // 202604: no prior month
+    expect(Math.round(lb.cells[1]!)).toBe(45); // 2000→2900
+    expect(Math.round(lb.cells[2]!)).toBe(71); // 2900→4950
+    const sv = hm.find((r) => r.dest === "서배너")!;
+    expect(sv.cells).toEqual([null, null, null]); // single month, no MoM
+  });
+
+  it("caps months to monthsBack (most recent)", () => {
+    const rows = ["202601", "202602", "202603", "202604"].map((ym) => mk({ dest: "롱비치", year_mon: ym, feu: 100 }));
+    expect(heatmapMoM(rows, ["롱비치"], (r) => r.feu, 2).months).toEqual(["202603", "202604"]);
   });
 });
