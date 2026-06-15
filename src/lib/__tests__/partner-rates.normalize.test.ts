@@ -50,6 +50,9 @@ describe("regionOfCountry", () => {
     expect(regionOfCountry("방글라")).toBe("아시아");
     expect(regionOfCountry("NIGERIA")).toBe("아프리카");
     expect(regionOfCountry("SOUTH AFRICA")).toBe("아프리카");
+    expect(regionOfCountry("베트남")).toBe("아시아");
+    expect(regionOfCountry("말레이시아")).toBe("아시아");
+    expect(regionOfCountry("U.A.E")).toBe("중동");
     expect(regionOfCountry(null)).toBeNull();
     expect(regionOfCountry("ATLANTIS")).toBeNull();
   });
@@ -61,6 +64,11 @@ describe("regionOf (POD fallback)", () => {
     expect(regionOf(null, "MANZANILLO, MEXICO")).toBe("중남미"); // POD에 국가명
     expect(regionOf(null, "KARACHI")).toBe("아시아"); // 단일 항만 사전
     expect(regionOf("", "DURBAN, SOUTH AFRICA")).toBe("아프리카");
+    expect(regionOf(null, "LONG BEACH, CA")).toBe("북미"); // 미국 주 약자
+    expect(regionOf(null, "HOUSTON, TX")).toBe("북미");
+    expect(regionOf("SAUDI ARABIA", "JEDDAH")).toBe("중동");
+    expect(regionOf("AUSTRALIA", "SYDNEY")).toBe("오세아니아");
+    expect(regionOf(null, "JEBEL ALI")).toBe("중동"); // 항만 사전
     expect(regionOf(null, "UNKNOWNPORT")).toBeNull();
   });
 });
