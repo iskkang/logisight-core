@@ -23,6 +23,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ArticleSlugRouteImport } from './routes/article.$slug'
 import { Route as AdminRoutesRouteImport } from './routes/admin.routes'
 import { Route as AdminPoliciesRouteImport } from './routes/admin.policies'
+import { Route as AdminPartnerRatesRouteImport } from './routes/admin.partner-rates'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminForecastsRouteImport } from './routes/admin.forecasts'
 
@@ -96,6 +97,11 @@ const AdminPoliciesRoute = AdminPoliciesRouteImport.update({
   path: '/admin/policies',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPartnerRatesRoute = AdminPartnerRatesRouteImport.update({
+  id: '/admin/partner-rates',
+  path: '/admin/partner-rates',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/admin/login',
   path: '/admin/login',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/trade': typeof TradeRoute
   '/admin/forecasts': typeof AdminForecastsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/partner-rates': typeof AdminPartnerRatesRoute
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/trade': typeof TradeRoute
   '/admin/forecasts': typeof AdminForecastsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/partner-rates': typeof AdminPartnerRatesRoute
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
@@ -158,6 +166,7 @@ export interface FileRoutesById {
   '/trade': typeof TradeRoute
   '/admin/forecasts': typeof AdminForecastsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/partner-rates': typeof AdminPartnerRatesRoute
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/trade'
     | '/admin/forecasts'
     | '/admin/login'
+    | '/admin/partner-rates'
     | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/trade'
     | '/admin/forecasts'
     | '/admin/login'
+    | '/admin/partner-rates'
     | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '/trade'
     | '/admin/forecasts'
     | '/admin/login'
+    | '/admin/partner-rates'
     | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
@@ -233,6 +245,7 @@ export interface RootRouteChildren {
   TradeRoute: typeof TradeRoute
   AdminForecastsRoute: typeof AdminForecastsRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminPartnerRatesRoute: typeof AdminPartnerRatesRoute
   AdminPoliciesRoute: typeof AdminPoliciesRoute
   AdminRoutesRoute: typeof AdminRoutesRoute
   ArticleSlugRoute: typeof ArticleSlugRoute
@@ -338,6 +351,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPoliciesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/partner-rates': {
+      id: '/admin/partner-rates'
+      path: '/admin/partner-rates'
+      fullPath: '/admin/partner-rates'
+      preLoaderRoute: typeof AdminPartnerRatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/login': {
       id: '/admin/login'
       path: '/admin/login'
@@ -369,6 +389,7 @@ const rootRouteChildren: RootRouteChildren = {
   TradeRoute: TradeRoute,
   AdminForecastsRoute: AdminForecastsRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminPartnerRatesRoute: AdminPartnerRatesRoute,
   AdminPoliciesRoute: AdminPoliciesRoute,
   AdminRoutesRoute: AdminRoutesRoute,
   ArticleSlugRoute: ArticleSlugRoute,
