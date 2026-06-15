@@ -39,3 +39,6 @@ dist-ssr
 
 # Reference mockup archives (extracted copies live under docs/design/)
 *.zip
+
+# Brainstorm visual companion artifacts
+.superpowers/
