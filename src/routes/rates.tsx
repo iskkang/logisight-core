@@ -10,6 +10,7 @@ import {
   routeSeries,
   regionPortsLatest,
   topPorts,
+  type PortLatest,
 } from "@/lib/rates-search";
 import {
   CartesianGrid,
@@ -266,7 +267,6 @@ function RatesPage() {
   const ratesReports = recentRateReports(forecasts);
   const latestBunker = bunker.at(0);
 
-  const fx = exchangeRate?.usd_krw ?? null;
   const fxDate = exchangeRate?.rate_date?.slice(0, 10) ?? null;
 
   return (
@@ -488,7 +488,8 @@ function RateResultChart(props: {
   title: string; mode: Mode2; metric: "feu" | "teu"; setMetric: (m: "feu" | "teu") => void;
   lines: string[]; data: Record<string, number | string>[];
 }) {
-  const unit = props.mode === "sea" ? (props.metric === "feu" ? "$/FEU" : "$/TEU") : "$/kg(kg300)";
+  const cur = props.mode === "sea" ? "$" : "₩";
+  const unit = props.mode === "sea" ? (props.metric === "feu" ? "$/FEU" : "$/TEU") : "₩/kg (kg300)";
   return (
     <Panel
       title={props.title}
@@ -515,8 +516,8 @@ function RateResultChart(props: {
               <CartesianGrid stroke="var(--border)" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--ink-muted)" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: "var(--ink-muted)" }} axisLine={false} tickLine={false} width={52}
-                tickFormatter={(v: number) => `$${Math.round(v).toLocaleString()}`} />
-              <Tooltip formatter={(v: number) => `$${Math.round(v).toLocaleString()}`}
+                tickFormatter={(v: number) => `${cur}${Math.round(v).toLocaleString()}`} />
+              <Tooltip formatter={(v: number) => `${cur}${Math.round(v).toLocaleString()}`}
                 contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
               {props.lines.map((p, i) => (
                 <Line key={p} type="monotone" dataKey={p} stroke={CMP_LINE_COLORS[i % CMP_LINE_COLORS.length]} strokeWidth={2} dot={false} connectNulls />
@@ -539,7 +540,7 @@ function RateResultChart(props: {
 
 function RateResultTable(props: {
   mode: Mode2; origin: string; region: string; portSelected: boolean; port: string;
-  rows: KitaSeaRateRow[] | KitaAirRateRow[]; regionLatest: import("@/lib/rates-search").PortLatest[];
+  rows: KitaSeaRateRow[] | KitaAirRateRow[]; regionLatest: PortLatest[];
 }) {
   const isSea = props.mode === "sea";
   return (
