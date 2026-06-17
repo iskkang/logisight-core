@@ -12,6 +12,7 @@ import {
   latestBriefingQueryOptions,
   formatBriefingDate,
 } from "@/lib/api/briefing";
+import { latestRatesBriefQueryOptions, isFresh } from "@/lib/api/rates-brief";
 import {
   freightIndicesHistoryQueryOptions,
   indexStatsQueryOptions,
@@ -41,6 +42,7 @@ export const Route = createFileRoute("/")({
       latestNewsQueryOptions({ lang: "ko", limit: 8 }),
     );
     context.queryClient.ensureQueryData(latestBriefingQueryOptions());
+    context.queryClient.ensureQueryData(latestRatesBriefQueryOptions());
     context.queryClient.ensureQueryData(freightIndicesHistoryQueryOptions());
     context.queryClient.ensureQueryData(indexStatsQueryOptions());
     context.queryClient.ensureQueryData(kitaAirRatesQueryOptions());
@@ -243,6 +245,8 @@ function DashboardSection() {
 
 /* -------------------- Rates Intelligence Brief (from /rates) -------------------- */
 function HomeRatesBrief() {
+  const { data: brief } = useSuspenseQuery(latestRatesBriefQueryOptions());
+  const fresh = isFresh(brief);
   const { data: history } = useSuspenseQuery(freightIndicesHistoryQueryOptions());
   const { data: stats } = useSuspenseQuery(indexStatsQueryOptions());
   const { data: airRates } = useSuspenseQuery(kitaAirRatesQueryOptions());
@@ -288,7 +292,8 @@ function HomeRatesBrief() {
     <div>
       <RatesBrief
         signals={[oceanSignal, globalSignal, airModalSignal]}
-        asOf={kcciStat?.latest_date?.slice(0, 10) ?? null}
+        asOf={fresh ? brief!.as_of.slice(0, 10) : (kcciStat?.latest_date?.slice(0, 10) ?? null)}
+        prose={fresh ? brief!.prose_json : null}
       />
       <Link
         to="/rates"
