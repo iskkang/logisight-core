@@ -13,6 +13,7 @@ type Props = {
   signals: (ComputedSignal | null)[];
   asOf: string | null;
   scope?: string;
+  prose?: { headline: string; ocean: string; global: string; air: string; outlook: string } | null;
 };
 
 function formatAsOf(value: string | null | undefined): string {
@@ -100,7 +101,7 @@ function buildOutlook(present: ComputedSignal[], elevated: ComputedSignal[]): st
  * 운임 인텔리전스 브리프 — 계산된 시그널을 사람이 이해하는 분석·전망으로 풀어 보여준다.
  * 내용은 상관·추정 표현만 사용하고 인과 단정/선행·후행 판정을 하지 않는다(표시 문구 없이 준수).
  */
-export function RatesBrief({ signals, asOf, scope }: Props) {
+export function RatesBrief({ signals, asOf, scope, prose }: Props) {
   const present = signals.filter((s): s is ComputedSignal => s !== null);
 
   if (present.length === 0) {
@@ -117,6 +118,35 @@ export function RatesBrief({ signals, asOf, scope }: Props) {
   const head = buildHeadline(dominant, elevated.length === 0);
   const outlook = buildOutlook(present, elevated);
   const sources = Array.from(new Set(present.flatMap((s) => s.sources)));
+
+  if (prose) {
+    const items = [prose.ocean, prose.global, prose.air].filter((t) => t && t.trim());
+    return (
+      <section className="rounded-lg border border-border bg-card p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className={`inline-block h-2.5 w-2.5 rounded-full ${DOT[dominant.state]}`} />
+            <h2 className="text-sm font-semibold">운임 인텔리전스 브리프</h2>
+          </div>
+          <span className="text-[11px] text-muted-foreground">기준 {formatAsOf(asOf)}</span>
+        </div>
+        <p className="mt-2.5 text-[15px] font-semibold leading-relaxed text-foreground">{prose.headline}</p>
+        <ul className="mt-3 space-y-2">
+          {items.map((t, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm leading-relaxed">
+              <span className={`mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full ${DOT[dominant.state]}`} />
+              <span className="text-foreground/90">{t}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-3 rounded-md bg-status-observe/10 px-3 py-2 text-sm leading-relaxed">
+          <span className="font-medium text-status-observe">전망 · </span>
+          <span className="text-foreground/90">{prose.outlook}</span>
+        </div>
+        {sources.length > 0 && <p className="mt-3 text-[11px] text-muted-foreground">출처 {sources.join("·")}</p>}
+      </section>
+    );
+  }
 
   return (
     <section className="rounded-lg border border-border bg-card p-4 sm:p-5">
