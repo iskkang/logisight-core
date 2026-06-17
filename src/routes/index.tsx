@@ -268,10 +268,12 @@ function HomeRatesBrief() {
         const series = airRates
           .filter((a) => a.origin === r.origin && a.dest === r.dest)
           .map((a) => ({ year_mon: a.year_mon, value: a.kg300 }));
-        const mom = r.chg300 ?? computeMoM(series);
+        // chg300 필드는 적재 버그로 비현실적 값(예: +3718%) → 신뢰하지 않고 kg300 시계열로 직접 계산
+        const mom = computeMoM(series);
         return { r, mom };
       })
-      .filter((c) => c.mom !== null)
+      // 월 ±200% 초과는 데이터 오류로 보고 제외(항공 운임 실제 변동 범위 밖)
+      .filter((c) => c.mom !== null && Math.abs(c.mom!) <= 200)
       .sort((a, b) => Math.abs(b.mom!) - Math.abs(a.mom!))
       .at(0) ?? null;
 
