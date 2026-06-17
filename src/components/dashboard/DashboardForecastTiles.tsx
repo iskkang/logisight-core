@@ -8,6 +8,7 @@ import {
   displayLabelOf,
   displayOrderOf,
   evidenceCount,
+  latestPerMetric,
 } from "@/components/forecasts/forecastUtils";
 
 // 미니 전망 타일 3 — 확정 순서(displayOrder) 상위 3 + 방향 토큰 + 근거 N/5 + 미니 스파크 + /forecasts 링크.
@@ -18,8 +19,7 @@ export function DashboardForecastTiles({
   forecasts: Forecast[];
   series: Record<string, ForecastSeries>;
 }) {
-  const tiles = [...forecasts]
-    .filter((f) => f.status === "published")
+  const tiles = latestPerMetric(forecasts.filter((f) => f.status === "published"))
     .sort((a, b) => displayOrderOf(a) - displayOrderOf(b))
     .slice(0, 3);
   if (tiles.length === 0) return null;

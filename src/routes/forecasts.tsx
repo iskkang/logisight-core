@@ -24,6 +24,7 @@ import {
   computeKpis,
   hitRateTrend,
   displayOrderOf,
+  latestPerMetric,
   type ForecastFilter,
   type SeriesClass,
 } from "@/components/forecasts/forecastUtils";
@@ -97,7 +98,8 @@ function ForecastsPage() {
   const kpis = computeKpis(forecasts);
   const trend = hitRateTrend(forecasts);
   const hasTrend = trend.some((p) => p.sample > 0);
-  const allOpen = forecasts.filter((f) => f.status === "published");
+  // 카드는 지표당 최신 1장만(누적 방지). 적중률·추이 KPI는 아래에서 전수(forecasts)로 계산 — 분리 유지.
+  const allOpen = latestPerMetric(forecasts.filter((f) => f.status === "published"));
   const lastUpdated = forecasts.reduce<string | null>(
     (m, f) => (f.published_at && (!m || f.published_at > m) ? f.published_at : m),
     null,

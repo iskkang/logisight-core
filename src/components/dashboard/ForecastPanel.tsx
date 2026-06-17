@@ -8,6 +8,7 @@ import {
   type ForecastModule,
   type ForecastOutcome,
 } from "@/lib/api/forecasts";
+import { latestPerMetric } from "@/components/forecasts/forecastUtils";
 
 const CONF: Record<string, { n: number; label: string }> = {
   high: { n: 3, label: "높음" },
@@ -219,7 +220,8 @@ export function ForecastTracking({
   title?: string;
 }) {
   const scoped = forecasts.filter((f) => f.module === module);
-  const open = scoped.filter((f) => f.status === "published");
+  // 발행 카드는 지표당 최신 1장만(누적 방지). HitRateChip은 scoped 전수로 계산 — 분리 유지.
+  const open = latestPerMetric(scoped.filter((f) => f.status === "published"));
   const done = scoped.filter((f) => f.status === "resolved");
 
   return (

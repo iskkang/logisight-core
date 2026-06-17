@@ -100,6 +100,19 @@ export function applyFilter(fs: Forecast[], f: ForecastFilter): Forecast[] {
   });
 }
 
+// 지표(metric_ref)별 최신 1건만 — 카드 표시 전용. 적중률·추이 등 분석엔 적용 금지(분모=전수 필요).
+// 매주 생성된 전망이 카드로 누적되는 것을 막아 지표당 "현재 전망" 1장만 보이게 한다.
+export function latestPerMetric(forecasts: Forecast[]): Forecast[] {
+  const stamp = (x: Forecast) => x.published_at ?? x.created_at ?? "";
+  const best = new Map<string, Forecast>();
+  for (const f of forecasts) {
+    const key = f.metric_ref ?? f.id;
+    const cur = best.get(key);
+    if (!cur || stamp(f) > stamp(cur)) best.set(key, f);
+  }
+  return [...best.values()];
+}
+
 // statement → 문장 배열(소수점·천단위 쉼표 오분할 방지: 종결부호 뒤 공백/끝만).
 export function sentences(s: string): string[] {
   return (s || "").split(/(?<=[.!?。])\s+/).map((x) => x.trim()).filter(Boolean);
@@ -120,22 +133,17 @@ export type RateReport = {
 const RATE_REPORT_CODES = ["WCI", "SCFI", "KCCI"];
 
 export function recentRateReports(forecasts: Forecast[], limit = 3): RateReport[] {
-  const seenId = new Set<string>();
-  const seenKey = new Set<string>();
+  // 종합 지수 3종만 → 지표별 최신 1건(latestPerMetric)으로 dedup. 표시 전용이라 안전.
+  const eligible = forecasts.filter(
+    (f) => f.module === "rates" && RATE_REPORT_CODES.includes(f.metric_ref ?? ""),
+  );
   const rows: { f: Forecast; r: RateReport }[] = [];
-  for (const f of forecasts) {
-    if (f.module !== "rates") continue;
-    if (!RATE_REPORT_CODES.includes(f.metric_ref ?? "")) continue;
-    if (seenId.has(f.id)) continue;
+  for (const f of latestPerMetric(eligible)) {
     const stamp = f.published_at ?? f.created_at ?? "";
-    const key = `${f.metric_ref ?? ""}|${stamp}`;
-    if (seenKey.has(key)) continue;
     const sents = sentences(f.statement ?? "");
     const lead = sents[0] ?? "";
     const outlook = sents.slice(1).join(" ");
     if (!lead.trim() && !outlook.trim()) continue; // lead·outlook 둘 다 비면 제외(빈 껍데기 금지)
-    seenId.add(f.id);
-    seenKey.add(key);
     rows.push({
       f,
       r: {
