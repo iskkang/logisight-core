@@ -378,7 +378,7 @@ function ChapterSection({
         title="HS 챕터 수출 트리맵"
         badge={<PBadge variant="secondary">{aggs.length}개 챕터</PBadge>}
       >
-        <TreemapChart items={treemapItems} format={(v) => fmt(v)} />
+        <TreemapChart items={treemapItems} format={(v) => fmt(v)} height={440} />
       </Panel>
 
       <Panel
@@ -556,7 +556,8 @@ function ChapterDetail({
   const partners = useMemo(() => {
     const map = new Map<string, number>();
     for (const r of rows) {
-      const k = r.country_name ?? "—";
+      const k = r.country_name;
+      if (!k) continue; // 국가 미상(국가 차원 없는 집계 행)은 상위국 차트에서 제외 → 빈 경우 "수집 예정"
       map.set(k, (map.get(k) ?? 0) + (r[expKey] ?? 0));
     }
     return [...map.entries()]
@@ -623,7 +624,7 @@ function ChapterDetail({
                     name="수출"
                     stroke="#0F2D5A"
                     strokeWidth={2}
-                    dot={false}
+                    dot={{ r: 2.5 }}
                   />
                   <Line
                     type="monotone"
@@ -631,7 +632,7 @@ function ChapterDetail({
                     name="수입"
                     stroke="#38BDF8"
                     strokeWidth={2}
-                    dot={false}
+                    dot={{ r: 2.5 }}
                   />
                 </LineChart>
               </ResponsiveContainer>

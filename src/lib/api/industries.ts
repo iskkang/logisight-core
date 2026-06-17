@@ -65,8 +65,10 @@ export function hsChapterName(chapter: string): string {
 }
 
 export function formatPeriod(p: string): string {
-  if (!p || p.length < 6) return p;
-  return `${p.slice(0, 4)}.${p.slice(4, 6)}`;
+  // 데이터에 "202606"·"2026-06" 두 포맷이 섞여 들어옴 — 숫자만 추출해 통일 처리.
+  const d = (p ?? "").replace(/\D/g, "");
+  if (d.length < 6) return p;
+  return `${d.slice(0, 4)}.${d.slice(4, 6)}`;
 }
 
 export function formatUSD(n: number | null | undefined): string {

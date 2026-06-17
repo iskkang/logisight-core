@@ -706,7 +706,7 @@ export function TreemapChart({
   splitTreemap(positive, 0, 0, 100, 100, rects);
   const max = positive[0].value;
   return (
-    <div style={{ position: "relative", width: "100%", height }}>
+    <div style={{ position: "relative", width: "100%", height, overflow: "hidden", borderRadius: 8 }}>
       {rects.map((r) => {
         const intensity = 22 + Math.round((r.value / max) * 62);
         const dark = intensity > 50;
