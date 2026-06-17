@@ -86,9 +86,9 @@ export function ForecastDetailPanel({ f, series }: { f: Forecast; series: Foreca
         </div>
       </div>
 
-      {/* 본문 — 그래프(좁게) | 종합 신호 + 핵심 인사이트, 구획선으로 분리 */}
-      <div className="grid lg:grid-cols-[minmax(0,400px)_1fr]">
-        {/* 왼쪽: 그래프(인셋 패널, 가로 축소) */}
+      {/* 본문 — 그래프 | 종합 신호 + 핵심 인사이트, 구획선으로 분리 */}
+      <div className="grid lg:grid-cols-[minmax(0,560px)_1fr]">
+        {/* 왼쪽: 그래프(인셋 패널) — 가독성 위해 충분한 높이 확보 */}
         <div className="border-b border-border/60 p-5 lg:border-b-0 lg:border-r lg:p-6">
           <div className="rounded-xl bg-muted/30 p-3">
             <ForecastSparkline
@@ -97,6 +97,7 @@ export function ForecastDetailPanel({ f, series }: { f: Forecast; series: Foreca
               rangeLowPct={f.range_low_pct}
               rangeHighPct={f.range_high_pct}
               colorClass={dc.spark}
+              className="h-52"
             />
           </div>
           {caption && <p className="mt-2 text-[11px] text-muted-foreground/70">{caption}</p>}

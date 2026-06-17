@@ -137,7 +137,8 @@ function ForecastsPage() {
       replace: true,
     });
   const setSel = (id: string) =>
-    navigate({ search: (prev: Search) => ({ ...prev, sel: id }), replace: true });
+    // resetScroll:false — 카드 클릭 시 같은 자리에서 아래 상세 카드만 갱신(맨 위로 점프 방지).
+    navigate({ search: (prev: Search) => ({ ...prev, sel: id }), replace: true, resetScroll: false });
   const setMod = (key: string | null) =>
     navigate({
       search: (prev: Search) => ({ ...prev, mod: key ?? undefined, sel: undefined }),
