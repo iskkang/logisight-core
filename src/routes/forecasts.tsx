@@ -13,7 +13,6 @@ import {
 
 import { ForecastCardGrid } from "@/components/forecasts/ForecastCardGrid";
 import { ForecastDetailPanel } from "@/components/forecasts/ForecastDetailPanel";
-import { ForecastAnalystPanel } from "@/components/forecasts/ForecastAnalystPanel";
 import { ForecastHero } from "@/components/forecasts/ForecastHero";
 import { ForecastMethodology } from "@/components/forecasts/ForecastMethodology";
 import { RouteBreadcrumb } from "@/components/site/Breadcrumb";
@@ -31,8 +30,6 @@ import {
 import {
   publishedForecastsQueryOptions,
   forecastSeriesQueryOptions,
-  riskNotesQueryOptions,
-  dataUpdatesQueryOptions,
 } from "@/lib/api/forecasts";
 
 const arr = (v: unknown): string[] =>
@@ -68,8 +65,6 @@ export const Route = createFileRoute("/forecasts")({
     await Promise.all([
       context.queryClient.ensureQueryData(publishedForecastsQueryOptions()),
       context.queryClient.ensureQueryData(forecastSeriesQueryOptions()),
-      context.queryClient.ensureQueryData(riskNotesQueryOptions()),
-      context.queryClient.ensureQueryData(dataUpdatesQueryOptions()),
     ]);
   },
   component: ForecastsPage,
@@ -90,8 +85,6 @@ type CadSeg = (typeof CAD_SEG)[number];
 function ForecastsPage() {
   const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
   const { data: series } = useSuspenseQuery(forecastSeriesQueryOptions());
-  const { data: riskNotes } = useSuspenseQuery(riskNotesQueryOptions());
-  const { data: dataUpdates } = useSuspenseQuery(dataUpdatesQueryOptions());
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
 
@@ -316,18 +309,9 @@ function ForecastsPage() {
               />
             </div>
 
-            {/* 선택 전망 상세 위에, 분석자 패널을 전체폭으로 그 아래 스택 */}
-            <div className="mt-6 space-y-6">
+            {/* 선택 전망 통합 카드 — 그래프 + 종합 신호 + 핵심 인사이트 한 장 */}
+            <div className="mt-6">
               {selected && <ForecastDetailPanel f={selected} series={series[selected.id]} />}
-              <div>
-                <div className="mb-3 text-sm font-semibold text-foreground">분석 패널</div>
-                <ForecastAnalystPanel
-                  forecast={selected}
-                  forecasts={open}
-                  dataUpdates={dataUpdates}
-                  riskNotes={riskNotes}
-                />
-              </div>
             </div>
 
             {/* 디스클레이머 밴드 */}

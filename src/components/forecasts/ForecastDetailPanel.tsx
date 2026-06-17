@@ -1,8 +1,6 @@
-import { useState } from "react";
-
 import type { Forecast, ForecastSeries, ForecastOutcome } from "@/lib/api/forecasts";
 import { ForecastSparkline } from "./ForecastSparkline";
-import { DIR_META, dirCls, displayLabelOf, baseIndexCaption, sentences, dDay, mdLabel } from "./forecastUtils";
+import { DIR_META, dirCls, displayLabelOf, baseIndexCaption, sentences, dDay, mdLabel, directionStrength } from "./forecastUtils";
 
 const OUTCOME: Record<ForecastOutcome, { label: string; cls: string }> = {
   hit: { label: "적중", cls: "bg-status-normal/10 text-status-normal" },
@@ -10,15 +8,41 @@ const OUTCOME: Record<ForecastOutcome, { label: string; cls: string }> = {
   miss: { label: "빗나감", cls: "bg-status-alert/10 text-status-alert" },
 };
 
-// E — 선택 타깃 큰 차트(전망 구간 구분선 + 콘) + lead/전환조건 + watch_points 캘린더.
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{children}</div>;
+}
+
+// 방향 강도 도넛(확률 아님 — composite |점수|/2). 링 색 = 방향(상승 적/하락 녹/보합 황).
+function DirectionDonut({ score, direction }: { score: number | null | undefined; direction: string | null | undefined }) {
+  const { dir, pct, label } = directionStrength(score, direction);
+  const stroke = `var(--direction-${dir})`;
+  const R = 40;
+  const C = 2 * Math.PI * R;
+  const dash = (pct / 100) * C;
+  return (
+    <div className="flex items-center gap-4">
+      <svg viewBox="0 0 100 100" className="h-20 w-20 shrink-0 -rotate-90">
+        <circle cx="50" cy="50" r={R} fill="none" className="stroke-border" strokeWidth="10" />
+        <circle cx="50" cy="50" r={R} fill="none" style={{ stroke }} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${dash} ${C}`} />
+      </svg>
+      <div>
+        <div className="text-2xl font-bold" style={{ color: stroke }}>
+          {label} {pct}%
+        </div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground">
+          종합 {score != null ? `${score > 0 ? "+" : ""}${score}` : "—"} · |점수|/2 환산
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 선택 타깃 통합 카드: 그래프(가로 축소) + 종합 신호 + 핵심 인사이트 한 장.
 export function ForecastDetailPanel({ f, series }: { f: Forecast; series: ForecastSeries | undefined }) {
-  const [open, setOpen] = useState(false);
   const d = f.direction ? DIR_META[f.direction] : null;
   const dc = dirCls(f.direction);
   const caption = baseIndexCaption(f);
-  const sents = sentences(f.statement || "");
-  const lead = sents[0] ?? "";
-  const transition = sents.length > 1 ? sents[sents.length - 1] : "";
+  const insights = sentences(f.statement || "").slice(0, 4);
 
   return (
     <article className="rounded-xl border border-border bg-card p-5 lg:p-6">
@@ -48,8 +72,8 @@ export function ForecastDetailPanel({ f, series }: { f: Forecast; series: Foreca
         </div>
       </div>
 
-      <div className="mt-3 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-        {/* 큰 차트 */}
+      <div className="mt-4 grid items-start gap-5 lg:grid-cols-[minmax(0,420px)_1fr]">
+        {/* 왼쪽: 그래프(가로 축소) */}
         <div>
           <ForecastSparkline
             series={series}
@@ -59,28 +83,22 @@ export function ForecastDetailPanel({ f, series }: { f: Forecast; series: Foreca
             colorClass={dc.spark}
           />
           {caption && <p className="mt-1 text-[11px] text-muted-foreground/70">{caption}</p>}
-          {lead && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{lead}</p>}
         </div>
 
-        {/* 우측: 전환 조건 + watch_points */}
-        <div className="space-y-3">
-          {transition && (
+        {/* 오른쪽: 종합 신호 + 핵심 인사이트 */}
+        <div className="space-y-5">
+          <div>
+            <SectionLabel>종합 신호</SectionLabel>
+            <DirectionDonut score={f.composite_score} direction={f.direction} />
+          </div>
+          {insights.length > 0 && (
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">전환 조건</div>
-              <p className="mt-1 rounded-lg bg-muted/50 px-3 py-2 text-sm leading-relaxed text-foreground">
-                {transition}
-              </p>
-            </div>
-          )}
-          {f.watch_points && f.watch_points.length > 0 && (
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">확인 일정</div>
-              <ul className="mt-1 space-y-1">
-                {f.watch_points.map((w, i) => (
-                  <li key={i} className="flex items-baseline gap-2 text-xs">
-                    <span className="w-10 shrink-0 tabular-nums font-medium text-foreground">{mdLabel(w.due)}</span>
-                    <span className="text-foreground">{w.source}</span>
-                    <span className="truncate text-muted-foreground">{w.label}</span>
+              <SectionLabel>핵심 인사이트</SectionLabel>
+              <ul className="space-y-1.5">
+                {insights.map((s, i) => (
+                  <li key={i} className="flex gap-2 text-sm leading-relaxed text-foreground">
+                    <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/50" aria-hidden />
+                    {s}
                   </li>
                 ))}
               </ul>
@@ -88,30 +106,6 @@ export function ForecastDetailPanel({ f, series }: { f: Forecast; series: Foreca
           )}
         </div>
       </div>
-
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-foreground hover:bg-muted"
-        aria-expanded={open}
-      >
-        {open ? "전문 접기" : "분석 전문 보기"}
-      </button>
-      {open && (
-        <div className="mt-2 space-y-2 rounded-lg bg-muted/30 p-3 text-sm leading-relaxed">
-          <p className="whitespace-pre-wrap text-foreground">{f.statement}</p>
-          {f.basis && f.basis.length > 0 && (
-            <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
-              {f.basis.map((b, i) => (
-                <li key={i}>{b}</li>
-              ))}
-            </ul>
-          )}
-          {f.status === "resolved" && f.outcome_note && (
-            <p className="border-t border-border pt-2 text-xs text-muted-foreground">복기: {f.outcome_note}</p>
-          )}
-        </div>
-      )}
     </article>
   );
 }
