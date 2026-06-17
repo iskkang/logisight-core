@@ -181,12 +181,6 @@ export function missingNames(f: Forecast): string[] {
   return (f.factor_scores ?? []).filter((x) => x.missing).map((x) => MISSING_LABEL[x.factor] ?? x.factor);
 }
 
-// 가장 가까운 다음 확인(due) 라벨.
-export function nearestWatch(f: Forecast): { due: string; source: string } | null {
-  const ws = (f.watch_points ?? []).filter((w) => w.due).sort((a, b) => a.due.localeCompare(b.due));
-  return ws[0] ? { due: ws[0].due, source: ws[0].source } : null;
-}
-
 // 방향 강도(확률 아님) — composite |점수|/2 → 0~100%, 부호로 방향. 더미 금지·방법론 준수.
 export function directionStrength(
   score: number | null | undefined,

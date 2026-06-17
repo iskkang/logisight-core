@@ -7,8 +7,6 @@ import {
   baseIndexCaption,
   sentences,
   evidenceCount,
-  nearestWatch,
-  mdLabel,
 } from "./forecastUtils";
 
 type Props = {
@@ -32,7 +30,6 @@ export function ForecastCardGrid({ forecasts, series, selectedId, onSelect }: Pr
         const d = f.direction ? DIR_META[f.direction] : null;
         const dc = dirCls(f.direction);
         const { present, total } = evidenceCount(f);
-        const watch = nearestWatch(f);
         const lead = sentences(f.statement || "")[0] ?? "";
         const caption = baseIndexCaption(f);
         const selected = f.id === selectedId;
@@ -75,12 +72,7 @@ export function ForecastCardGrid({ forecasts, series, selectedId, onSelect }: Pr
               />
             </div>
 
-            {watch && (
-              <div className="mt-2 text-[11px] text-muted-foreground">
-                다음 확인 · {mdLabel(watch.due)} {watch.source}
-              </div>
-            )}
-            {lead && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{lead}</p>}
+            {lead && <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{lead}</p>}
             {caption && <p className="mt-1.5 text-[10px] text-muted-foreground/70">{caption}</p>}
           </button>
         );
