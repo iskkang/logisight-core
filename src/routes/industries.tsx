@@ -96,9 +96,11 @@ function IndustriesPage() {
     return [...s].sort();
   }, [allRows]);
 
-  const periodFrom = from && periods.includes(from) ? from : periods[0];
-  const periodTo = to && periods.includes(to) ? to : periods[periods.length - 1];
+  // 기본은 최신 "단일월" 스냅샷 — 여러 월을 합산하지 않는다(트리맵·KPI·랭킹은 한 달 기준).
+  // 범위 비교가 필요하면 from 필터로 과거월을 선택. 월별 추이는 아래에서 전체 시계열 사용.
   const maxPeriod = periods[periods.length - 1];
+  const periodFrom = from && periods.includes(from) ? from : maxPeriod;
+  const periodTo = to && periods.includes(to) ? to : maxPeriod;
 
   const rows = useMemo(() => {
     if (!periodFrom || !periodTo) return [];
@@ -158,7 +160,8 @@ function IndustriesPage() {
           <CountrySection rows={rows} expKey={expKey} impKey={impKey} fmt={fmt} />
         )}
 
-        <MonthlyTrend rows={rows} expKey={expKey} impKey={impKey} metric={metric} />
+        {/* 월별 추이는 선택 기간과 무관하게 전체 시계열(allRows) — 단일월 스냅샷과 분리 */}
+        <MonthlyTrend rows={allRows} expKey={expKey} impKey={impKey} metric={metric} />
 
         <footer className="mt-10 border-t border-border pt-4 text-xs text-muted-foreground">
           출처: 관세청 수출입무역통계 · 기준: {formatPeriod(maxPeriod ?? "")}. 월별 통계는 익월
