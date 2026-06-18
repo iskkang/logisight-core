@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { getTradeStatistics } from "./industries.functions";
+import { getTradeStatistics, getChapterTradePartners } from "./industries.functions";
 
 export type TradeStatRow = {
   period: string;
@@ -21,6 +21,15 @@ export const tradeStatisticsQueryOptions = () =>
     queryKey: ["trade_statistics", "item"],
     queryFn: () => getTradeStatistics(),
     staleTime: 10 * 60 * 1000,
+  });
+
+// HS 챕터별 상위 교역국(item_country 집계) — 드릴다운 펼칠 때 온디맨드 조회.
+export const chapterPartnersQueryOptions = (chapter: string) =>
+  queryOptions({
+    queryKey: ["trade_statistics", "item_country", chapter],
+    queryFn: () => getChapterTradePartners({ data: { chapter } }),
+    staleTime: 10 * 60 * 1000,
+    enabled: /^\d{2}$/.test(chapter),
   });
 
 // HS 2-digit chapter Korean names (standard HS nomenclature)

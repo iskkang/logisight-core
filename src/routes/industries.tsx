@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   BarChart,
@@ -34,6 +34,7 @@ import {
 
 import {
   tradeStatisticsQueryOptions,
+  chapterPartnersQueryOptions,
   hsChapter,
   hsChapterName,
   formatPeriod,
@@ -553,19 +554,18 @@ function ChapterDetail({
   impKey: MetricKey;
   fmt: (n: number | null) => string;
 }) {
-  const partners = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const r of rows) {
-      const k = r.country_name;
-      if (!k) continue; // 국가 미상(국가 차원 없는 집계 행)은 상위국 차트에서 제외 → 빈 경우 "수집 예정"
-      map.set(k, (map.get(k) ?? 0) + (r[expKey] ?? 0));
-    }
-    return [...map.entries()]
-      .map(([country, value]) => ({ country, value }))
-      .filter((p) => p.value > 0)
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
-  }, [rows, expKey]);
+  // 상위 교역국: item_country(HS10×국가)를 챕터별로 서버 집계(RPC). item 행은 국가 차원이
+  // 없어 여기선 쓰지 않는다. 활성 지표(expKey: USD/중량) 기준 상위 5개국.
+  const { data: partnerRows = [] } = useQuery(chapterPartnersQueryOptions(chapter));
+  const partners = useMemo(
+    () =>
+      partnerRows
+        .map((p) => ({ country: p.country_name, value: p[expKey] ?? 0 }))
+        .filter((p) => p.country && p.value > 0)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5),
+    [partnerRows, expKey],
+  );
 
   const monthly = useMemo(() => {
     const map = new Map<string, { period: string; exp: number; imp: number }>();
