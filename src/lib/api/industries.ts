@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { getTradeStatistics, getChapterTradePartners } from "./industries.functions";
+import { getTradeStatistics, getCountryTotals, getChapterTradePartners } from "./industries.functions";
 
 export type TradeStatRow = {
   period: string;
@@ -20,6 +20,14 @@ export const tradeStatisticsQueryOptions = () =>
   queryOptions({
     queryKey: ["trade_statistics", "item"],
     queryFn: () => getTradeStatistics(),
+    staleTime: 10 * 60 * 1000,
+  });
+
+// 국가별 총교역(stat_type='country') — 국가 뷰 랭킹용.
+export const countryTotalsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["trade_statistics", "country"],
+    queryFn: () => getCountryTotals(),
     staleTime: 10 * 60 * 1000,
   });
 

@@ -27,6 +27,22 @@ export const getChapterTradePartners = createServerFn({ method: "GET" })
     return (rows ?? []) as ChapterPartner[];
   });
 
+// 국가별 총교역(stat_type='country') — item은 국가 차원이 없어 국가 랭킹은 이 데이터를 쓴다.
+// 소량(주요 ~49개국 × 월)이라 페이지네이션 불필요.
+export const getCountryTotals = createServerFn({ method: "GET" }).handler(
+  async (): Promise<TradeStatRow[]> => {
+    const { data, error } = await supabasePublicServer
+      .from("trade_statistics")
+      .select(
+        "period,stat_type,hs_code,hs_name,country_code,country_name,export_usd,export_weight,import_usd,import_weight,trade_balance",
+      )
+      .eq("stat_type", "country")
+      .order("period", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as TradeStatRow[];
+  },
+);
+
 export const getTradeStatistics = createServerFn({ method: "GET" }).handler(
   async (): Promise<TradeStatRow[]> => {
     // Single granularity level: stat_type='item' (HS6 × country × month)

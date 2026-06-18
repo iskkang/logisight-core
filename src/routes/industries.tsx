@@ -34,6 +34,7 @@ import {
 
 import {
   tradeStatisticsQueryOptions,
+  countryTotalsQueryOptions,
   chapterPartnersQueryOptions,
   hsChapter,
   hsChapterName,
@@ -54,6 +55,7 @@ export const Route = createFileRoute("/industries")({
   validateSearch: zodValidator(searchSchema),
   loader: ({ context }) => {
     context.queryClient.ensureQueryData(tradeStatisticsQueryOptions());
+    context.queryClient.ensureQueryData(countryTotalsQueryOptions());
   },
   head: () => ({
     meta: [
@@ -89,6 +91,7 @@ function IndustriesPage() {
   const { from, to, metric, view } = Route.useSearch();
   const navigate = useNavigate({ from: "/industries" });
   const { data: allRows } = useSuspenseQuery(tradeStatisticsQueryOptions());
+  const { data: countryAll } = useSuspenseQuery(countryTotalsQueryOptions());
 
   const periods = useMemo(() => {
     const s = new Set<string>();
@@ -106,6 +109,12 @@ function IndustriesPage() {
     if (!periodFrom || !periodTo) return [];
     return allRows.filter((r) => r.period >= periodFrom && r.period <= periodTo);
   }, [allRows, periodFrom, periodTo]);
+
+  // 국가 뷰 랭킹은 stat_type='country'(국가명 있음)를 같은 기간으로 필터해 사용.
+  const countryRows = useMemo(() => {
+    if (!periodFrom || !periodTo) return [];
+    return countryAll.filter((r) => r.period >= periodFrom && r.period <= periodTo);
+  }, [countryAll, periodFrom, periodTo]);
 
   const expKey = metric === "usd" ? "export_usd" : "export_weight";
   const impKey = metric === "usd" ? "import_usd" : "import_weight";
@@ -157,7 +166,7 @@ function IndustriesPage() {
         {view === "hs" ? (
           <ChapterSection rows={rows} allRows={allRows} expKey={expKey} impKey={impKey} fmt={fmt} />
         ) : (
-          <CountrySection rows={rows} expKey={expKey} impKey={impKey} fmt={fmt} />
+          <CountrySection rows={countryRows} expKey={expKey} impKey={impKey} fmt={fmt} />
         )}
 
         {/* 월별 추이는 선택 기간과 무관하게 전체 시계열(allRows) — 단일월 스냅샷과 분리 */}
