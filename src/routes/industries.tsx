@@ -155,7 +155,7 @@ function IndustriesPage() {
         </div>
 
         {view === "hs" ? (
-          <ChapterSection rows={rows} expKey={expKey} impKey={impKey} fmt={fmt} />
+          <ChapterSection rows={rows} allRows={allRows} expKey={expKey} impKey={impKey} fmt={fmt} />
         ) : (
           <CountrySection rows={rows} expKey={expKey} impKey={impKey} fmt={fmt} />
         )}
@@ -316,11 +316,13 @@ type ChapterAgg = {
 
 function ChapterSection({
   rows,
+  allRows,
   expKey,
   impKey,
   fmt,
 }: {
-  rows: TradeStatRow[];
+  rows: TradeStatRow[]; // 선택 기간(기본 최신 단일월) — 트리맵·랭킹·집계용
+  allRows: TradeStatRow[]; // 전체 시계열 — 상세의 월별 추이용
   expKey: MetricKey;
   impKey: MetricKey;
   fmt: (n: number | null) => string;
@@ -341,8 +343,14 @@ function ChapterSection({
     [aggs],
   );
 
-  const treemapItems = useMemo(
-    () => aggs.map((a) => ({ label: `HS ${a.chapter} ${a.name}`, value: a.exp })),
+  // 상위 15 챕터 + 나머지 "기타" — 96개를 다 넣으면 박스가 슬리버가 돼 라벨이 사라진다.
+  const treemapItems = useMemo(() => {
+    const sorted = aggs.filter((a) => a.exp > 0).sort((a, b) => b.exp - a.exp);
+    const items = sorted.slice(0, 15).map((a) => ({ label: `HS ${a.chapter} ${a.name}`, value: a.exp }));
+    const restSum = sorted.slice(15).reduce((s, a) => s + a.exp, 0);
+    if (restSum > 0) items.push({ label: `기타 ${sorted.length - 15}개 챕터`, value: restSum });
+    return items;
+  },
     [aggs],
   );
 
@@ -467,7 +475,7 @@ function ChapterSection({
                             <ChapterDetail
                               chapter={a.chapter}
                               chapterName={a.name}
-                              rows={rows.filter((r) => hsChapter(r.hs_code) === a.chapter)}
+                              rows={allRows.filter((r) => hsChapter(r.hs_code) === a.chapter)}
                               expKey={expKey}
                               impKey={impKey}
                               fmt={fmt}

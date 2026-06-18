@@ -708,9 +708,10 @@ export function TreemapChart({
   return (
     <div style={{ position: "relative", width: "100%", height, overflow: "hidden", borderRadius: 8 }}>
       {rects.map((r) => {
-        const intensity = 22 + Math.round((r.value / max) * 62);
+        // 감마 곡선(0.45) — 1개 챕터가 압도해도 작은 박스 색이 뭉개지지 않게 대비 확보.
+        const intensity = 22 + Math.round(Math.pow(max > 0 ? r.value / max : 0, 0.45) * 62);
         const dark = intensity > 50;
-        const showText = r.w >= 9 && r.h >= 11;
+        const showText = r.w >= 6 && r.h >= 8;
         return (
           <div
             key={r.label}
