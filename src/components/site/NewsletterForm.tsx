@@ -95,7 +95,7 @@ export function NewsletterForm({ compact = false }: { compact?: boolean }) {
       )}
       {status.kind === "idle" && (
         <p className="mt-2 text-xs text-white/50">
-          매주 한 통, 운임·정책·노선 요약. 언제든 해지 가능합니다.
+          주 1회 발송되며, 언제든 구독을 해지할 수 있습니다.
         </p>
       )}
     </form>

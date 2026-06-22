@@ -175,16 +175,16 @@ function Index() {
           Logistics Intelligence Platform
         </p>
         <h1 className="mt-3 text-4xl font-bold leading-[1.1] tracking-tight lg:text-5xl">
-          <span style={{ color: "#f1f5f5" }}>물류를 읽는</span>
-          <br />
+          <span style={{ color: "#f1f5f5" }}>물류를 읽는 </span>
           <span style={{ color: "#2DD4BF" }}>
-            {"    "}새로운 시선
+            새로운 시선
           </span>
         </h1>
-        <p className="mt-4 max-w-[540px] text-[15px] leading-relaxed text-white/82">
-          운임·교역·정책·유라시아 회랑을 매주 한 편의 분석으로.
-          <br />
-          흩어진 데이터를 한 화면에서 읽고 분석하세요.
+        <p className="mt-4 max-w-[560px] text-[15px] leading-relaxed text-white/82">
+          운임 지수, 교역 흐름, 정책 변화, 유라시아 코리도어 동향을 한 화면에서 분석하세요.
+        </p>
+        <p className="mt-3 max-w-[560px] text-[15px] leading-relaxed text-white/82">
+          흩어진 공공데이터와 시장 지표를 구조화하여 한국 화주와 포워더가 빠르게 판단할 수 있는 물류 인텔리전스를 제공합니다.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
@@ -208,13 +208,46 @@ function Index() {
     {/* 출처 밴드 */}
     <div style={{ background: "var(--color-navy-900)" }}>
       <div className="mx-auto max-w-[1540px] px-4 py-[11px] text-xs text-white/[0.62] lg:px-12">
-        출처: 공공데이터(PORT-MIS · 관세청 · 해양수산부) 기반 · 매주 업데이트
+        데이터 출처: PORT-MIS · 관세청 · 해양수산부 등 공공데이터 기반 · 업데이트: 주간 단위 갱신
       </div>
     </div>
 
+    <ServiceDescriptionSection />
     <DashboardSection />
     <IndustryInsightsSection />
     </>
+  );
+}
+
+/* -------------------- Service Description -------------------- */
+function ServiceDescriptionSection() {
+  return (
+    <section
+      className="border-t border-[var(--color-line)]"
+      style={{ background: "var(--color-surface, #ffffff)" }}
+    >
+      <div className="mx-auto max-w-[1540px] px-4 py-10 lg:px-12 lg:py-12">
+        <p
+          className="text-xs font-bold uppercase tracking-[0.16em]"
+          style={{ color: "var(--color-navy-600)" }}
+        >
+          Service
+        </p>
+        <p
+          className="mt-3 max-w-3xl text-lg font-semibold leading-snug text-[var(--color-ink)] lg:text-xl"
+          style={{ wordBreak: "keep-all" }}
+        >
+          Logisight는 MTL Shipping Agency가 운영하는 한국 화주·포워더 대상 물류 인텔리전스 플랫폼입니다.
+        </p>
+        <p
+          className="mt-3 max-w-3xl text-[15px] leading-relaxed text-[var(--color-ink-muted)]"
+          style={{ wordBreak: "keep-all" }}
+        >
+          운임, 교역, 정책, 항만, 유라시아 코리도어 데이터를 통합해 시장 흐름과 리스크를 보다 명확하게
+          파악할 수 있도록 지원합니다.
+        </p>
+      </div>
+    </section>
   );
 }
 

@@ -63,9 +63,9 @@ export function Footer() {
           className="flex flex-wrap items-center justify-between gap-5 rounded-lg border border-white/[0.14] bg-white/[0.04] px-6 py-5"
         >
           <div>
-            <div className="text-[14.5px] font-bold">매주 한 편의 물류 브리핑</div>
+            <div className="text-[14.5px] font-bold">Weekly Logistics Briefing</div>
             <p className="mt-1 text-[12.5px] text-white/65">
-              운임 지수, 정책 변화, 코리도어 동향을 정리한 뉴스레터를 받아보세요.
+              운임 지수, 정책 변화, 교역 흐름, 유라시아 코리도어 이슈를 매주 정리해 드립니다.
             </p>
           </div>
           <div className="min-w-[260px] max-w-[420px] flex-1">
@@ -74,12 +74,15 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="mx-auto mt-2 flex max-w-[1540px] flex-wrap justify-between gap-2 px-4 pb-6 pt-5 lg:px-12">
-        <span className="text-[11.5px] text-white/50">
-          © 2026 MTL Shipping Agency · 공공데이터(PORT-MIS · 관세청 · 해양수산부) 기반
+      <div className="mx-auto mt-2 flex max-w-[1540px] flex-col gap-1 px-4 pb-6 pt-5 lg:px-12">
+        <span className="text-[11.5px] text-white/60">
+          Logisight is operated by MTL Shipping Agency.
         </span>
-        <span className="text-[11.5px] text-white/50" style={{ fontFamily: "var(--font-mono)" }}>
-          logisight.mtlship.com
+        <span className="text-[11.5px] text-white/50">
+          공공데이터 출처: PORT-MIS · 관세청 · 해양수산부
+        </span>
+        <span className="text-[11.5px] text-white/50">
+          © 2026 MTL Shipping Agency. All rights reserved.
         </span>
       </div>
     </footer>

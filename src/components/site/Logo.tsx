@@ -4,11 +4,10 @@ export function Logo({ className = "" }: { className?: string }) {
   return (
     <Link
       to="/"
-      className={`inline-flex items-baseline font-bold tracking-tight text-white ${className}`}
+      className={`inline-flex items-center ${className}`}
       aria-label="Logisight 홈"
     >
-      <span>Logi</span>
-      <span style={{ color: "var(--color-cyan)" }}>sight</span>
+      <img src="/logisight_logo.png" alt="Logisight" className="h-9 w-auto lg:h-10" />
     </Link>
   );
 }
