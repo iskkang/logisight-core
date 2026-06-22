@@ -17,22 +17,26 @@ const SUB_GNB = [
   { to: "/climate", label: "기후예측" },
 ] as const;
 
-export function HomeNav() {
+export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insight" }) {
   const [open, setOpen] = useState(false);
+  const underline = <span className="absolute -bottom-0.5 left-0 right-0 h-0.5 rounded bg-[#2dd4bf]" />;
+  const topCls = (key: "home" | "news" | "insight") =>
+    key === active ? "relative py-1 text-white" : "py-1 text-[#93a1b7] transition-colors hover:text-white";
   return (
     <header className="sticky top-0 z-50 border-b border-[#78a0cd1c] bg-[#070b16cc] backdrop-blur-[14px] backdrop-saturate-150">
       <div className={`${WRAP} flex h-[62px] items-center gap-9`}>
         <Link to="/"><Wordmark /></Link>
         <nav className="hidden gap-[26px] text-[14px] font-medium text-[#93a1b7] min-[620px]:flex">
-          <Link to="/" className="relative py-1 text-white">
-            홈<span className="absolute -bottom-0.5 left-0 right-0 h-0.5 rounded bg-[#2dd4bf]" />
+          <Link to="/" className={topCls("home")}>
+            홈{active === "home" && underline}
           </Link>
-          <Link to="/news" className="py-1 transition-colors hover:text-white">뉴스</Link>
+          <Link to="/news" className={topCls("news")}>뉴스{active === "news" && underline}</Link>
           {/* 인사이트 — 호버 드롭다운(기존 SUB_GNB) */}
           <div className="group relative py-1">
-            <Link to="/dashboard" className="inline-flex items-center gap-1 transition-colors hover:text-white">
+            <Link to="/dashboard" className={`inline-flex items-center gap-1 transition-colors hover:text-white ${active === "insight" ? "text-white" : ""}`}>
               인사이트
               <span className="text-[9px] text-[#2dd4bf] transition-transform group-hover:rotate-180" aria-hidden>▼</span>
+              {active === "insight" && underline}
             </Link>
             <div className="invisible absolute left-0 top-full z-50 min-w-[160px] rounded-[10px] border border-[#78a0cd1c] bg-[#0a0f1d] p-1.5 opacity-0 shadow-xl transition-opacity group-hover:visible group-hover:opacity-100">
               {SUB_GNB.map((s) => (
