@@ -1,0 +1,69 @@
+// src/components/home/HomeNav.tsx
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { Menu, X } from "lucide-react";
+import { Wordmark } from "./Wordmark";
+
+const WRAP = "mx-auto w-full max-w-[1200px] px-[18px] min-[620px]:px-7";
+
+const SUB_GNB = [
+  { to: "/dashboard", label: "종합" },
+  { to: "/forecasts", label: "전망" },
+  { to: "/rates", label: "운임" },
+  { to: "/eurasia", label: "유라시아" },
+  { to: "/policy", label: "포트" },
+  { to: "/trade", label: "무역" },
+  { to: "/industries", label: "산업" },
+  { to: "/climate", label: "기후예측" },
+] as const;
+
+export function HomeNav() {
+  const [open, setOpen] = useState(false);
+  return (
+    <header className="sticky top-0 z-50 border-b border-[#78a0cd1c] bg-[#070b16cc] backdrop-blur-[14px] backdrop-saturate-150">
+      <div className={`${WRAP} flex h-[62px] items-center gap-9`}>
+        <Link to="/"><Wordmark /></Link>
+        <nav className="hidden gap-[26px] text-[14px] font-medium text-[#93a1b7] min-[620px]:flex">
+          <Link to="/" className="relative py-1 text-white">
+            홈<span className="absolute -bottom-0.5 left-0 right-0 h-0.5 rounded bg-[#2dd4bf]" />
+          </Link>
+          <Link to="/news" className="py-1 transition-colors hover:text-white">뉴스</Link>
+          {/* 인사이트 — 호버 드롭다운(기존 SUB_GNB) */}
+          <div className="group relative py-1">
+            <Link to="/dashboard" className="transition-colors hover:text-white">인사이트</Link>
+            <div className="invisible absolute left-0 top-full z-50 min-w-[160px] rounded-[10px] border border-[#78a0cd1c] bg-[#0a0f1d] p-1.5 opacity-0 shadow-xl transition-opacity group-hover:visible group-hover:opacity-100">
+              {SUB_GNB.map((s) => (
+                <Link key={s.to} to={s.to} className="block rounded-[7px] px-3 py-2 text-[13px] text-[#93a1b7] hover:bg-white/5 hover:text-white">
+                  {s.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </nav>
+        <div className="ml-auto hidden text-[13px] text-[#5d6b80] min-[620px]:block">
+          <b className="text-white">KOR</b> · ENG
+        </div>
+        <button
+          type="button"
+          aria-label="메뉴 열기"
+          onClick={() => setOpen((v) => !v)}
+          className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#78a0cd33] text-white min-[620px]:hidden"
+        >
+          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+      </div>
+      {open && (
+        <nav className="border-t border-[#78a0cd1c] px-[18px] py-2 min-[620px]:hidden">
+          <Link to="/" onClick={() => setOpen(false)} className="block rounded-md px-3 py-2 text-[15px] text-white">홈</Link>
+          <Link to="/news" onClick={() => setOpen(false)} className="block rounded-md px-3 py-2 text-[15px] text-[#93a1b7]">뉴스</Link>
+          <p className="px-3 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5d6b80]">Insight</p>
+          {SUB_GNB.map((s) => (
+            <Link key={s.to} to={s.to} onClick={() => setOpen(false)} className="block rounded-md px-3 py-2 text-[14px] text-[#93a1b7]">
+              {s.label}
+            </Link>
+          ))}
+        </nav>
+      )}
+    </header>
+  );
+}
