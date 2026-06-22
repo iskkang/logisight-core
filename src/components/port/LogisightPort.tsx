@@ -1,12 +1,12 @@
 // 포트(리스크) 페이지 — 사용자 제공 샘플(LogisightPort) 디자인을 risk 스냅샷 실데이터/실링크로 연결.
 // 헤더/푸터는 홈과 동일한 HomeNav/HomeFooter 재사용(인사이트 활성). 인사이트 SubNav는 기존 8항목 그대로.
 import { useId, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
+import { InsightSubNav } from "@/components/insight/InsightSubNav";
 import { CargoImpactPanel } from "@/components/port/CargoImpactPanel";
 import { policiesQueryOptions } from "@/lib/api/policies";
 import {
@@ -68,33 +68,6 @@ function Spark({ vals, color, className }: { vals: (number | null)[]; color: str
       <polygon points={`${pts} ${w},${h} 0,${h}`} fill={`url(#${id})`} />
       <polyline points={pts} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-  );
-}
-
-/* ============================ SUB NAV (인사이트 8항목, 기존대로) ============================ */
-const SUB_TABS = [
-  { to: "/dashboard", label: "종합" },
-  { to: "/forecasts", label: "전망" },
-  { to: "/rates", label: "운임" },
-  { to: "/eurasia", label: "유라시아" },
-  { to: "/policy", label: "포트" },
-  { to: "/trade", label: "무역" },
-  { to: "/industries", label: "산업" },
-  { to: "/climate", label: "기후예측" },
-] as const;
-
-function SubNav() {
-  return (
-    <div className="border-b border-[#78a0cd1c] bg-[#0a0f1d]">
-      <div className={`${WRAP} flex h-[46px] items-center gap-[22px] overflow-x-auto text-[13.5px]`}>
-        <span className="flex-none text-[10.5px] font-bold tracking-[0.18em] text-[#5d6b80]">INSIGHT</span>
-        {SUB_TABS.map((t) => (
-          <Link key={t.to} to={t.to} className={t.to === "/policy"
-            ? "relative whitespace-nowrap py-[14px] font-semibold text-white after:absolute after:-bottom-px after:left-0 after:right-0 after:h-0.5 after:bg-[#2dd4bf] after:content-['']"
-            : "whitespace-nowrap py-[14px] text-[#93a1b7] transition-colors hover:text-white"}>{t.label}</Link>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -206,7 +179,7 @@ export function LogisightPort() {
     <div className="lsgp-root min-h-screen bg-[#070b16] text-[#1a2433]">
       <style>{STYLE}</style>
       <HomeNav active="insight" />
-      <SubNav />
+      <InsightSubNav />
       <Hero onToggleImpact={() => setImpactOpen((v) => !v)} impactOpen={impactOpen} />
 
       <div className="relative z-[2] -mt-7 rounded-t-[28px] bg-[#e6eaf1] pb-2" style={{ boxShadow: "0 -24px 60px -34px rgba(0,0,0,.7)" }}>

@@ -195,9 +195,9 @@ const THEME_TOGGLE_PREFIXES = [
 function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  // 홈(/)·포트(/policy)는 자체 Nav/Footer를 가진 리디자인 페이지가 전체 레이아웃을 책임진다 →
-  // 글로벌 Navigation/Footer/theme-light 래퍼를 건너뛴다. 다른 라우트는 영향 없음.
-  if (pathname === "/" || pathname === "/policy") {
+  // 홈(/)·포트(/policy)·종합(/dashboard)은 자체 Nav/Footer를 가진 리디자인 페이지가 전체
+  // 레이아웃을 책임진다 → 글로벌 Navigation/Footer/theme-light 래퍼를 건너뛴다. 다른 라우트는 영향 없음.
+  if (pathname === "/" || pathname === "/policy" || pathname === "/dashboard") {
     return <>{children}</>;
   }
 
