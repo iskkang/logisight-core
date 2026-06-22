@@ -103,13 +103,6 @@ function orderedStats(stats: IndexStats[]): IndexStats[] {
   const rank = new Map(INDEX_ORDER.map((code, i) => [code, i]));
   return [...stats].filter((s) => s.latest_value != null).sort((a, b) => (rank.get(a.index_code) ?? 99) - (rank.get(b.index_code) ?? 99));
 }
-function sourceList(stats: IndexStats[], dataUpdates: { dataset: string; updated_at: string | null }[]): string {
-  const fromUpdates = dataUpdates.map((u) => u.dataset).filter(Boolean);
-  if (fromUpdates.length > 0) return fromUpdates.slice(0, 4).join(" · ");
-  const fromStats = [...new Set(stats.map((s) => s.source).filter((s): s is string => Boolean(s)))];
-  if (fromStats.length > 0) return fromStats.slice(0, 4).join(" · ");
-  return "데이터 수집 중";
-}
 
 /* ---------- data builders (기존 /dashboard 동일) ---------- */
 function buildLaneRows(seaRates: KitaSeaRateRow[], delays: DelayWeeklyRow[]): KeyLaneRow[] {
@@ -173,11 +166,24 @@ function buildAirLaneRows(airRates: KitaAirRateRow[]): AirLaneRow[] {
     };
   }
   const rows: AirLaneRow[] = [];
+  const usedKeys = new Set<string>();
   for (const keyword of AIR_PRIORITY_DESTS) {
-    const match = latest.find((r) => r.dest.includes(keyword));
-    if (match) rows.push(toRow(match));
+    const match = latest.find((r) => r.dest.includes(keyword) && !usedKeys.has(`${r.origin}__${r.dest}`));
+    if (match) {
+      const r = toRow(match);
+      if (r.value != null) { rows.push(r); usedKeys.add(`${match.origin}__${match.dest}`); }
+    }
   }
-  return rows.filter((r) => r.value != null);
+  // 4개 한 줄을 채우기 위해 나머지 인천발 노선을 운임 높은 순으로 보충(실데이터, 없으면 있는 만큼).
+  const remaining = latest
+    .filter((r) => !usedKeys.has(`${r.origin}__${r.dest}`))
+    .sort((a, b) => (b.kg300 ?? b.kg100 ?? 0) - (a.kg300 ?? a.kg100 ?? 0));
+  for (const row of remaining) {
+    if (rows.length >= 4) break;
+    const r = toRow(row);
+    if (r.value != null) { rows.push(r); usedKeys.add(`${row.origin}__${row.dest}`); }
+  }
+  return rows.slice(0, 4);
 }
 
 function buildHeroSummary(kcciStat: IndexStats | undefined, stats: IndexStats[], alertCount: number, disruptions: number, openForecasts: Forecast[]): string {
@@ -346,9 +352,9 @@ function JudgmentPanel({ forecasts, seriesMap, stats, selectedMetric }: {
         </div>
       </div>
 
-      <div className="my-[18px] flex gap-3 rounded-[12px] border border-[#d4e6f2] bg-[#eef6fb] px-[17px] py-[15px]">
-        <div className="grid h-[30px] w-[30px] flex-none place-items-center rounded-[8px] bg-[#3b82f6] text-[11px] font-bold text-white">AI</div>
-        <div><div className="mb-1 text-[13px] font-semibold text-[#1a2433]">AI 요약 · 에디터 검수</div><p className="text-[13px] leading-[1.55] text-[#54606f]">{lead || "전망 본문 수집 중입니다. 에디터 검수 후 공개됩니다."}</p></div>
+      <div className="my-[18px] flex gap-3 rounded-[12px] border border-[#ccfbf1] bg-[#e9f8f4] px-[17px] py-[15px]">
+        <div className="grid h-[30px] w-[30px] flex-none place-items-center rounded-[8px] bg-[#0d9488] text-[11px] font-bold text-white">LS</div>
+        <div><div className="mb-1 text-[13px] font-semibold text-[#1a2433]">LOGISIGHT 분석</div><p className="text-[13px] leading-[1.55] text-[#54606f]">{lead || "전망 본문 수집 중입니다. 에디터 검수 후 공개됩니다."}</p></div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 min-[640px]:grid-cols-3">
@@ -472,7 +478,6 @@ function UtilityRow({ asOf, dataUpdates, stats, seaRates, exRate, jetFuel }: {
   const basisRows: [string, string][] = [
     ["기준일", asOf],
     ["데이터 갱신", latestUpdate ? `${latestUpdate.slice(0, 16).replace("T", " ")} KST` : "수집 이력 확인 중"],
-    ["수집 소스", sourceList(stats, dataUpdates)],
     ["지수 커버리지", `${availableIndexes}/${stats.length || 0}개`],
     ["KITA 해상", yyyymmLabel(latestSeaMonth)],
     ["환율 기준", exRate?.rate_date?.slice(0, 10) ?? "수집 중"],
@@ -551,7 +556,7 @@ export function LogisightControlTower() {
     { c: "bg-[#3b82f6]", label: "기준일", value: today },
   ];
 
-  const seaMonitorRows = laneRows.filter((r) => r.lane.mode === "ocean" && r.value != null).map((r) => ({ label: `${r.lane.origin} → ${r.lane.dest}`, price: r.value ?? "—", mom: r.mom, asOf: r.asOf, values: r.values }));
+  const seaMonitorRows = laneRows.filter((r) => r.lane.mode === "ocean" && r.value != null).slice(0, 4).map((r) => ({ label: `${r.lane.origin} → ${r.lane.dest}`, price: r.value ?? "—", mom: r.mom, asOf: r.asOf, values: r.values }));
   const airMonitorRows = airRows.map((r) => ({ label: `${r.origin} → ${r.dest}`, price: r.value ?? "—", mom: r.mom, asOf: r.asOf, values: r.values }));
 
   return (
