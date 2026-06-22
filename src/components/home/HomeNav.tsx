@@ -30,7 +30,10 @@ export function HomeNav() {
           <Link to="/news" className="py-1 transition-colors hover:text-white">뉴스</Link>
           {/* 인사이트 — 호버 드롭다운(기존 SUB_GNB) */}
           <div className="group relative py-1">
-            <Link to="/dashboard" className="transition-colors hover:text-white">인사이트</Link>
+            <Link to="/dashboard" className="inline-flex items-center gap-1 transition-colors hover:text-white">
+              인사이트
+              <span className="text-[9px] text-[#2dd4bf] transition-transform group-hover:rotate-180" aria-hidden>▼</span>
+            </Link>
             <div className="invisible absolute left-0 top-full z-50 min-w-[160px] rounded-[10px] border border-[#78a0cd1c] bg-[#0a0f1d] p-1.5 opacity-0 shadow-xl transition-opacity group-hover:visible group-hover:opacity-100">
               {SUB_GNB.map((s) => (
                 <Link key={s.to} to={s.to} className="block rounded-[7px] px-3 py-2 text-[13px] text-[#93a1b7] hover:bg-white/5 hover:text-white">
