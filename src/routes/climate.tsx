@@ -4,9 +4,10 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { climateRiskQueryOptions } from "@/lib/api/climate";
 import { RiskGlobe } from "@/components/climate/RiskGlobe";
 import { RouteBreadcrumb } from "@/components/site/Breadcrumb";
+import { PageHero } from "@/components/site/PageHero";
 
-const DESC =
-  "전 세계 항만·초크포인트·내륙 철도 거점의 기상 리스크를 AI 예보 기반으로 지구본에 표시합니다. 활성 재해(NHC·GDACS·NWS)도 함께 감시합니다.";
+const SUBTITLE =
+  "전 세계 항만·초크포인트·내륙 철도 거점의 기상 리스크를 AI 예보 기반으로 지구본에 표시합니다.";
 
 export const Route = createFileRoute("/climate")({
   loader: ({ context }) => {
@@ -16,10 +17,10 @@ export const Route = createFileRoute("/climate")({
     const url = "https://logisight-core.lovable.app/climate";
     return {
       meta: [
-        { title: "기후예측 — 기상 리스크 지구본 · Logisight" },
-        { name: "description", content: DESC },
-        { property: "og:title", content: "기후예측 — 기상 리스크 지구본 · Logisight" },
-        { property: "og:description", content: DESC },
+        { title: "세계 기후 예측 — Logisight" },
+        { name: "description", content: SUBTITLE },
+        { property: "og:title", content: "세계 기후 예측 — Logisight" },
+        { property: "og:description", content: SUBTITLE },
         { property: "og:type", content: "website" },
         { property: "og:url", content: url },
       ],
@@ -32,26 +33,20 @@ export const Route = createFileRoute("/climate")({
 function ClimatePage() {
   const { data } = useSuspenseQuery(climateRiskQueryOptions());
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 lg:py-14">
-      <RouteBreadcrumb className="mb-6" />
-      <header className="mb-6">
-        <span
-          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-          style={{ background: "var(--color-navy-900)", color: "var(--color-cyan)" }}
-        >
-          기후예측
-        </span>
-        <h1
-          className="mt-4 text-3xl font-bold leading-tight text-[var(--color-ink)] lg:text-4xl"
-          style={{ wordBreak: "keep-all" }}
-        >
-          기상 리스크 지구본
-        </h1>
-        <p className="mt-3 text-base text-[var(--color-ink-muted)]" style={{ wordBreak: "keep-all" }}>
-          {DESC}
-        </p>
-      </header>
-      <RiskGlobe data={data} />
-    </div>
+    <>
+      <PageHero
+        eyebrow="Global Climate Forecast"
+        titleMain="세계 기후 예측"
+        subtitle={SUBTITLE}
+        chips={[
+          { label: "감시 자산", value: `${data.assets.length}개`, color: "var(--color-cyan)" },
+          { label: "활성 이벤트", value: `${data.events.length}건`, color: "var(--color-status-normal)" },
+        ]}
+      />
+      <div className="relative z-10 mx-auto flex w-full max-w-[1540px] flex-col gap-4 px-4 py-[26px] lg:px-12">
+        <RouteBreadcrumb />
+        <RiskGlobe data={data} />
+      </div>
+    </>
   );
 }
