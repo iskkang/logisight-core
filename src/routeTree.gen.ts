@@ -18,6 +18,7 @@ import { Route as IndustriesRouteImport } from './routes/industries'
 import { Route as ForecastsRouteImport } from './routes/forecasts'
 import { Route as EurasiaRouteImport } from './routes/eurasia'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ClimateRouteImport } from './routes/climate'
 import { Route as BriefingRouteImport } from './routes/briefing'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ArticleSlugRouteImport } from './routes/article.$slug'
@@ -72,6 +73,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClimateRoute = ClimateRouteImport.update({
+  id: '/climate',
+  path: '/climate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BriefingRoute = BriefingRouteImport.update({
   id: '/briefing',
   path: '/briefing',
@@ -116,6 +122,7 @@ const AdminForecastsRoute = AdminForecastsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/briefing': typeof BriefingRoute
+  '/climate': typeof ClimateRoute
   '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
   '/forecasts': typeof ForecastsRoute
@@ -135,6 +142,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/briefing': typeof BriefingRoute
+  '/climate': typeof ClimateRoute
   '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
   '/forecasts': typeof ForecastsRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/briefing': typeof BriefingRoute
+  '/climate': typeof ClimateRoute
   '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
   '/forecasts': typeof ForecastsRoute
@@ -176,6 +185,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/briefing'
+    | '/climate'
     | '/dashboard'
     | '/eurasia'
     | '/forecasts'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/briefing'
+    | '/climate'
     | '/dashboard'
     | '/eurasia'
     | '/forecasts'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/briefing'
+    | '/climate'
     | '/dashboard'
     | '/eurasia'
     | '/forecasts'
@@ -234,6 +246,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BriefingRoute: typeof BriefingRoute
+  ClimateRoute: typeof ClimateRoute
   DashboardRoute: typeof DashboardRoute
   EurasiaRoute: typeof EurasiaRoute
   ForecastsRoute: typeof ForecastsRoute
@@ -316,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/climate': {
+      id: '/climate'
+      path: '/climate'
+      fullPath: '/climate'
+      preLoaderRoute: typeof ClimateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/briefing': {
       id: '/briefing'
       path: '/briefing'
@@ -378,6 +398,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BriefingRoute: BriefingRoute,
+  ClimateRoute: ClimateRoute,
   DashboardRoute: DashboardRoute,
   EurasiaRoute: EurasiaRoute,
   ForecastsRoute: ForecastsRoute,

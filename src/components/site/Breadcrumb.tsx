@@ -12,6 +12,7 @@ const DASH_SUB: Record<string, string> = {
   "/policy": "포트",
   "/trade": "무역",
   "/industries": "산업",
+  "/climate": "기후예측",
 };
 
 const HOME: Crumb = { label: "홈", to: "/" };

@@ -20,6 +20,7 @@ const SUB_GNB = [
   { to: "/policy", label: "포트" },
   { to: "/trade", label: "무역" },
   { to: "/industries", label: "산업" },
+  { to: "/climate", label: "기후예측" },
 ] as const;
 
 // 대시보드(다크 토글 허용) 영역
