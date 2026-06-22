@@ -38,6 +38,8 @@ const hexrgb = (h: string) =>
   `${parseInt(h.slice(1, 3), 16)},${parseInt(h.slice(3, 5), 16)},${parseInt(h.slice(5, 7), 16)}`;
 const prefersReduced = () =>
   typeof window !== "undefined" && !!window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ZOOM_MIN = 0.6, ZOOM_MAX = 4;
+const clampZoom = (z: number) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
 
 function riskScore(rm: RiskMap, key: string, h: number): number {
   return rm[key]?.[HDAYS[h]]?.score ?? 0;
@@ -74,13 +76,14 @@ type Scene = {
 type Live = {
   nodes: Record<string, GNode>; assetList: GNode[]; routes: GRoute[]; riskMap: RiskMap;
   events: ClimateRiskData["events"]; landGeo: GeoJSON.MultiPolygon;
-  hIdx: number; sel: Sel; spinOn: boolean; reduce: boolean;
+  hIdx: number; sel: Sel; spinOn: boolean; reduce: boolean; zoom: number;
 };
 
 export function RiskGlobe({ data }: { data: ClimateRiskData }) {
   const [hIdx, setHIdx] = useState(0);
   const [sel, setSel] = useState<Sel>(null);
   const [spinOn, setSpinOn] = useState(true);
+  const [zoom, setZoom] = useState(1);
 
   const { nodes, assetList, routes, riskMap } = useMemo(() => {
     const nodes: Record<string, GNode> = {};
@@ -118,7 +121,7 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
     assetHit: [], routeHit: [], eventHit: [], render: null,
   });
   const liveRef = useRef<Live>(null as unknown as Live);
-  liveRef.current = { nodes, assetList, routes, riskMap, events, landGeo, hIdx, sel, spinOn, reduce: prefersReduced() };
+  liveRef.current = { nodes, assetList, routes, riskMap, events, landGeo, hIdx, sel, spinOn, zoom, reduce: prefersReduced() };
 
   // init: projection·path·드래그·오토스핀·최초 렌더 (1회). cleanup으로 해제.
   useEffect(() => {
@@ -140,13 +143,14 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
     const render = () => {
       const L = liveRef.current;
       const projection = sc.projection!, path = sc.path!;
-      projection.scale(sc.R).translate([sc.cx, sc.cy]).rotate(sc.rot);
+      const R = sc.R * L.zoom;
+      projection.scale(R).translate([sc.cx, sc.cy]).rotate(sc.rot);
       ctx.clearRect(0, 0, sc.W, sc.H);
       const rotInv: [number, number] = [-sc.rot[0], -sc.rot[1]];
       const visible = (lon: number, lat: number) => geoDistance([lon, lat], rotInv) < Math.PI / 2 - 0.012;
 
       // ocean sphere
-      const grd = ctx.createRadialGradient(sc.cx - sc.R * 0.35, sc.cy - sc.R * 0.4, sc.R * 0.2, sc.cx, sc.cy, sc.R * 1.15);
+      const grd = ctx.createRadialGradient(sc.cx - R * 0.35, sc.cy - R * 0.4, R * 0.2, sc.cx, sc.cy, R * 1.15);
       grd.addColorStop(0, "#15375c"); grd.addColorStop(0.6, "#0e2440"); grd.addColorStop(1, "#081627");
       ctx.beginPath(); path({ type: "Sphere" } as never); ctx.fillStyle = grd; ctx.fill();
       // graticule
@@ -233,23 +237,25 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
       render();
     };
 
+    // 마커 클릭 → 선택 + 회전 정지(패널 확인용). 빈 곳 클릭 → 회전 토글(정지↔재개) + 선택 해제.
     const hitTest = (clientX: number, clientY: number) => {
       const b = cv.getBoundingClientRect();
       const px = (clientX - b.left) * (sc.W / b.width), py = (clientY - b.top) * (sc.H / b.height);
-      for (const s of sc.eventHit) if (Math.hypot(px - s.x, py - s.y) <= s.r) return setSel({ kind: "event", id: s.id });
+      for (const s of sc.eventHit) if (Math.hypot(px - s.x, py - s.y) <= s.r) { setSel({ kind: "event", id: s.id }); setSpinOn(false); return; }
       let ba: string | null = null, bd = 11;
       for (const a of sc.assetHit) { const dd = Math.hypot(px - a.x, py - a.y); if (dd < bd) { bd = dd; ba = a.key; } }
-      if (ba) return setSel({ kind: "asset", id: ba });
+      if (ba) { setSel({ kind: "asset", id: ba }); setSpinOn(false); return; }
       let br: string | null = null, brd = 9;
       for (const Rt of sc.routeHit) for (const pt of Rt.pts) { const dd = Math.hypot(px - pt[0], py - pt[1]); if (dd < brd) { brd = dd; br = Rt.id; } }
-      setSel(br ? { kind: "route", id: br } : null);
+      if (br) { setSel({ kind: "route", id: br }); setSpinOn(false); }
+      else { setSel(null); setSpinOn((v) => !v); }
     };
 
     let sx = 0, sy = 0, srot: [number, number] = [0, 0];
     const onDown = (e: PointerEvent) => { sc.down = true; sx = e.clientX; sy = e.clientY; srot = [sc.rot[0], sc.rot[1]]; cv.setPointerCapture(e.pointerId); };
     const onMove = (e: PointerEvent) => {
       if (!sc.down) return;
-      const k = 0.27 * (220 / sc.R);
+      const k = 0.27 * (220 / (sc.R * liveRef.current.zoom));
       sc.rot = [srot[0] + (e.clientX - sx) * k, Math.max(-89, Math.min(89, srot[1] - (e.clientY - sy) * k))];
       render();
     };
@@ -257,6 +263,8 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
     cv.addEventListener("pointerdown", onDown);
     cv.addEventListener("pointermove", onMove);
     cv.addEventListener("pointerup", onUp);
+    const onWheel = (e: WheelEvent) => { e.preventDefault(); setZoom((z) => clampZoom(z * (e.deltaY < 0 ? 1.12 : 0.89))); };
+    cv.addEventListener("wheel", onWheel, { passive: false });
 
     let rzTimer: number | undefined;
     const onResize = () => { window.clearTimeout(rzTimer); rzTimer = window.setTimeout(resize, 120); };
@@ -280,6 +288,7 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
       cv.removeEventListener("pointerdown", onDown);
       cv.removeEventListener("pointermove", onMove);
       cv.removeEventListener("pointerup", onUp);
+      cv.removeEventListener("wheel", onWheel);
       sc.render = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -288,7 +297,7 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
   // 갱신: data·horizon·선택 변경 시 재렌더만 (재초기화 금지).
   useEffect(() => {
     sceneRef.current.render?.();
-  }, [data, hIdx, sel, spinOn, landGeo]);
+  }, [data, hIdx, sel, spinOn, zoom, landGeo]);
 
   // ---- panel/alerts (JSX) ----
   const counts = useMemo(() => {
@@ -320,6 +329,8 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
   return (
     <div className="risk-globe">
       <div className="rg-controls">
+        <button className="rg-spin" onClick={() => setZoom((z) => clampZoom(z / 1.3))} aria-label="축소" title="축소">－</button>
+        <button className="rg-spin" onClick={() => setZoom((z) => clampZoom(z * 1.3))} aria-label="확대" title="확대">＋</button>
         <button className="rg-spin" data-on={spinOn} onClick={() => setSpinOn((v) => !v)}>↻ 회전</button>
         <div className="rg-horizon" role="group" aria-label="예보 시점">
           {HLBL.map((lbl, i) => (
@@ -344,7 +355,7 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
               <span className="rg-ring" />결빙
             </div>
           </div>
-          <div className="rg-hint">드래그하여 회전 · 클릭하여 선택</div>
+          <div className="rg-hint">드래그 회전 · 휠 확대/축소 · 클릭으로 선택·회전 토글</div>
         </div>
 
         <aside className="rg-panel">
