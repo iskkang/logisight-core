@@ -406,12 +406,14 @@ function Sidebar() {
         <small className="mt-2.5 block text-[11px] text-[#5d6b80]">주 1회 발송 · 언제든 구독 해지 가능</small>
       </div>
 
-      <a href="mailto:sales@mtlship.com" className="block rounded-[14px] border border-dashed border-[#c5cfdc] bg-[#f1f4f8] p-4">
-        <div className="mb-[11px] flex justify-between text-[10px] uppercase tracking-[0.1em] text-[#828d9d]"><span>Sponsored · 광고</span><span>MTL Shipping Agency</span></div>
-        <div className="flex items-center gap-3">
-          <div className="grid h-[54px] w-[54px] flex-none place-items-center rounded-[10px] text-[15px] font-extrabold text-white" style={{ background: "linear-gradient(135deg,#c0392b,#7d2018)" }}>MTL</div>
-          <div className="text-[13px] font-semibold leading-[1.4] text-[#1a2433]">MTL Truck LCL 서비스<span className="mt-[3px] block text-[11.5px] font-normal text-[#54606f]">빠른 출발 · 신뢰성 있는 배송 · 소형 화물 최적</span></div>
-        </div>
+      <a href="mailto:sales@mtlship.com" className="block overflow-hidden rounded-[14px] border border-[#d4dce7] bg-[#f1f4f8] transition-shadow hover:shadow-[0_14px_28px_-20px_rgba(16,24,40,0.28)]">
+        <div className="flex items-center justify-between border-b border-[#d4dce7] px-3.5 py-2 text-[10px] uppercase tracking-[0.1em] text-[#828d9d]"><span>Sponsored · 광고</span><span>MTL Shipping Agency</span></div>
+        <img
+          src="/ad-mtl-truck-lcl.png"
+          alt="MTL Truck LCL 서비스 — 빠른 출발, 신뢰성 있는 배송, 소형 화물에 적합"
+          className="block h-auto w-full"
+          loading="lazy"
+        />
       </a>
     </aside>
   );
