@@ -31,21 +31,25 @@ export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insig
             홈{active === "home" && underline}
           </Link>
           <Link to="/news" className={topCls("news")}>뉴스{active === "news" && underline}</Link>
-          {/* 인사이트 — 호버 드롭다운(기존 SUB_GNB) */}
-          <div className="group relative py-1">
-            <Link to="/dashboard" className={`inline-flex items-center gap-1 transition-colors hover:text-white ${active === "insight" ? "text-white" : ""}`}>
-              인사이트
-              <span className="text-[9px] text-[#2dd4bf] transition-transform group-hover:rotate-180" aria-hidden>▼</span>
-              {active === "insight" && underline}
-            </Link>
-            <div className="invisible absolute left-0 top-full z-50 min-w-[160px] rounded-[10px] border border-[#78a0cd1c] bg-[#0a0f1d] p-1.5 opacity-0 shadow-xl transition-opacity group-hover:visible group-hover:opacity-100">
-              {SUB_GNB.map((s) => (
-                <Link key={s.to} to={s.to} className="block rounded-[7px] px-3 py-2 text-[13px] text-[#93a1b7] hover:bg-white/5 hover:text-white">
-                  {s.label}
-                </Link>
-              ))}
+          {active === "insight" ? (
+            // 인사이트 내부 페이지 — 하위 SubNav가 이미 있으므로 드롭다운/▼ 없이 활성 표시만.
+            <Link to="/dashboard" className="relative py-1 text-white">인사이트{underline}</Link>
+          ) : (
+            // 홈/뉴스 — 인사이트 호버 드롭다운(기존 SUB_GNB)으로 하위 메뉴 노출.
+            <div className="group relative py-1">
+              <Link to="/dashboard" className="inline-flex items-center gap-1 text-[#93a1b7] transition-colors hover:text-white">
+                인사이트
+                <span className="text-[9px] text-[#2dd4bf] transition-transform group-hover:rotate-180" aria-hidden>▼</span>
+              </Link>
+              <div className="invisible absolute left-0 top-full z-50 min-w-[160px] rounded-[10px] border border-[#78a0cd1c] bg-[#0a0f1d] p-1.5 opacity-0 shadow-xl transition-opacity group-hover:visible group-hover:opacity-100">
+                {SUB_GNB.map((s) => (
+                  <Link key={s.to} to={s.to} className="block rounded-[7px] px-3 py-2 text-[13px] text-[#93a1b7] hover:bg-white/5 hover:text-white">
+                    {s.label}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </nav>
         <div className="ml-auto hidden text-[13px] text-[#5d6b80] min-[620px]:block">
           <b className="text-white">KOR</b> · ENG
@@ -63,12 +67,19 @@ export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insig
         <nav className="border-t border-[#78a0cd1c] px-[18px] py-2 min-[620px]:hidden">
           <Link to="/" onClick={() => setOpen(false)} className="block rounded-md px-3 py-2 text-[15px] text-white">홈</Link>
           <Link to="/news" onClick={() => setOpen(false)} className="block rounded-md px-3 py-2 text-[15px] text-[#93a1b7]">뉴스</Link>
-          <p className="px-3 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5d6b80]">Insight</p>
-          {SUB_GNB.map((s) => (
-            <Link key={s.to} to={s.to} onClick={() => setOpen(false)} className="block rounded-md px-3 py-2 text-[14px] text-[#93a1b7]">
-              {s.label}
-            </Link>
-          ))}
+          {active === "insight" ? (
+            // 인사이트 내부 — 하위는 SubNav가 노출하므로 모바일에서도 상위 링크만.
+            <Link to="/dashboard" onClick={() => setOpen(false)} className="block rounded-md px-3 py-2 text-[15px] text-white">인사이트</Link>
+          ) : (
+            <>
+              <p className="px-3 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5d6b80]">Insight</p>
+              {SUB_GNB.map((s) => (
+                <Link key={s.to} to={s.to} onClick={() => setOpen(false)} className="block rounded-md px-3 py-2 text-[14px] text-[#93a1b7]">
+                  {s.label}
+                </Link>
+              ))}
+            </>
+          )}
         </nav>
       )}
     </header>
