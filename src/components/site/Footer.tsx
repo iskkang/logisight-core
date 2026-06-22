@@ -10,9 +10,8 @@ export function Footer() {
     <footer className="text-white" style={{ background: "var(--color-navy-900)" }}>
       <div className="mx-auto grid max-w-[1540px] gap-6 px-4 pt-10 lg:grid-cols-[1.6fr_1fr_1fr_1fr] lg:px-12">
         <div>
-          <Link to="/" className="inline-block text-[19px] font-bold">
-            <span className="text-white">Logi</span>
-            <span style={{ color: "var(--color-cyan)" }}>sight</span>
+          <Link to="/" className="inline-block" aria-label="Logisight 홈">
+            <img src="/logisight_logo.svg" alt="Logisight" className="h-8 w-auto" />
           </Link>
           <p className="mt-2.5 max-w-[280px] text-[12.5px] leading-relaxed text-white/65">
             MTL Shipping Agency가 운영하는 한국 화주·포워더를 위한 물류 인텔리전스.
