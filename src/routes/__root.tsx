@@ -194,6 +194,13 @@ const THEME_TOGGLE_PREFIXES = [
 
 function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // 자체 Nav/Footer를 가진 리디자인 페이지(홈·포트·종합·전망)는 전체 레이아웃을 스스로 책임진다 →
+  // 글로벌 Navigation/Footer/theme-light 래퍼를 건너뛴다. 다른 라우트는 영향 없음.
+  if (["/", "/policy", "/dashboard", "/forecasts", "/rates", "/climate"].includes(pathname)) {
+    return <>{children}</>;
+  }
+
   const isThemeTogglePage = THEME_TOGGLE_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );

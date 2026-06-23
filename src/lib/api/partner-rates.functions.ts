@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import ws from "ws";
 import { numUSD, parseTransit, normRouteType, isExpired } from "./partner-rates.normalize";
 
 const ExtractInput = z.object({
@@ -93,6 +94,7 @@ async function serviceClient() {
   const { createClient } = await import("@supabase/supabase-js");
   return createClient(process.env["SUPABASE_URL"]!, process.env["SUPABASE_SERVICE_ROLE_KEY"]!, {
     auth: { persistSession: false },
+    realtime: { transport: ws },
   });
 }
 
