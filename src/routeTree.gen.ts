@@ -27,6 +27,7 @@ import { Route as AdminPoliciesRouteImport } from './routes/admin.policies'
 import { Route as AdminPartnerRatesRouteImport } from './routes/admin.partner-rates'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminForecastsRouteImport } from './routes/admin.forecasts'
+import { Route as ApiTradeBriefRouteImport } from './routes/api/trade/brief'
 
 const TradeRoute = TradeRouteImport.update({
   id: '/trade',
@@ -118,6 +119,11 @@ const AdminForecastsRoute = AdminForecastsRouteImport.update({
   path: '/admin/forecasts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTradeBriefRoute = ApiTradeBriefRouteImport.update({
+  id: '/api/trade/brief',
+  path: '/api/trade/brief',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
+  '/api/trade/brief': typeof ApiTradeBriefRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
+  '/api/trade/brief': typeof ApiTradeBriefRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
+  '/api/trade/brief': typeof ApiTradeBriefRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
+    | '/api/trade/brief'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -221,6 +231,7 @@ export interface FileRouteTypes {
     | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
+    | '/api/trade/brief'
   id:
     | '__root__'
     | '/'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
+    | '/api/trade/brief'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -262,6 +274,7 @@ export interface RootRouteChildren {
   AdminPoliciesRoute: typeof AdminPoliciesRoute
   AdminRoutesRoute: typeof AdminRoutesRoute
   ArticleSlugRoute: typeof ArticleSlugRoute
+  ApiTradeBriefRoute: typeof ApiTradeBriefRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -392,6 +405,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminForecastsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/trade/brief': {
+      id: '/api/trade/brief'
+      path: '/api/trade/brief'
+      fullPath: '/api/trade/brief'
+      preLoaderRoute: typeof ApiTradeBriefRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -414,6 +434,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminPoliciesRoute: AdminPoliciesRoute,
   AdminRoutesRoute: AdminRoutesRoute,
   ArticleSlugRoute: ArticleSlugRoute,
+  ApiTradeBriefRoute: ApiTradeBriefRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
