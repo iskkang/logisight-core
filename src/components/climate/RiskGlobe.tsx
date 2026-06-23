@@ -25,6 +25,25 @@ type GNode = { key: string; name: string; lon: number; lat: number; type: AssetT
 type GRoute = { id: string; name: string; wp: RouteWaypoint[]; keys: string[]; chokes: string[] };
 type RiskMap = Record<string, Record<number, RiskRow>>;
 type Sel = { kind: "asset" | "route" | "event"; id: string } | null;
+type TrackPhase = "past" | "current" | "forecast";
+type TrackPoint = {
+  lon: number;
+  lat: number;
+  validAtMs: number | null;
+  forecastHour: number | null;
+  intensity: string | null;
+  phase: TrackPhase | null;
+};
+type EventTrack = {
+  points: TrackPoint[];
+  hasValidTimes: boolean;
+  hasForecastHours: boolean;
+};
+type TrackHorizonPosition = {
+  point: TrackPoint;
+  outOfRange: boolean;
+  label: string | null;
+};
 
 const MONO = '600 10px "JetBrains Mono", ui-monospace, monospace';
 const KIND_LABEL: Record<string, string> = { cyclone: "태풍", storm: "폭풍", flood: "홍수", snow: "폭설", other: "경보" };
@@ -40,6 +59,12 @@ const prefersReduced = () =>
   typeof window !== "undefined" && !!window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const ZOOM_MIN = 0.6, ZOOM_MAX = 4;
 const clampZoom = (z: number) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+const HOUR_MS = 60 * 60 * 1000;
+const HKO_FORECAST_LIMIT_HOURS = 120;
+const TRACK_LIMIT_LABEL = "\uc608\ubcf4 \ubc94\uc704 \ucd08\uacfc(+5\uc77c\uae4c\uc9c0)";
+const TRACK_MISSING_LABEL = "\uc608\ubcf4 \ud2b8\ub799 \uc5c6\uc74c";
+const TRACK_PANEL_LABEL = "\ud2b8\ub799";
+const TRACK_POSITION_LABEL = "\uc704\uce58";
 
 function riskScore(rm: RiskMap, key: string, h: number): number {
   return rm[key]?.[HDAYS[h]]?.score ?? 0;
@@ -62,6 +87,172 @@ function firstAlert(rm: RiskMap, key: string): string {
   return "없음";
 }
 
+function finiteNumber(v: unknown): number | null {
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+function parseDateMs(v: unknown): number | null {
+  if (typeof v === "string") {
+    const t = Date.parse(v);
+    return Number.isFinite(t) ? t : null;
+  }
+  if (typeof v === "number" && Number.isFinite(v)) {
+    if (v > 1_000_000_000_000) return v;
+    if (v > 1_000_000_000) return v * 1000;
+  }
+  return null;
+}
+function parsePhase(v: unknown): TrackPhase | null {
+  if (typeof v !== "string") return null;
+  const s = v.toLowerCase();
+  return s === "past" || s === "current" || s === "forecast" ? s : null;
+}
+function rawTrackPoints(raw: unknown): unknown[] {
+  if (typeof raw === "string") {
+    try {
+      return rawTrackPoints(JSON.parse(raw));
+    } catch {
+      return [];
+    }
+  }
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    if (Array.isArray(obj.points)) return obj.points;
+    if (Array.isArray(obj.track)) return obj.track;
+    if (Array.isArray(obj.features)) return obj.features;
+    if (Array.isArray(obj.coordinates) && Array.isArray(obj.coordinates[0])) return obj.coordinates;
+    const geometry = obj.geometry && typeof obj.geometry === "object" ? obj.geometry as Record<string, unknown> : null;
+    if (geometry && Array.isArray(geometry.coordinates) && Array.isArray(geometry.coordinates[0])) return geometry.coordinates;
+  }
+  return [];
+}
+function readTrackPoint(raw: unknown): TrackPoint | null {
+  let lon: number | null = null;
+  let lat: number | null = null;
+  let validAtMs: number | null = null;
+  let forecastHour: number | null = null;
+  let intensity: string | null = null;
+  let phase: TrackPhase | null = null;
+
+  if (Array.isArray(raw)) {
+    lon = finiteNumber(raw[0]);
+    lat = finiteNumber(raw[1]);
+    for (let i = 2; i < raw.length; i++) {
+      validAtMs ||= parseDateMs(raw[i]);
+      phase ||= parsePhase(raw[i]);
+      if (typeof raw[i] === "string" && !parsePhase(raw[i]) && parseDateMs(raw[i]) == null && !intensity) intensity = raw[i];
+    }
+  } else if (raw && typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    const geometry = obj.geometry && typeof obj.geometry === "object" ? obj.geometry as Record<string, unknown> : null;
+    const geometryCoords = geometry && Array.isArray(geometry.coordinates) ? geometry.coordinates : null;
+    const coords = Array.isArray(obj.coordinates)
+      ? obj.coordinates
+      : Array.isArray(obj.coord)
+        ? obj.coord
+        : Array.isArray(obj.position)
+          ? obj.position
+          : geometryCoords;
+    lon = finiteNumber(obj.lon ?? obj.lng ?? obj.longitude ?? coords?.[0]);
+    lat = finiteNumber(obj.lat ?? obj.latitude ?? coords?.[1]);
+    validAtMs = parseDateMs(obj.valid_at ?? obj.validAt ?? obj.time ?? obj.timestamp);
+    forecastHour = finiteNumber(obj.forecast_hour ?? obj.forecastHour ?? obj.hour ?? obj.tau);
+    intensity = typeof obj.intensity === "string" ? obj.intensity : typeof obj.grade === "string" ? obj.grade : null;
+    phase = parsePhase(obj.phase);
+  }
+
+  if (lon == null || lat == null || lon < -180 || lon > 180 || lat < -90 || lat > 90) return null;
+  return { lon, lat, validAtMs, forecastHour, intensity, phase };
+}
+function normalizeEventTrack(raw: unknown): EventTrack | null {
+  const points = rawTrackPoints(raw).map(readTrackPoint).filter((p): p is TrackPoint => !!p);
+  if (points.length < 2) return null;
+
+  const hasValidTimes = points.some((p) => p.validAtMs != null);
+  if (hasValidTimes && points.every((p) => p.validAtMs != null)) points.sort((a, b) => a.validAtMs! - b.validAtMs!);
+
+  if (!hasValidTimes && !points.some((p) => p.forecastHour != null)) {
+    const denom = Math.max(1, points.length - 1);
+    points.forEach((p, i) => {
+      p.forecastHour = (i / denom) * HKO_FORECAST_LIMIT_HOURS;
+      p.phase ||= i === 0 ? "current" : "forecast";
+    });
+  }
+
+  return {
+    points,
+    hasValidTimes,
+    hasForecastHours: points.some((p) => p.forecastHour != null),
+  };
+}
+function phaseOfPoint(p: TrackPoint, nowMs: number, idx: number): TrackPhase {
+  if (p.phase) return p.phase;
+  if (p.validAtMs != null) {
+    const diff = p.validAtMs - nowMs;
+    if (Math.abs(diff) <= 3 * HOUR_MS) return "current";
+    return diff < 0 ? "past" : "forecast";
+  }
+  if (p.forecastHour != null) return p.forecastHour <= 0.1 ? "current" : "forecast";
+  return idx === 0 ? "current" : "forecast";
+}
+function closestBy<T>(items: T[], score: (item: T) => number): T {
+  let best = items[0];
+  let bestScore = score(best);
+  for (let i = 1; i < items.length; i++) {
+    const s = score(items[i]);
+    if (s < bestScore) {
+      best = items[i];
+      bestScore = s;
+    }
+  }
+  return best;
+}
+function trackHorizonPosition(track: EventTrack, hIdx: number, nowMs: number): TrackHorizonPosition {
+  const horizonHours = HDAYS[hIdx] * 24;
+  const timed = track.points.filter((p) => p.validAtMs != null);
+  if (timed.length > 0) {
+    if (hIdx === 0) {
+      return { point: track.points.find((p) => p.phase === "current") ?? closestBy(timed, (p) => Math.abs(p.validAtMs! - nowMs)), outOfRange: false, label: null };
+    }
+    const targetMs = nowMs + horizonHours * HOUR_MS;
+    const last = timed.reduce((m, p) => (p.validAtMs! > m.validAtMs! ? p : m), timed[0]);
+    if (targetMs > last.validAtMs! + 6 * HOUR_MS) return { point: last, outOfRange: true, label: TRACK_LIMIT_LABEL };
+    return { point: closestBy(timed, (p) => Math.abs(p.validAtMs! - targetMs)), outOfRange: false, label: null };
+  }
+
+  const hourly = track.points.filter((p) => p.forecastHour != null);
+  if (hourly.length > 0) {
+    const last = hourly.reduce((m, p) => (p.forecastHour! > m.forecastHour! ? p : m), hourly[0]);
+    if (horizonHours > last.forecastHour! + 0.1) return { point: last, outOfRange: true, label: TRACK_LIMIT_LABEL };
+    return { point: closestBy(hourly, (p) => Math.abs(p.forecastHour! - horizonHours)), outOfRange: false, label: null };
+  }
+
+  return { point: track.points[0], outOfRange: false, label: null };
+}
+function formatLonLat(p: TrackPoint): string {
+  const ns = p.lat >= 0 ? "N" : "S";
+  const ew = p.lon >= 0 ? "E" : "W";
+  return `${Math.abs(p.lat).toFixed(1)}${ns} / ${Math.abs(p.lon).toFixed(1)}${ew}`;
+}
+function eventVisibleAtHorizon(
+  e: ClimateRiskData["events"][number],
+  hIdx: number,
+  nowMs: number,
+  hasTrack: boolean,
+): boolean {
+  if (e.kind === "cyclone") return hasTrack || hIdx === 0;
+
+  const targetMs = nowMs + HDAYS[hIdx] * 24 * HOUR_MS;
+  const startsAtMs = parseDateMs(e.starts_at);
+  const endsAtMs = parseDateMs(e.ends_at);
+
+  if (hIdx > 0 && endsAtMs == null) return false;
+  if (startsAtMs != null && targetMs < startsAtMs - HOUR_MS) return false;
+  if (endsAtMs != null && targetMs > endsAtMs + HOUR_MS) return false;
+  return true;
+}
+
 type Scene = {
   projection: ReturnType<typeof geoOrthographic> | null;
   path: ReturnType<typeof geoPath> | null;
@@ -75,7 +266,7 @@ type Scene = {
 };
 type Live = {
   nodes: Record<string, GNode>; assetList: GNode[]; routes: GRoute[]; riskMap: RiskMap;
-  events: ClimateRiskData["events"]; landGeo: GeoJSON.MultiPolygon;
+  events: ClimateRiskData["events"]; eventTracks: Record<string, EventTrack | null>; landGeo: GeoJSON.MultiPolygon;
   hIdx: number; sel: Sel; spinOn: boolean; reduce: boolean; zoom: number;
 };
 
@@ -101,6 +292,11 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
   }, [data]);
 
   const events = data.events;
+  const eventTracks = useMemo(() => {
+    const tracks: Record<string, EventTrack | null> = {};
+    for (const e of events) tracks[e.id] = e.kind === "cyclone" ? normalizeEventTrack(e.track) : null;
+    return tracks;
+  }, [events]);
 
   // land 감기(winding) 보정 — 구면 면적 > 2π 이면 반전. (승인 비주얼과 동일)
   const landGeo = useMemo<GeoJSON.MultiPolygon>(() => {
@@ -121,7 +317,7 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
     assetHit: [], routeHit: [], eventHit: [], render: null,
   });
   const liveRef = useRef<Live>(null as unknown as Live);
-  liveRef.current = { nodes, assetList, routes, riskMap, events, landGeo, hIdx, sel, spinOn, zoom, reduce: prefersReduced() };
+  liveRef.current = { nodes, assetList, routes, riskMap, events, eventTracks, landGeo, hIdx, sel, spinOn, zoom, reduce: prefersReduced() };
 
   // init: projection·path·드래그·오토스핀·최초 렌더 (1회). cleanup으로 해제.
   useEffect(() => {
@@ -138,6 +334,39 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
 
     const label = (t: string, x: number, y: number) => {
       ctx.fillStyle = "rgba(234,242,251,.92)"; ctx.font = MONO; ctx.textAlign = "center"; ctx.fillText(t, x, y);
+    };
+    const badgeLabel = (t: string, x: number, y: number) => {
+      ctx.save();
+      ctx.font = MONO;
+      ctx.textAlign = "center";
+      const w = ctx.measureText(t).width + 12;
+      const bx = Math.max(w / 2 + 4, Math.min(sc.W - w / 2 - 4, x));
+      const by = Math.max(13, Math.min(sc.H - 13, y));
+      ctx.fillStyle = "rgba(7,15,28,.78)";
+      ctx.strokeStyle = "rgba(239,68,68,.52)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(bx - w / 2, by - 9, w, 18, 5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "rgba(254,202,202,.94)";
+      ctx.fillText(t, bx, by + 3);
+      ctx.restore();
+    };
+    const drawArrow = (from: [number, number], to: [number, number], color: string, alpha = 0.9) => {
+      const dx = to[0] - from[0], dy = to[1] - from[1];
+      if (Math.hypot(dx, dy) < 5) return;
+      ctx.save();
+      ctx.translate(to[0], to[1]);
+      ctx.rotate(Math.atan2(dy, dx));
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-7, -3.8);
+      ctx.lineTo(-7, 3.8);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(${hexrgb(color)},${alpha})`;
+      ctx.fill();
+      ctx.restore();
     };
 
     const render = () => {
@@ -210,7 +439,95 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
       // events (글로벌 감지 이벤트 핀 — 합성 SPOTS 대체)
       const eventHit: Scene["eventHit"] = [];
       const now = typeof performance !== "undefined" ? performance.now() : 0;
+      const nowMs = Date.now();
+      const drawCycloneTrack = (e: ClimateRiskData["events"][number], track: EventTrack) => {
+        const col = e.severity === "r" ? "#EF4444" : "#F59E0B";
+        ctx.save();
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        for (let i = 0; i < track.points.length - 1; i++) {
+          const a = track.points[i], b = track.points[i + 1];
+          const ph = phaseOfPoint(b, nowMs, i + 1);
+          ctx.beginPath();
+          path({ type: "LineString", coordinates: [[a.lon, a.lat], [b.lon, b.lat]] } as never);
+          ctx.strokeStyle = ph === "past" ? `rgba(${hexrgb(col)},0.30)` : `rgba(${hexrgb(col)},0.78)`;
+          ctx.lineWidth = ph === "past" ? 1.2 : 2.15;
+          ctx.setLineDash(ph === "past" ? [4, 5] : []);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+
+        const dotStep = track.points.length > 80 ? 12 : track.points.length > 30 ? 6 : 1;
+        for (let i = 0; i < track.points.length; i++) {
+          const pt = track.points[i];
+          const ph = phaseOfPoint(pt, nowMs, i);
+          const drawDot = i === 0 || i === track.points.length - 1 || ph === "current" || i % dotStep === 0;
+          if (!drawDot || !visible(pt.lon, pt.lat)) continue;
+          const p = projection([pt.lon, pt.lat]); if (!p) continue;
+          ctx.beginPath();
+          ctx.arc(p[0], p[1], ph === "current" ? 3.7 : 2.2, 0, 7);
+          ctx.fillStyle = ph === "past" ? `rgba(${hexrgb(col)},0.28)` : `rgba(${hexrgb(col)},0.72)`;
+          ctx.fill();
+          ctx.lineWidth = 0.8;
+          ctx.strokeStyle = "rgba(7,15,28,.7)";
+          ctx.stroke();
+        }
+
+        const arrows: { from: [number, number]; to: [number, number] }[] = [];
+        for (let i = 0; i < track.points.length - 1; i++) {
+          const a = track.points[i], b = track.points[i + 1];
+          if (phaseOfPoint(b, nowMs, i + 1) !== "forecast" || !visible(a.lon, a.lat) || !visible(b.lon, b.lat)) continue;
+          const p1 = projection([a.lon, a.lat]), p2 = projection([b.lon, b.lat]);
+          if (p1 && p2) arrows.push({ from: [p1[0], p1[1]], to: [p2[0], p2[1]] });
+        }
+        const arrowStep = Math.max(1, Math.floor(arrows.length / 3));
+        for (let i = arrowStep - 1, drawn = 0; i < arrows.length && drawn < 3; i += arrowStep, drawn++) {
+          drawArrow(arrows[i].from, arrows[i].to, col, 0.88);
+        }
+
+        const horizon = trackHorizonPosition(track, L.hIdx, nowMs);
+        const hp = horizon.point;
+        if (visible(hp.lon, hp.lat)) {
+          const p = projection([hp.lon, hp.lat]); if (p) {
+            const base = horizon.outOfRange ? 8 : e.severity === "r" ? 11 : 8;
+            const pulse = L.reduce || horizon.outOfRange ? 0.5 : 0.5 + 0.5 * Math.sin(now / 520 + hp.lon);
+            ctx.beginPath();
+            ctx.arc(p[0], p[1], base + pulse * (horizon.outOfRange ? 5 : 10), 0, 7);
+            ctx.fillStyle = horizon.outOfRange ? `rgba(${hexrgb(col)},0.08)` : `rgba(${hexrgb(col)},0.12)`;
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(p[0], p[1], base, 0, 7);
+            ctx.fillStyle = horizon.outOfRange ? `rgba(${hexrgb(col)},0.28)` : `rgba(${hexrgb(col)},0.68)`;
+            ctx.fill();
+            ctx.lineWidth = horizon.outOfRange ? 1.2 : 1.8;
+            ctx.strokeStyle = horizon.outOfRange ? `rgba(${hexrgb(col)},0.45)` : `rgba(${hexrgb(col)},0.98)`;
+            ctx.stroke();
+            if (horizon.label) badgeLabel(horizon.label, p[0], p[1] - base - 12);
+            else label(KIND_LABEL[e.kind] || "ê²½ë³´", p[0], p[1] - base - 7);
+            eventHit.push({ id: e.id, x: p[0], y: p[1], r: base + 10 });
+          }
+        } else if (horizon.label) {
+          for (let i = track.points.length - 1; i >= 0; i--) {
+            const pt = track.points[i];
+            if (!visible(pt.lon, pt.lat)) continue;
+            const p = projection([pt.lon, pt.lat]);
+            if (!p) continue;
+            badgeLabel(horizon.label, p[0], p[1] - 16);
+            break;
+          }
+        }
+        ctx.restore();
+      };
       for (const e of L.events) {
+        const track = L.eventTracks[e.id];
+        if (!eventVisibleAtHorizon(e, L.hIdx, nowMs, !!track)) continue;
+        if (e.kind === "cyclone") {
+          if (track) {
+            drawCycloneTrack(e, track);
+            continue;
+          }
+        }
         if (e.lon == null || e.lat == null || !visible(e.lon, e.lat)) continue;
         const p = projection([e.lon, e.lat]); if (!p) continue;
         const col = e.severity === "r" ? "#EF4444" : "#F59E0B";
@@ -312,19 +629,31 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
   );
 
   const alerts = useMemo(() => {
+    const nowMs = Date.now();
     const aa = assetList
       .filter((n) => level(riskScore(riskMap, n.key, hIdx)) !== "g")
       .map((n) => {
         const s = riskScore(riskMap, n.key, hIdx);
         return { sev: level(s), score: s, text: `${n.name} (${TYPE_KO[n.type]})`, sub: `${assetDriver(riskMap, n.key, hIdx)} · ${hIdx > 0 ? `${HLBL[hIdx]} ` : ""}리스크 ${s}` };
       });
-    const ee = events.map((e) => ({ sev: e.severity === "r" ? "r" : "a", score: e.severity === "r" ? 95 : 55, text: e.title, sub: `${e.area || ""} · ${e.source.toUpperCase()}` }));
+    const ee = events
+      .filter((e) => eventVisibleAtHorizon(e, hIdx, nowMs, !!eventTracks[e.id]))
+      .map((e) => ({ sev: e.severity === "r" ? "r" : "a", score: e.severity === "r" ? 95 : 55, text: e.title, sub: `${e.area || ""} · ${e.source.toUpperCase()}` }));
     return [...aa, ...ee].sort((x, y) => y.score - x.score).slice(0, 4);
-  }, [assetList, riskMap, hIdx, events]);
+  }, [assetList, riskMap, hIdx, events, eventTracks]);
 
-  const selEvent = sel?.kind === "event" ? events.find((e) => e.id === sel.id) : undefined;
+  const panelNowMs = Date.now();
+  const selectedEvent = sel?.kind === "event" ? events.find((e) => e.id === sel.id) : undefined;
+  const selectedEventTrack = selectedEvent ? eventTracks[selectedEvent.id] : null;
+  const selEvent = selectedEvent && eventVisibleAtHorizon(selectedEvent, hIdx, panelNowMs, !!selectedEventTrack) ? selectedEvent : undefined;
   const selRoute = sel?.kind === "route" ? routes.find((r) => r.id === sel.id) : undefined;
   const selNode = sel?.kind === "asset" ? nodes[sel.id] : undefined;
+  const selEventTrack = selEvent ? eventTracks[selEvent.id] : null;
+  const selTrackPosition = selEventTrack ? trackHorizonPosition(selEventTrack, hIdx, Date.now()) : null;
+  const selTrackMissing = !!selEvent && selEvent.kind === "cyclone" && !selEventTrack;
+  const selTrackLabel = selTrackPosition
+    ? selTrackPosition.label || `${HLBL[hIdx]} ${TRACK_POSITION_LABEL} ${formatLonLat(selTrackPosition.point)}`
+    : selTrackMissing ? TRACK_MISSING_LABEL : null;
 
   return (
     <div className="risk-globe">
@@ -373,6 +702,7 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
               <>
                 <div className="rg-ptag">감지된 이벤트 · {selEvent.source.toUpperCase()}</div>
                 <div className="rg-detail">
+                  {selTrackLabel && <div className="rg-drv"><span>{TRACK_PANEL_LABEL}</span> {selTrackLabel}</div>}
                   <div className="rg-dh"><div className="rg-dname">{selEvent.title}</div><span className={`rg-pill ${selEvent.severity === "r" ? "r" : "a"}`}>{selEvent.severity === "r" ? "경보" : "주의"}</span></div>
                   <div className="rg-drv"><span>유형</span> {KIND_LABEL[selEvent.kind] || selEvent.kind}</div>
                   <div className="rg-drv"><span>지역</span> {selEvent.area || "—"}</div>

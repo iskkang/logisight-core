@@ -53,6 +53,24 @@ export type EventRow = {
   lat: number | null;
   area: string | null;
   url: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  updated_at: string | null;
+  track: unknown;
+};
+
+// 발행된 기후 영향 AI 분석(forecasts module='climate', status='published').
+// metric_ref='climate:<route>:<event>:<via>'. statement=3단 본문, basis에 걸린 관문 등 맥락.
+export type ClimateForecastRow = {
+  id: string;
+  metric_ref: string | null;
+  statement: string;
+  impact_note: string | null;
+  basis: string[] | null;
+  confidence: string | null;
+  confidence_reason: string | null;
+  data_quality_flags: string[] | null;
+  published_at: string | null;
 };
 
 export type ClimateRiskData = {
@@ -60,6 +78,7 @@ export type ClimateRiskData = {
   risk: RiskRow[];
   routes: RouteRow[];
   events: EventRow[];
+  forecasts: ClimateForecastRow[];
 };
 
 export const climateRiskQueryOptions = () =>

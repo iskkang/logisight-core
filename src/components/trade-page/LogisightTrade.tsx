@@ -1,8 +1,8 @@
 // 무역(Trade) 페이지 — 사용자 제공 샘플(LogisightTrade) 디자인을 실데이터에 연결.
 // 데이터/집계 로직은 기존 /trade 와 동일(관세청 수출입무역통계 bundle + freight_indices). 표현만 샘플 디자인.
-// 더미 수치는 전부 실데이터로 대체하고, 없으면 "데이터 수집 중". AI 브리핑은 파이프라인 미연동이라
-// 규칙 기반 요약(실데이터 파생)으로 대체 — 미검수 AI 문구 생성 금지(Phase-6).
-import { useMemo, useState } from "react";
+// 더미 수치는 전부 실데이터로 대체하고, 없으면 "데이터 수집 중".
+// 상단 브리핑은 백엔드 생성·캐시를 우선 읽고, 실패 시 규칙 기반 요약(실데이터 파생)으로 대체.
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -37,6 +37,8 @@ const STYLE = `
 .lsgt-live{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin:0 6px 0 8px;vertical-align:1px;animation:lsgtLive 1.4s ease-in-out infinite}
 @keyframes lsgtBlink{0%,100%{opacity:.35}50%{opacity:1}}
 @keyframes lsgtHalo{0%{transform:scale(1);opacity:.5}80%,100%{transform:scale(4.4);opacity:0}}
+@keyframes lsgtSk{0%{background-position:140% 0}100%{background-position:-140% 0}}
+.lsgt-root .sk{display:block;border-radius:8px;background:linear-gradient(90deg,#e6ebf2 0%,#f7f9fc 42%,#e6ebf2 84%);background-size:240% 100%;animation:lsgtSk 1.2s ease-in-out infinite}
 .lsgt-root .mtf-nd{animation:lsgtBlink 1.8s ease-in-out infinite}
 .lsgt-root .mtf-nd2{animation-delay:.6s}.lsgt-root .mtf-nd3{animation-delay:1.15s}
 .lsgt-root .mtf-halo{transform-box:fill-box;transform-origin:center;animation:lsgtHalo 2.6s ease-out infinite}
@@ -52,6 +54,14 @@ type ItemAgg = { code: string; name: string; exportUsd: number; importUsd: numbe
 type ContinentAgg = { code: string; name: string; exportUsd: number; importUsd: number; tradeUsd: number; balanceUsd: number };
 type MonthlyPoint = { period: string; label: string; exportUsd: number; importUsd: number; balanceUsd: number };
 type ProvisionalSnapshot = { period: string | null; priodDt: string | null; exportUsd: number | null; importUsd: number | null; balanceUsd: number | null; totalYoY: number | null; exportYoY: number | null; importYoY: number | null; balanceYoY: number | null };
+type TradeBrief = { verdict: string; detail: string };
+type TradeBriefState = { status: "loading" | "ready" | "fallback"; data: TradeBrief | null; period: string | null };
+type TradeBriefInput = {
+  period: string;
+  trade: { total: number | null; totalYoY: number | null; totalMoM: number | null; exp: number | null; imp: number | null; balance: number | null; balanceTrend: string };
+  movers: { name: string; yoy: number; note: string }[];
+  freight: { idx: string; wow: number | null; lane: string; outlook: string }[];
+};
 
 const REGIONS: RegionKey[] = ["전체", "아시아", "북미", "유럽", "중동", "중남미", "아프리카", "오세아니아"];
 const REGION_BY_CODE: Record<string, RegionKey> = {
@@ -62,6 +72,22 @@ const REGION_BY_CODE: Record<string, RegionKey> = {
   BR: "중남미", CL: "중남미", PE: "중남미", AR: "중남미",
   ZA: "아프리카", NG: "아프리카", EG: "아프리카", MA: "아프리카",
   AU: "오세아니아", NZ: "오세아니아",
+};
+
+const FREIGHT_SYNC: { idx: string; lane: string }[] = [
+  { idx: "WCI", lane: "한-미(미서안)" },
+  { idx: "KCCI", lane: "한-중" },
+  { idx: "FBX", lane: "한-유럽" },
+];
+
+const MOVER_NOTES: Record<string, string> = {
+  TW: "반도체·전자 관련 변동",
+  HK: "환적 수요 변동",
+  MY: "전기·전자 관련 변동",
+  JP: "전기·전자 관련 변동",
+  CN: "주요 교역국 변동",
+  US: "주요 교역국 변동",
+  VN: "생산거점 교역 변동",
 };
 
 const periodKey = (p: string | null | undefined) => (p ?? "").replace(/\D/g, "").slice(0, 6);
@@ -206,20 +232,113 @@ const SecH = ({ title, chip }: { title: string; chip: string }) => (
   <div className="mb-3.5 mt-[26px] flex items-center justify-between gap-2.5"><h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">{title}</h2><span className={CHIP}>{chip}</span></div>
 );
 
-/* ============================ BRIEF (규칙 기반, 실데이터 파생) ============================ */
-function buildBrief(model: TradeModel, indexStats: IndexStats[]): { verdict: string; detail: string } {
+/* ============================ BRIEF (AI cache + 규칙 기반 폴백) ============================ */
+const briefPeriod = (period: string | null | undefined) => {
+  const p = periodKey(period);
+  return p.length >= 6 ? `${p.slice(0, 4)}.${p.slice(4, 6)}` : null;
+};
+const briefNum = (v: number | null | undefined, digits = 1) => (v == null || !Number.isFinite(v) ? null : Math.round(v * 10 ** digits) / 10 ** digits);
+const briefUsdB = (v: number | null | undefined) => {
+  const n = briefNum(v, 2);
+  if (n == null) return "집계 중";
+  const abs = Math.abs(n);
+  return `${n < 0 ? "-" : ""}$${abs.toFixed(abs >= 10 ? 1 : 2)}B`;
+};
+const toBillion = (v: number | null | undefined) => briefNum(v == null ? null : v / 1e9, 2);
+function tradeMoM(model: TradeModel): number | null {
+  const m = model.monthly;
+  if (m.length < 2) return null;
+  const a = m.at(-1)!, b = m.at(-2)!;
+  return briefNum(pctChange(a.exportUsd + a.importUsd, b.exportUsd + b.importUsd), 1);
+}
+function balanceTrendLabel(snapshot: ProvisionalSnapshot): string {
+  const yoy = snapshot.balanceYoY;
+  if (yoy == null) return "판단 보류";
+  if ((snapshot.balanceUsd ?? 0) >= 0) return yoy >= 0 ? "확대" : "축소";
+  return yoy >= 0 ? "적자 확대" : "적자 축소";
+}
+function freightOutlook(wow: number | null): string {
+  if (wow == null) return "수집 중";
+  if (wow > 1) return "상승";
+  if (wow < -1) return "보합~약세";
+  return "보합";
+}
+function buildTradeBriefInput(model: TradeModel, indexStats: IndexStats[]): TradeBriefInput {
   const movers = model.allCountries.filter((c) => c.changePct != null);
-  const up = [...movers].sort((a, b) => b.changePct! - a.changePct!).slice(0, 2);
-  const dn = [...movers].sort((a, b) => a.changePct! - b.changePct!).slice(0, 2);
-  const bal = model.snapshot.balanceUsd;
-  const balKo = bal == null ? "집계 중" : bal >= 0 ? `흑자 ${moneyUsd(bal)}` : `적자 ${moneyUsd(bal)}`;
-  const wci = indexStats.find((s) => s.index_code === "WCI");
-  const verdict = `이번 기준 교역 ${moneyUsd(model.totalTrade)}, 무역수지 ${balKo}.`;
-  const upTxt = up.length ? `${up.map((c) => `${c.name}(${fmtPct(c.changePct)})`).join("·")} 교역 증가가 두드러지고` : "교역 증가 국가 집계 중이고";
-  const dnTxt = dn.filter((c) => (c.changePct ?? 0) < 0).length ? `${dn.filter((c) => (c.changePct ?? 0) < 0).map((c) => c.name).join("·")}은 둔화` : "둔화 국가는 제한적";
-  const wciTxt = wci?.change_pct != null ? ` 대미 레인 운임(WCI ${fmtPct(wci.change_pct)})과의 정합은 상관 관점에서 해석 가능` : "";
-  const detail = `${upTxt}, ${dnTxt}.${wciTxt} — 모두 추정이며 확정 통계가 아닙니다.`;
-  return { verdict, detail };
+  const up = [...movers].filter((c) => (c.changePct ?? 0) >= 0).sort((a, b) => b.changePct! - a.changePct!).slice(0, 2);
+  const down = [...movers].filter((c) => (c.changePct ?? 0) < 0).sort((a, b) => a.changePct! - b.changePct!).slice(0, 2);
+  return {
+    period: briefPeriod(model.snapshot.period) ?? formatPeriod(model.snapshot.period),
+    trade: {
+      total: toBillion(model.totalTrade),
+      totalYoY: briefNum(model.totalTradeYoY, 1),
+      totalMoM: tradeMoM(model),
+      exp: toBillion(model.snapshot.exportUsd),
+      imp: toBillion(model.snapshot.importUsd),
+      balance: toBillion(model.snapshot.balanceUsd),
+      balanceTrend: balanceTrendLabel(model.snapshot),
+    },
+    movers: [...up, ...down].map((c) => ({
+      name: c.name,
+      yoy: briefNum(c.changePct, 1) ?? 0,
+      note: MOVER_NOTES[c.code] ?? ((c.changePct ?? 0) >= 0 ? "교역 증가" : "교역 둔화"),
+    })),
+    freight: FREIGHT_SYNC.map(({ idx, lane }) => {
+      const row = indexStats.find((s) => s.index_code === idx);
+      const wow = briefNum(row?.change_pct, 1);
+      return { idx, wow, lane, outlook: freightOutlook(wow) };
+    }),
+  };
+}
+function isTradeBrief(value: unknown): value is TradeBrief {
+  const row = value as Partial<TradeBrief> | null;
+  return typeof row?.verdict === "string" && row.verdict.trim().length > 0 && typeof row.detail === "string" && row.detail.trim().length > 0;
+}
+function useTradeBrief(period: string | null): TradeBriefState {
+  const periodLabel = briefPeriod(period);
+  const [state, setState] = useState<TradeBriefState>({ status: periodLabel ? "loading" : "fallback", data: null, period: periodLabel });
+
+  useEffect(() => {
+    if (!periodLabel) {
+      setState({ status: "fallback", data: null, period: null });
+      return;
+    }
+    const controller = new AbortController();
+    let cancelled = false;
+    setState({ status: "loading", data: null, period: periodLabel });
+    fetch(`/api/trade/brief?period=${encodeURIComponent(periodLabel)}`, { signal: controller.signal })
+      .then(async (res) => {
+        if (res.status === 404) return null;
+        if (!res.ok) throw new Error(`trade brief ${res.status}`);
+        return (await res.json()) as unknown;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setState(isTradeBrief(data) ? { status: "ready", data, period: periodLabel } : { status: "fallback", data: null, period: periodLabel });
+      })
+      .catch((error) => {
+        if (cancelled || error?.name === "AbortError") return;
+        setState({ status: "fallback", data: null, period: periodLabel });
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [periodLabel]);
+
+  return state;
+}
+function buildFallbackBrief(model: TradeModel, indexStats: IndexStats[]): TradeBrief {
+  const input = buildTradeBriefInput(model, indexStats);
+  const balKo = input.trade.balance == null ? "집계 중" : input.trade.balance >= 0 ? `흑자 ${briefUsdB(input.trade.balance)}` : `적자 ${briefUsdB(input.trade.balance)}`;
+  const verdict = `이번 기준 교역 ${briefUsdB(input.trade.total)}, 무역수지 ${balKo}.`;
+  const up = input.movers.filter((m) => m.yoy >= 0).slice(0, 2);
+  const down = input.movers.filter((m) => m.yoy < 0).slice(0, 2);
+  const freight = input.freight.find((f) => f.wow != null);
+  const upTxt = up.length ? `${up.map((m) => `${m.name}(${fmtPct(m.yoy)})`).join("·")} 교역 증가가 두드러지고` : "교역 증가 국가 집계 중이고";
+  const downTxt = down.length ? `${down.map((m) => m.name).join("·")}은 둔화` : "둔화 국가는 제한적";
+  const freightTxt = freight ? ` ${freight.lane} 운임(${freight.idx} ${fmtPct(freight.wow)})과의 연결은 ${freight.outlook} 신호로 해석 가능` : "";
+  return { verdict, detail: `${upTxt}, ${downTxt}.${freightTxt} — 모두 추정이며 확정 통계가 아닙니다.` };
 }
 
 /* ============================ HERO ============================ */
@@ -254,10 +373,15 @@ function Hero({ snapshot, balanceUsd, latestCountryPeriod }: { snapshot: Provisi
 
 /* ============================ BRIEF BAND + TILES ============================ */
 function BriefBand({ model, indexStats }: { model: TradeModel; indexStats: IndexStats[] }) {
-  const brief = buildBrief(model, indexStats);
+  const briefState = useTradeBrief(model.snapshot.period);
+  const fallbackBrief = buildFallbackBrief(model, indexStats);
+  const loadingBrief = briefState.status === "loading";
+  const brief = briefState.status === "ready" && briefState.data ? briefState.data : fallbackBrief;
+  const briefLabel = briefState.status === "ready" ? "AI 종합" : "규칙 기반 요약";
+  const briefLabelPeriod = briefState.period ?? formatPeriod(model.snapshot.period);
   const top3 = model.allCountries.slice(0, 3);
   const concentration = model.totalCountryTrade > 0 ? Math.round((sum(top3.map((c) => c.tradeUsd)) / model.totalCountryTrade) * 100) : null;
-  const mom = (() => { const m = model.monthly; if (m.length < 2) return null; const a = m.at(-1)!, b = m.at(-2)!; return pctChange(a.exportUsd + a.importUsd, b.exportUsd + b.importUsd); })();
+  const mom = tradeMoM(model);
   const s = model.snapshot;
   const balPos = (s.balanceUsd ?? 0) >= 0;
   const tiles: { k: string; v: ReactNode; d: ReactNode; bar?: { w: string; c: string } }[] = [
@@ -270,10 +394,20 @@ function BriefBand({ model, indexStats }: { model: TradeModel; indexStats: Index
     <div className="mt-3.5 rounded-[16px] border border-[#d8dfe9] p-[18px_20px]" style={{ background: "linear-gradient(180deg,#fbfcfe,#f4f7fb)" }}>
       <div className="flex flex-wrap items-start justify-between gap-3.5">
         <div className="min-w-0 flex-1">
-          <div className="text-[15px] font-extrabold tracking-[-0.02em] text-[#1a2433]">{brief.verdict}</div>
-          <div className="mt-1 max-w-[680px] text-[12.5px] leading-[1.55] text-[#54606f]">{brief.detail}</div>
+          {loadingBrief ? (
+            <>
+              <span className="sk h-5 w-full max-w-[520px]" />
+              <span className="sk mt-2 h-4 w-full max-w-[680px]" />
+              <span className="sk mt-1.5 h-4 w-full max-w-[560px]" />
+            </>
+          ) : (
+            <>
+              <div className="text-[15px] font-extrabold tracking-[-0.02em] text-[#1a2433]">{brief.verdict}</div>
+              <div className="mt-1 max-w-[680px] text-[12.5px] leading-[1.55] text-[#54606f]">{brief.detail}</div>
+            </>
+          )}
         </div>
-        <div className="whitespace-nowrap text-[11px] text-[#828d9d]">규칙 기반 요약 · {formatPeriod(model.snapshot.period)}</div>
+        <div className="whitespace-nowrap text-[11px] text-[#828d9d]">{loadingBrief ? <span className="sk h-4 w-[112px]" /> : `${briefLabel} · ${briefLabelPeriod}`}</div>
       </div>
       <div className="mt-3.5 grid grid-cols-2 gap-3 min-[880px]:grid-cols-4">
         {tiles.map((t, i) => (
