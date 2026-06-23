@@ -37,6 +37,9 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Supabase CLI scratch
+supabase/.temp/
+
 # Reference mockup archives (extracted copies live under docs/design/)
 *.zip
 
