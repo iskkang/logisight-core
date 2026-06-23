@@ -18,6 +18,12 @@ import {
   type RiskRow,
   type RouteWaypoint,
 } from "@/lib/api/climate";
+import {
+  buildClimateForecastQuality,
+  forecastQualityLabel,
+  type ClimateForecastQuality,
+  type HorizonForecastQuality,
+} from "@/lib/climate-quality";
 import "./RiskGlobe.css";
 
 // ---- derived globe structures (globe-data.js 매핑) ----
@@ -268,9 +274,10 @@ type Live = {
   nodes: Record<string, GNode>; assetList: GNode[]; routes: GRoute[]; riskMap: RiskMap;
   events: ClimateRiskData["events"]; eventTracks: Record<string, EventTrack | null>; landGeo: GeoJSON.MultiPolygon;
   hIdx: number; sel: Sel; spinOn: boolean; reduce: boolean; zoom: number;
+  horizonQuality: HorizonForecastQuality; forecastBlocked: boolean;
 };
 
-export function RiskGlobe({ data }: { data: ClimateRiskData }) {
+export function RiskGlobe({ data, forecastQuality }: { data: ClimateRiskData; forecastQuality?: ClimateForecastQuality }) {
   const [hIdx, setHIdx] = useState(0);
   const [sel, setSel] = useState<Sel>(null);
   const [spinOn, setSpinOn] = useState(true);
@@ -292,6 +299,9 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
   }, [data]);
 
   const events = data.events;
+  const quality = useMemo(() => forecastQuality ?? buildClimateForecastQuality(data), [data, forecastQuality]);
+  const horizonQuality = quality.horizons[hIdx] ?? quality.horizons[0];
+  const forecastBlocked = horizonQuality?.status === "blocked";
   const eventTracks = useMemo(() => {
     const tracks: Record<string, EventTrack | null> = {};
     for (const e of events) tracks[e.id] = e.kind === "cyclone" ? normalizeEventTrack(e.track) : null;
@@ -317,7 +327,7 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
     assetHit: [], routeHit: [], eventHit: [], render: null,
   });
   const liveRef = useRef<Live>(null as unknown as Live);
-  liveRef.current = { nodes, assetList, routes, riskMap, events, eventTracks, landGeo, hIdx, sel, spinOn, zoom, reduce: prefersReduced() };
+  liveRef.current = { nodes, assetList, routes, riskMap, events, eventTracks, landGeo, hIdx, sel, spinOn, zoom, reduce: prefersReduced(), horizonQuality, forecastBlocked };
 
   // init: projection·path·드래그·오토스핀·최초 렌더 (1회). cleanup으로 해제.
   useEffect(() => {
@@ -391,7 +401,7 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
       const routeHit: Scene["routeHit"] = [];
       for (const Rt of L.routes) {
         const coords = Rt.wp.map((w) => (typeof w === "string" ? [L.nodes[w].lon, L.nodes[w].lat] : w));
-        const col = rc(level(routeRisk(L.riskMap, Rt, L.hIdx)));
+        const col = L.forecastBlocked ? "#64748B" : rc(level(routeRisk(L.riskMap, Rt, L.hIdx)));
         const seld = L.sel?.kind === "route" && L.sel.id === Rt.id;
         ctx.beginPath(); path({ type: "LineString", coordinates: coords } as never);
         ctx.strokeStyle = col; ctx.lineWidth = seld ? 3 : 1.7; ctx.lineCap = "round";
@@ -415,7 +425,7 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
       for (const n of L.assetList) {
         if (!visible(n.lon, n.lat)) continue;
         const p = projection([n.lon, n.lat]); if (!p) continue;
-        const col = rc(level(riskScore(L.riskMap, n.key, L.hIdx)));
+        const col = L.forecastBlocked ? "#64748B" : rc(level(riskScore(L.riskMap, n.key, L.hIdx)));
         const seld = L.sel?.kind === "asset" && L.sel.id === n.key;
         if (n.type === "choke") {
           const s = seld ? 8 : 6;
@@ -618,29 +628,32 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
 
   // ---- panel/alerts (JSX) ----
   const counts = useMemo(() => {
+    if (forecastBlocked) return { r: 0, a: 0, g: 0 };
     let r = 0, a = 0, g = 0;
     for (const n of assetList) { const c = level(riskScore(riskMap, n.key, hIdx)); if (c === "r") r++; else if (c === "a") a++; else g++; }
     return { r, a, g };
-  }, [assetList, riskMap, hIdx]);
+  }, [assetList, riskMap, hIdx, forecastBlocked]);
 
   const topAssets = useMemo(
-    () => [...assetList].sort((x, y) => riskScore(riskMap, y.key, hIdx) - riskScore(riskMap, x.key, hIdx)).slice(0, 8),
-    [assetList, riskMap, hIdx],
+    () => forecastBlocked ? [] : [...assetList].sort((x, y) => riskScore(riskMap, y.key, hIdx) - riskScore(riskMap, x.key, hIdx)).slice(0, 8),
+    [assetList, riskMap, hIdx, forecastBlocked],
   );
 
   const alerts = useMemo(() => {
     const nowMs = Date.now();
-    const aa = assetList
-      .filter((n) => level(riskScore(riskMap, n.key, hIdx)) !== "g")
-      .map((n) => {
-        const s = riskScore(riskMap, n.key, hIdx);
-        return { sev: level(s), score: s, text: `${n.name} (${TYPE_KO[n.type]})`, sub: `${assetDriver(riskMap, n.key, hIdx)} · ${hIdx > 0 ? `${HLBL[hIdx]} ` : ""}리스크 ${s}` };
-      });
+    const aa = forecastBlocked
+      ? []
+      : assetList
+        .filter((n) => level(riskScore(riskMap, n.key, hIdx)) !== "g")
+        .map((n) => {
+          const s = riskScore(riskMap, n.key, hIdx);
+          return { sev: level(s), score: s, text: `${n.name} (${TYPE_KO[n.type]})`, sub: `${assetDriver(riskMap, n.key, hIdx)} · ${hIdx > 0 ? `${HLBL[hIdx]} ` : ""}리스크 ${s}` };
+        });
     const ee = events
       .filter((e) => eventVisibleAtHorizon(e, hIdx, nowMs, !!eventTracks[e.id]))
       .map((e) => ({ sev: e.severity === "r" ? "r" : "a", score: e.severity === "r" ? 95 : 55, text: e.title, sub: `${e.area || ""} · ${e.source.toUpperCase()}` }));
     return [...aa, ...ee].sort((x, y) => y.score - x.score).slice(0, 4);
-  }, [assetList, riskMap, hIdx, events, eventTracks]);
+  }, [assetList, riskMap, hIdx, events, eventTracks, forecastBlocked]);
 
   const panelNowMs = Date.now();
   const selectedEvent = sel?.kind === "event" ? events.find((e) => e.id === sel.id) : undefined;
@@ -654,6 +667,7 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
   const selTrackLabel = selTrackPosition
     ? selTrackPosition.label || `${HLBL[hIdx]} ${TRACK_POSITION_LABEL} ${formatLonLat(selTrackPosition.point)}`
     : selTrackMissing ? TRACK_MISSING_LABEL : null;
+  const qualityIssue = horizonQuality.issues[0] ?? `자산 예보 ${horizonQuality.rows}/${horizonQuality.expectedRows}개 수신`;
 
   return (
     <div className="risk-globe">
@@ -694,6 +708,10 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
               <div className="rg-stat r"><div className="rg-n">{counts.r}</div><div className="rg-l">경보</div></div>
               <div className="rg-stat a"><div className="rg-n">{counts.a}</div><div className="rg-l">주의</div></div>
               <div className="rg-stat g"><div className="rg-n">{counts.g}</div><div className="rg-l">정상</div></div>
+            </div>
+            <div className={`rg-quality ${horizonQuality.status}`}>
+              <b>{forecastQualityLabel(horizonQuality.status)}</b>
+              <span>{qualityIssue}</span>
             </div>
           </div>
 
@@ -750,25 +768,29 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
             ) : (
               <>
                 <div className="rg-ptag" style={{ marginBottom: 8 }}>리스크 상위 자산</div>
-                <div className="rg-list">
-                  {topAssets.map((n) => {
-                    const r = riskScore(riskMap, n.key, hIdx), c = level(r);
-                    return (
-                      <button key={n.key} className="rg-row" onClick={() => setSel({ kind: "asset", id: n.key })}>
-                        <span className="rg-ty">{TYPE_BADGE[n.type]}</span>
-                        <span className="rg-nm">{n.name}<small>{assetDriver(riskMap, n.key, hIdx)}</small></span>
-                        <span className={`rg-pill ${c}`}>{levelKo(c)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                {forecastBlocked ? (
+                  <div className="rg-empty">이 탭은 예보 데이터가 부족해 자산 색상과 순위를 확정하지 않습니다.</div>
+                ) : (
+                  <div className="rg-list">
+                    {topAssets.map((n) => {
+                      const r = riskScore(riskMap, n.key, hIdx), c = level(r);
+                      return (
+                        <button key={n.key} className="rg-row" onClick={() => setSel({ kind: "asset", id: n.key })}>
+                          <span className="rg-ty">{TYPE_BADGE[n.type]}</span>
+                          <span className="rg-nm">{n.name}<small>{assetDriver(riskMap, n.key, hIdx)}</small></span>
+                          <span className={`rg-pill ${c}`}>{levelKo(c)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </>
             )}
           </div>
 
           <div className="rg-note">
             <div className="rg-qrow"><span className="rg-qdot" /><span className="rg-q">이 화면 보는 법</span></div>
-            <div className="rg-a">전 세계 항만·초크포인트·내륙 철도 거점을 동시에 감시합니다. {HDAYS[hIdx]}일 후 기상장 기준으로 각 지점·항로의 리스크를 산출하고, 빨강(경보)·노랑(주의)을 사전에 띄웁니다. 활성 재해(NHC·GDACS·NWS)는 별도 핀으로 표시됩니다. 지구본을 돌려 보고, 시점 탭을 바꿔 확인하세요.</div>
+            <div className="rg-a">자산 색상과 항로 색상은 {HDAYS[hIdx]}일 후 예보장 기반 asset_risk입니다. 관측·경보 이벤트는 별도 레이어이며, 해당 시점 예보가 없으면 미래 탭에 유지하지 않습니다. 지구본을 돌려 보고, 시점 탭을 바꿔 확인하세요.</div>
           </div>
         </aside>
       </div>

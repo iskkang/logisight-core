@@ -22,6 +22,13 @@ import {
   type RiskRow,
   type RouteRow,
 } from "@/lib/api/climate";
+import {
+  buildClimateForecastQuality,
+  forecastQualityLabel,
+  forecastQualityTone,
+  formatForecastAge,
+  type ClimateForecastQuality,
+} from "@/lib/climate-quality";
 
 /* ============================ STYLE ============================ */
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
@@ -126,6 +133,19 @@ function nearbyEvents(coords: [number, number][], events: EventRow[], km: number
       a.km - b.km,
   );
 }
+function eventHasForecastSignal(e: EventRow): boolean {
+  if (e.kind !== "cyclone") return false;
+  if (Array.isArray(e.track)) return e.track.length > 1;
+  if (typeof e.track === "string") {
+    try {
+      const parsed = JSON.parse(e.track);
+      return Array.isArray(parsed) ? parsed.length > 1 : !!parsed;
+    } catch {
+      return false;
+    }
+  }
+  return !!e.track && typeof e.track === "object";
+}
 
 // 희망봉 우회 아시아–유럽 항로 — routes 테이블엔 아직 없어 프론트에서 경로선을 보강해 지구본에 그린다.
 // 경유점은 실 자산 id(malacca/colombo/goodhope/gibraltar/rotterdam) + 대양 구간 좌표. 리스크는 경유 자산의
@@ -189,7 +209,7 @@ function Badge({ c, children }: { c: Lv; children: ReactNode }) {
 }
 
 /* ============================ HERO + GLOBE ============================ */
-function HeroAndGlobe({ data, pills }: { data: Parameters<typeof RiskGlobe>[0]["data"]; pills: { c: string; t: ReactNode }[] }) {
+function HeroAndGlobe({ data, pills, forecastQuality }: { data: Parameters<typeof RiskGlobe>[0]["data"]; pills: { c: string; t: ReactNode }[]; forecastQuality: ClimateForecastQuality }) {
   return (
     <section className="relative overflow-hidden bg-[#070b16]">
       <div className="pointer-events-none absolute left-1/2 top-[-120px] h-[500px] w-[900px] -translate-x-1/2" style={{ background: "radial-gradient(50% 60% at 50% 40%,rgba(45,212,191,.10),transparent 70%)" }} />
@@ -201,7 +221,7 @@ function HeroAndGlobe({ data, pills }: { data: Parameters<typeof RiskGlobe>[0]["
           <div className="mt-5 flex flex-wrap gap-2.5">
             {pills.map((p, i) => <span key={i} className="inline-flex items-center gap-2 rounded-full border border-[#78a0cd1c] bg-[#0e1626] px-[13px] py-[7px] text-[12.5px] text-[#93a1b7]"><span className={`h-[7px] w-[7px] rounded-full ${p.c}`} />{p.t}</span>)}
           </div>
-          <div id="climate-globe" className="mt-3.5 scroll-mt-[80px] pb-14"><RiskGlobe data={data} /></div>
+          <div id="climate-globe" className="mt-3.5 scroll-mt-[80px] pb-14"><RiskGlobe data={data} forecastQuality={forecastQuality} /></div>
         </div>
       </div>
     </section>
@@ -220,6 +240,52 @@ function Kpis({ items }: { items: { lab: string; v: string; c: string; s: string
         </div>
       ))}
     </div>
+  );
+}
+
+function ForecastQualityPanel({ quality }: { quality: ClimateForecastQuality }) {
+  const tone = forecastQualityTone(quality.status);
+  const issues = [...new Set(quality.horizons.flatMap((h) => h.issues))].slice(0, 3);
+  return (
+    <section className={`mt-3.5 border px-[18px] py-4 ${CARD} ${tone.border} ${tone.bg}`}>
+      <div className="flex flex-col gap-3 min-[860px]:flex-row min-[860px]:items-center min-[860px]:justify-between">
+        <div>
+          <div className={`inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] ${tone.text}`}>
+            <span className={`h-2 w-2 rounded-full ${tone.dot}`} />
+            Forecast data gate
+          </div>
+          <h2 className="mt-1 text-[16px] font-extrabold tracking-[-0.02em] text-[#1a2433]">{forecastQualityLabel(quality.status)}</h2>
+          <p className="mt-1 text-[12.5px] leading-[1.55] text-[#54606f]">
+            자산 색상과 항로 리스크는 asset_risk 예보장을 기준으로 표시합니다. 관측 이벤트는 보조 레이어이며, 예보 시각과 맞지 않으면 미래 탭에 표시하지 않습니다.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {quality.horizons.map((h) => {
+            const hTone = forecastQualityTone(h.status);
+            return (
+              <span key={h.horizonDays} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-[6px] text-[11.5px] font-semibold ${hTone.border} ${hTone.bg} ${hTone.text}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${hTone.dot}`} />
+                {h.label} · {forecastQualityLabel(h.status)}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-2 border-t border-black/10 pt-3 min-[760px]:grid-cols-3">
+        <div>
+          <div className="text-[10.5px] font-bold text-[#828d9d]">최종 갱신</div>
+          <div className="mt-1 lsg-mono text-[13px] font-bold text-[#1a2433]">{formatForecastAge(quality.latestAgeHours)}</div>
+        </div>
+        <div>
+          <div className="text-[10.5px] font-bold text-[#828d9d]">커버리지</div>
+          <div className="mt-1 text-[13px] font-bold text-[#1a2433]">{quality.horizons.every((h) => h.rows === h.expectedRows) ? "전체 자산 수신" : "일부 자산 누락"}</div>
+        </div>
+        <div>
+          <div className="text-[10.5px] font-bold text-[#828d9d]">주의 항목</div>
+          <div className="mt-1 text-[12.5px] leading-[1.45] text-[#54606f]">{issues.length ? issues.join(" · ") : "없음"}</div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -345,31 +411,33 @@ function RouteForecast({ fc }: { fc: ClimateForecastRow }) {
 }
 
 function Impact({ rm, routes, events, nodes, forecasts }: { rm: RiskMap; routes: RouteG[]; events: EventRow[]; nodes: Record<string, AssetRow>; forecasts: ClimateForecastRow[] }) {
-  // route id → 발행된 climate forecast(있으면 카드 보강). 정렬/선정엔 영향 없음(표시 보강만).
+  // route id → 발행된 climate forecast. 이 섹션은 관측 이벤트 전체가 아니라 예보 산출물/track 중심으로 선정한다.
   const fcByRoute: Record<string, ClimateForecastRow> = {};
   for (const f of forecasts) { const rid = fcRouteId(f.metric_ref); if (rid && !fcByRoute[rid]) fcByRoute[rid] = f; }
+  const forecastEvents = events.filter(eventHasForecastSignal);
   const ROUTE_KM = NEAR_KM; // 노선 경로점 기준 이벤트 근접 반경
   const rows = routes
     .map((r) => {
       const base = routeRisk(rm, r, 0);
-      const evs = nearbyEvents(routeCoords(r, nodes), events, ROUTE_KM).map((x) => ({ ...x, tier: severityTier(x.e) }));
+      const forecast = fcByRoute[r.id] ?? null;
+      const evs = nearbyEvents(routeCoords(r, nodes), forecastEvents, ROUTE_KM).map((x) => ({ ...x, tier: severityTier(x.e) }));
       const worst = evs.reduce((m, x) => Math.max(m, tierRank(x.tier)), 0); // 0=없음
       // 카드 대표 이벤트 = 최상위 티어 → 동순위는 근접순. (asset_risk 점수가 아니라 이벤트 심각도+근접 기준)
       const lead = [...evs].sort((a, b) => tierRank(b.tier) - tierRank(a.tier) || a.km - b.km)[0] ?? null;
-      return { r, base, evs, lead, worst };
+      return { r, base, evs, lead, worst, forecast };
     })
-    .filter((x) => x.worst >= 1 || x.base >= 30)
-    .sort((a, b) => b.worst - a.worst || (a.lead?.km ?? 1e9) - (b.lead?.km ?? 1e9) || b.base - a.base)
+    .filter((x) => !!x.forecast || x.worst >= 1 || x.base >= 30)
+    .sort((a, b) => (b.forecast ? 1 : 0) - (a.forecast ? 1 : 0) || b.worst - a.worst || (a.lead?.km ?? 1e9) - (b.lead?.km ?? 1e9) || b.base - a.base)
     .slice(0, 3);
   if (rows.length === 0) return null;
   return (
     <>
-      <div className="mb-3.5 mt-[26px] flex items-center justify-between gap-2.5"><h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">기상 리스크 → 영향 노선</h2><span className={CHIP}>심각도·근접 우선 · 지금~+14일</span></div>
+      <div className="mb-3.5 mt-[26px] flex items-center justify-between gap-2.5"><h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">예보 리스크 → 영향 노선</h2><span className={CHIP}>asset_risk 예보 · track/AI 분석 우선</span></div>
       <div className="grid grid-cols-1 gap-3.5 min-[1080px]:grid-cols-3">
-        {rows.map(({ r, base, evs, lead, worst }) => {
+        {rows.map(({ r, base, evs, lead, worst, forecast }) => {
           const crit = worst === 3;
           const c: Lv = crit ? "r" : worst === 2 || evs.length ? "a" : level(base);
-          const tag = crit ? "경보 · 접근" : worst === 2 ? "주의 · 접근" : evs.length ? "영향 주시" : "영향 낮음";
+          const tag = forecast ? "AI 예보 연결" : crit ? "경보 · 예보 track" : worst === 2 ? "주의 · 예보 track" : evs.length ? "track 주시" : "영향 낮음";
           const traj = [0, 1, 2, 3].map((h) => routeRisk(rm, r, h));
           const chk = (r.chokes || []).join(" · ") || "—";
           const inten = lead ? parseIntensity(lead.e.title) : null;
@@ -389,10 +457,10 @@ function Impact({ rm, routes, events, nodes, forecasts }: { rm: RiskMap; routes:
               )}
               <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="rounded-[6px] border border-[#d8dfe9] bg-[#eef1f6] px-2 py-[3px] text-[11px] text-[#54606f] lsg-mono">노선 리스크 {base}</span>
-                {evs.length > 0 && <span className="rounded-[6px] border border-[#fde6c8] bg-[#fff7ed] px-2 py-[3px] text-[11px] font-semibold text-[#b45309]">활성 이벤트 {evs.length}건 인근</span>}
+                {evs.length > 0 && <span className="rounded-[6px] border border-[#fde6c8] bg-[#fff7ed] px-2 py-[3px] text-[11px] font-semibold text-[#b45309]">예보 track {evs.length}건 인근</span>}
               </div>
               <Spark vals={traj} color={rc(c)} className="my-2.5 block h-[30px] w-full" />
-              {fcByRoute[r.id] && <RouteForecast fc={fcByRoute[r.id]} />}
+              {forecast && <RouteForecast fc={forecast} />}
             </div>
           );
         })}
@@ -473,7 +541,7 @@ function Timeline({ events }: { events: EventRow[] }) {
   const sources = [...new Set(events.map((e) => e.source.toUpperCase()))].slice(0, 4).join(" · ");
   return (
     <>
-      <div className="mb-3.5 mt-[26px] flex items-center justify-between gap-2.5"><h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">활성 이벤트</h2><span className={CHIP}>{sources || "감지 소스"}</span></div>
+      <div className="mb-3.5 mt-[26px] flex items-center justify-between gap-2.5"><h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">현재 관측/경보 이벤트</h2><span className={CHIP}>{sources || "감지 소스"} · 예보 점수와 분리</span></div>
       <div className={`${CARD} py-2`}>
         <div className="flex gap-1.5 px-[18px] pb-1.5 pt-3.5">
           {([["all", "전체"], ["r", "경보"], ["a", "주의"]] as [typeof filter, string][]).map(([k, lbl]) => (
@@ -501,6 +569,8 @@ function Timeline({ events }: { events: EventRow[] }) {
 /* ============================ PAGE ============================ */
 export function LogisightClimate() {
   const { data } = useSuspenseQuery(climateRiskQueryOptions());
+  const forecastQuality = buildClimateForecastQuality(data);
+  const forecastTone = forecastQualityTone(forecastQuality.status);
 
   const rm = buildRiskMap(data.risk);
   const nodes: Record<string, AssetRow> = Object.fromEntries(data.assets.map((a) => [a.id, a]));
@@ -518,7 +588,6 @@ export function LogisightClimate() {
   const cautionAssets = data.assets.filter((a) => level(riskAt(rm, a.id, 0)) === "a").length;
   const alertAssets = data.assets.filter((a) => level(riskAt(rm, a.id, 0)) === "r").length;
   const alertEvents = data.events.filter((e) => e.severity === "r").length;
-  const affectedRoutes = routesG.filter((r) => level(routeRisk(rm, r, 0)) !== "g").length;
   const topCaution = [...data.assets].filter((a) => level(riskAt(rm, a.id, 0)) === "a").sort((a, b) => riskAt(rm, b.id, 0) - riskAt(rm, a.id, 0))[0];
   // 대표 이벤트 = 심각도 티어 최상위(동순위는 노선 근접순) — 임의 첫 이벤트 대신.
   const repEvent = [...data.events]
@@ -526,9 +595,9 @@ export function LogisightClimate() {
     .sort((a, b) => tierRank(b.tier) - tierRank(a.tier) || a.dist - b.dist)[0]?.e;
 
   const kpis = [
-    { lab: "활성 경보 (이벤트)", v: String(alertEvents), c: "#dc2626", s: repEvent ? `${repEvent.source.toUpperCase()} · ${eventName(repEvent)}${parseIntensity(repEvent.title) ? ` (${parseIntensity(repEvent.title)})` : ""}` : "전 세계 정상" },
+    { lab: "예보장 상태", v: forecastQualityLabel(forecastQuality.status), c: forecastQuality.status === "blocked" ? "#dc2626" : forecastQuality.status === "warn" ? "#b45309" : "#0d9488", s: formatForecastAge(forecastQuality.latestAgeHours) },
+    { lab: "현재 경보 (관측)", v: String(alertEvents), c: "#dc2626", s: repEvent ? `${repEvent.source.toUpperCase()} · ${eventName(repEvent)}${parseIntensity(repEvent.title) ? ` (${parseIntensity(repEvent.title)})` : ""}` : "전 세계 정상" },
     { lab: "주의 자산", v: String(cautionAssets), c: "#b45309", s: topCaution ? `${topCaution.name} · ${driverAt(rm, topCaution.id, 0)}` : "주의 자산 없음" },
-    { lab: "영향 추정 노선", v: String(affectedRoutes), c: "#0d9488", s: "리드타임 영향 가능" },
     { lab: "감시 자산", v: String(data.assets.length), c: "#1a2433", s: "항만·주요 해협·철도" },
   ];
 
@@ -536,8 +605,9 @@ export function LogisightClimate() {
   const suezRoute = routesG.find((r) => (r.chokes || []).includes("suez")) ?? null;
 
   const pills: { c: string; t: ReactNode }[] = [
+    { c: forecastTone.dot, t: <>예보장 <b className="lsg-mono text-[#e9eef7]">{forecastQualityLabel(forecastQuality.status)}</b></> },
     { c: "bg-[#2dd4bf]", t: <>감시 자산 <b className="lsg-mono text-[#e9eef7]">{data.assets.length}개</b></> },
-    { c: "bg-[#ef4444]", t: <>활성 이벤트 <b className="lsg-mono text-[#e9eef7]">{data.events.length}건</b></> },
+    { c: "bg-[#ef4444]", t: <>관측/경보 이벤트 <b className="lsg-mono text-[#e9eef7]">{data.events.length}건</b></> },
     { c: "bg-[#d97706]", t: <>주의·경보 자산 <b className="lsg-mono text-[#e9eef7]">{cautionAssets + alertAssets}건</b></> },
   ];
 
@@ -547,7 +617,7 @@ export function LogisightClimate() {
       <CriticalBanner events={data.events} routes={routesG} nodes={nodes} />
       <HomeNav active="insight" />
       <InsightSubNav />
-      <HeroAndGlobe data={globeData} pills={pills} />
+      <HeroAndGlobe data={globeData} pills={pills} forecastQuality={forecastQuality} />
 
       <div className="relative z-[2] -mt-7 rounded-t-[28px] bg-[#e6eaf1] pb-2.5" style={{ boxShadow: "0 -24px 60px -34px rgba(0,0,0,.7)" }}>
         <div className={WRAP}>
@@ -555,6 +625,7 @@ export function LogisightClimate() {
             <Link to="/" className="hover:text-[#0d9488]">홈</Link> <b className="font-medium text-[#54606f]">›</b> 인사이트 <b className="font-medium text-[#54606f]">›</b> 기후예측
           </div>
           <Kpis items={kpis} />
+          <ForecastQualityPanel quality={forecastQuality} />
           {capeRoute && <CapeMonitor rm={rm} route={capeRoute} suez={suezRoute} nodes={nodes} />}
           <Impact rm={rm} routes={routesG} events={data.events} nodes={nodes} forecasts={data.forecasts} />
           <Straits rm={rm} chokes={chokes} routes={routesG} />
