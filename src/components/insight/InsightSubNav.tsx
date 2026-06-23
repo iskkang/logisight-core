@@ -3,6 +3,9 @@ import { Link, useRouterState } from "@tanstack/react-router";
 
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
 
+// 스크롤바 숨김 — 페이지별 커스텀 스크롤바(.lsg*-root *{scrollbar-width:thin})에 덮이지 않도록 !important.
+const SCROLL_HIDE = `.lsg-insight-sub{scrollbar-width:none !important;-ms-overflow-style:none !important}.lsg-insight-sub::-webkit-scrollbar{display:none !important;width:0 !important;height:0 !important}`;
+
 const TABS = [
   { to: "/dashboard", label: "종합" },
   { to: "/forecasts", label: "전망" },
@@ -18,7 +21,8 @@ export function InsightSubNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <div className="border-b border-[#78a0cd1c] bg-[#0a0f1d]">
-      <div className={`${WRAP} flex h-[46px] items-center gap-[22px] overflow-x-auto text-[13.5px]`}>
+      <style>{SCROLL_HIDE}</style>
+      <div className={`lsg-insight-sub ${WRAP} flex h-[46px] items-center gap-[22px] overflow-x-auto text-[13.5px]`}>
         <span className="flex-none text-[10.5px] font-bold tracking-[0.18em] text-[#5d6b80]">INSIGHT</span>
         {TABS.map((t) => {
           const active = pathname === t.to || pathname.startsWith(`${t.to}/`);

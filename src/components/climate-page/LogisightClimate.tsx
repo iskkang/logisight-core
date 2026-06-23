@@ -30,6 +30,7 @@ const CHIP = "rounded-full border border-[#d8dfe9] bg-[#eef1f6] px-[9px] py-[3px
 const STYLE = `
 .lsgc-root{font-family:"Pretendard","Pretendard Variable",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
 .lsg-mono{font-feature-settings:"tnum" 1;letter-spacing:0}
+.lsg-ls{background:linear-gradient(95deg,#fff 35%,#2dd4bf);-webkit-background-clip:text;background-clip:text;color:transparent}
 .lsgc-root tbody tr:hover{background:#eef2f8}
 .lsgc-root ::-webkit-scrollbar{width:9px;height:9px}
 .lsgc-root ::-webkit-scrollbar-track{background:transparent}
