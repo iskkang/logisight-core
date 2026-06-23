@@ -235,6 +235,23 @@ function formatLonLat(p: TrackPoint): string {
   const ew = p.lon >= 0 ? "E" : "W";
   return `${Math.abs(p.lat).toFixed(1)}${ns} / ${Math.abs(p.lon).toFixed(1)}${ew}`;
 }
+function eventVisibleAtHorizon(
+  e: ClimateRiskData["events"][number],
+  hIdx: number,
+  nowMs: number,
+  hasTrack: boolean,
+): boolean {
+  if (e.kind === "cyclone") return hasTrack || hIdx === 0;
+
+  const targetMs = nowMs + HDAYS[hIdx] * 24 * HOUR_MS;
+  const startsAtMs = parseDateMs(e.starts_at);
+  const endsAtMs = parseDateMs(e.ends_at);
+
+  if (hIdx > 0 && endsAtMs == null) return false;
+  if (startsAtMs != null && targetMs < startsAtMs - HOUR_MS) return false;
+  if (endsAtMs != null && targetMs > endsAtMs + HOUR_MS) return false;
+  return true;
+}
 
 type Scene = {
   projection: ReturnType<typeof geoOrthographic> | null;
@@ -504,12 +521,12 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
       };
       for (const e of L.events) {
         const track = L.eventTracks[e.id];
+        if (!eventVisibleAtHorizon(e, L.hIdx, nowMs, !!track)) continue;
         if (e.kind === "cyclone") {
           if (track) {
             drawCycloneTrack(e, track);
             continue;
           }
-          if (L.hIdx > 0) continue;
         }
         if (e.lon == null || e.lat == null || !visible(e.lon, e.lat)) continue;
         const p = projection([e.lon, e.lat]); if (!p) continue;
@@ -612,17 +629,23 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
   );
 
   const alerts = useMemo(() => {
+    const nowMs = Date.now();
     const aa = assetList
       .filter((n) => level(riskScore(riskMap, n.key, hIdx)) !== "g")
       .map((n) => {
         const s = riskScore(riskMap, n.key, hIdx);
         return { sev: level(s), score: s, text: `${n.name} (${TYPE_KO[n.type]})`, sub: `${assetDriver(riskMap, n.key, hIdx)} · ${hIdx > 0 ? `${HLBL[hIdx]} ` : ""}리스크 ${s}` };
       });
-    const ee = events.map((e) => ({ sev: e.severity === "r" ? "r" : "a", score: e.severity === "r" ? 95 : 55, text: e.title, sub: `${e.area || ""} · ${e.source.toUpperCase()}` }));
+    const ee = events
+      .filter((e) => eventVisibleAtHorizon(e, hIdx, nowMs, !!eventTracks[e.id]))
+      .map((e) => ({ sev: e.severity === "r" ? "r" : "a", score: e.severity === "r" ? 95 : 55, text: e.title, sub: `${e.area || ""} · ${e.source.toUpperCase()}` }));
     return [...aa, ...ee].sort((x, y) => y.score - x.score).slice(0, 4);
-  }, [assetList, riskMap, hIdx, events]);
+  }, [assetList, riskMap, hIdx, events, eventTracks]);
 
-  const selEvent = sel?.kind === "event" ? events.find((e) => e.id === sel.id) : undefined;
+  const panelNowMs = Date.now();
+  const selectedEvent = sel?.kind === "event" ? events.find((e) => e.id === sel.id) : undefined;
+  const selectedEventTrack = selectedEvent ? eventTracks[selectedEvent.id] : null;
+  const selEvent = selectedEvent && eventVisibleAtHorizon(selectedEvent, hIdx, panelNowMs, !!selectedEventTrack) ? selectedEvent : undefined;
   const selRoute = sel?.kind === "route" ? routes.find((r) => r.id === sel.id) : undefined;
   const selNode = sel?.kind === "asset" ? nodes[sel.id] : undefined;
   const selEventTrack = selEvent ? eventTracks[selEvent.id] : null;
