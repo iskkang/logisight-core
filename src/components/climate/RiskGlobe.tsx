@@ -62,6 +62,7 @@ const clampZoom = (z: number) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
 const HOUR_MS = 60 * 60 * 1000;
 const HKO_FORECAST_LIMIT_HOURS = 120;
 const TRACK_LIMIT_LABEL = "\uc608\ubcf4 \ubc94\uc704 \ucd08\uacfc(+5\uc77c\uae4c\uc9c0)";
+const TRACK_MISSING_LABEL = "\uc608\ubcf4 \ud2b8\ub799 \uc5c6\uc74c";
 const TRACK_PANEL_LABEL = "\ud2b8\ub799";
 const TRACK_POSITION_LABEL = "\uc704\uce58";
 
@@ -107,12 +108,22 @@ function parsePhase(v: unknown): TrackPhase | null {
   return s === "past" || s === "current" || s === "forecast" ? s : null;
 }
 function rawTrackPoints(raw: unknown): unknown[] {
+  if (typeof raw === "string") {
+    try {
+      return rawTrackPoints(JSON.parse(raw));
+    } catch {
+      return [];
+    }
+  }
   if (Array.isArray(raw)) return raw;
   if (raw && typeof raw === "object") {
     const obj = raw as Record<string, unknown>;
     if (Array.isArray(obj.points)) return obj.points;
     if (Array.isArray(obj.track)) return obj.track;
     if (Array.isArray(obj.features)) return obj.features;
+    if (Array.isArray(obj.coordinates) && Array.isArray(obj.coordinates[0])) return obj.coordinates;
+    const geometry = obj.geometry && typeof obj.geometry === "object" ? obj.geometry as Record<string, unknown> : null;
+    if (geometry && Array.isArray(geometry.coordinates) && Array.isArray(geometry.coordinates[0])) return geometry.coordinates;
   }
   return [];
 }
@@ -134,13 +145,15 @@ function readTrackPoint(raw: unknown): TrackPoint | null {
     }
   } else if (raw && typeof raw === "object") {
     const obj = raw as Record<string, unknown>;
+    const geometry = obj.geometry && typeof obj.geometry === "object" ? obj.geometry as Record<string, unknown> : null;
+    const geometryCoords = geometry && Array.isArray(geometry.coordinates) ? geometry.coordinates : null;
     const coords = Array.isArray(obj.coordinates)
       ? obj.coordinates
       : Array.isArray(obj.coord)
         ? obj.coord
         : Array.isArray(obj.position)
           ? obj.position
-          : null;
+          : geometryCoords;
     lon = finiteNumber(obj.lon ?? obj.lng ?? obj.longitude ?? coords?.[0]);
     lat = finiteNumber(obj.lat ?? obj.latitude ?? coords?.[1]);
     validAtMs = parseDateMs(obj.valid_at ?? obj.validAt ?? obj.time ?? obj.timestamp);
@@ -491,9 +504,12 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
       };
       for (const e of L.events) {
         const track = L.eventTracks[e.id];
-        if (e.kind === "cyclone" && track) {
-          drawCycloneTrack(e, track);
-          continue;
+        if (e.kind === "cyclone") {
+          if (track) {
+            drawCycloneTrack(e, track);
+            continue;
+          }
+          if (L.hIdx > 0) continue;
         }
         if (e.lon == null || e.lat == null || !visible(e.lon, e.lat)) continue;
         const p = projection([e.lon, e.lat]); if (!p) continue;
@@ -611,6 +627,10 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
   const selNode = sel?.kind === "asset" ? nodes[sel.id] : undefined;
   const selEventTrack = selEvent ? eventTracks[selEvent.id] : null;
   const selTrackPosition = selEventTrack ? trackHorizonPosition(selEventTrack, hIdx, Date.now()) : null;
+  const selTrackMissing = !!selEvent && selEvent.kind === "cyclone" && !selEventTrack;
+  const selTrackLabel = selTrackPosition
+    ? selTrackPosition.label || `${HLBL[hIdx]} ${TRACK_POSITION_LABEL} ${formatLonLat(selTrackPosition.point)}`
+    : selTrackMissing ? TRACK_MISSING_LABEL : null;
 
   return (
     <div className="risk-globe">
@@ -659,7 +679,7 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
               <>
                 <div className="rg-ptag">감지된 이벤트 · {selEvent.source.toUpperCase()}</div>
                 <div className="rg-detail">
-                  {selTrackPosition && <div className="rg-drv"><span>{TRACK_PANEL_LABEL}</span> {selTrackPosition.label || `${HLBL[hIdx]} ${TRACK_POSITION_LABEL} ${formatLonLat(selTrackPosition.point)}`}</div>}
+                  {selTrackLabel && <div className="rg-drv"><span>{TRACK_PANEL_LABEL}</span> {selTrackLabel}</div>}
                   <div className="rg-dh"><div className="rg-dname">{selEvent.title}</div><span className={`rg-pill ${selEvent.severity === "r" ? "r" : "a"}`}>{selEvent.severity === "r" ? "경보" : "주의"}</span></div>
                   <div className="rg-drv"><span>유형</span> {KIND_LABEL[selEvent.kind] || selEvent.kind}</div>
                   <div className="rg-drv"><span>지역</span> {selEvent.area || "—"}</div>
