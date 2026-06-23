@@ -454,24 +454,39 @@ function FlowCharts({ model, metricKo }: { model: TradeModel; metricKo: MetricKo
   );
 }
 
-/* ============================ TREEMAP (실 교역액 비례) ============================ */
+/* ============================ TREEMAP (실 교역액 · 샘플 고정 그리드 템플릿) ============================ */
+// 면적 = 교역액 랭크 기반 12열 그리드(샘플과 동일). 값·라벨은 실데이터.
+const TM_TEMPLATE: { rank: number; cls: string; big: boolean }[] = [
+  { rank: 0, cls: "col-span-6 row-span-4", big: true },   // 1위 — 좌상 대형
+  { rank: 2, cls: "col-span-3 row-span-3", big: true },   // 3위 — 중상
+  { rank: 3, cls: "col-span-3 row-span-3", big: true },   // 4위 — 우상
+  { rank: 4, cls: "col-span-6 row-span-1", big: false },  // 5위 — 가는 띠
+  { rank: 1, cls: "col-span-6 row-span-3", big: true },   // 2위 — 좌하 대형
+  { rank: 5, cls: "col-span-3 row-span-2", big: true },   // 6위 — 중하
+  { rank: 7, cls: "col-span-3 row-span-1", big: false },  // 8위
+  { rank: 8, cls: "col-span-3 row-span-1", big: false },  // 9위
+  { rank: 6, cls: "col-span-3 row-span-1", big: false },  // 7위
+  { rank: 9, cls: "col-span-3 row-span-1", big: false },  // 10위
+];
+const TM_SHADES = ["#3b4f7a", "#4a5e8c", "#5a6f9e", "#6478a6", "#7d8fb8", "#8294ba", "#8a9bc0", "#92a2c4", "#9aa9c9", "#a2b0ce"];
 function Treemap({ model, metricKo }: { model: TradeModel; metricKo: MetricKo }) {
   const metric = METRIC_BY_KO[metricKo];
-  const top = model.countries.slice(0, 10).map((c) => ({ c, v: Math.max(0, metricValue(c, metric)) })).filter((x) => x.v > 0);
-  if (top.length === 0) return null;
-  const max = Math.max(...top.map((x) => x.v));
-  const SHADES = ["#3b4f7a", "#46598a", "#4a5e8c", "#5a6f9e", "#6478a6", "#7d8fb8", "#8294ba", "#8a9bc0", "#92a2c4", "#a2b0ce"];
+  const sorted = model.allCountries.slice(0, 10).map((c) => ({ c, v: Math.max(0, metricValue(c, metric)) })).filter((x) => x.v > 0);
+  if (sorted.length === 0) return null;
   return (
     <>
-      <SecH title="국가별 교역액 트리맵" chip={`상위 ${top.length}개국 · 면적 = ${metricKo}`} />
+      <SecH title="국가별 교역액 트리맵" chip={`상위 ${sorted.length}개국 · 면적 = ${metricKo}`} />
       <div className={`p-[16px_18px] ${CARD}`}>
-        <div className="flex flex-wrap gap-1.5">
-          {top.map((x, i) => {
-            const big = x.v / max > 0.5;
+        <div className="grid grid-cols-12 gap-1.5 [grid-auto-rows:46px]">
+          {TM_TEMPLATE.filter((t) => t.rank < sorted.length).map((t) => {
+            const x = sorted[t.rank];
             return (
-              <div key={x.c.code} className="relative flex flex-col justify-between overflow-hidden rounded-[9px] px-3 py-2.5 text-white" style={{ background: SHADES[i % SHADES.length], flexGrow: x.v, flexBasis: big ? 220 : 130, minWidth: big ? 200 : 120, height: big ? 92 : 64 }}>
-                <b className="text-[13px] font-bold">{flagEmoji(x.c.code)} {x.c.name}</b>
-                <span className="lsg-mono text-[11px] opacity-90">{moneyUsd(x.v)}{x.c.changePct != null ? ` · ${fmtPct(x.c.changePct)}` : ""}</span>
+              <div key={x.c.code} className={`flex overflow-hidden rounded-[9px] px-3 py-2.5 text-white ${t.cls} ${t.big ? "flex-col justify-start" : "items-center"}`} style={{ background: TM_SHADES[t.rank] }}>
+                {t.big ? (
+                  <><b className="text-[13px] font-bold">{x.c.name}</b><span className="lsg-mono mt-0.5 text-[11px] opacity-90">{moneyUsd(x.v)}{x.c.changePct != null ? ` · ${fmtPct(x.c.changePct)}` : ""}</span></>
+                ) : (
+                  <b className="whitespace-nowrap text-[11.5px] font-bold">{x.c.name} <span className="lsg-mono font-normal opacity-90">{moneyUsd(x.v)}</span></b>
+                )}
               </div>
             );
           })}
