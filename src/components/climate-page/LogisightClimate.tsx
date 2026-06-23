@@ -17,6 +17,7 @@ import {
   HCONF,
   type AssetRow,
   type AssetType,
+  type ClimateForecastRow,
   type EventRow,
   type RiskRow,
   type RouteRow,
@@ -282,7 +283,71 @@ function CapeMonitor({ rm, route, suez, nodes }: { rm: RiskMap; route: RouteG | 
   );
 }
 
-function Impact({ rm, routes, events, nodes }: { rm: RiskMap; routes: RouteG[]; events: EventRow[]; nodes: Record<string, AssetRow> }) {
+/* ===== published climate forecast(AI 분석) — read만, 카드 보강 ===== */
+// metric_ref='climate:<route>:<event>:<via>' → route id
+function fcRouteId(ref: string | null): string | null {
+  if (!ref) return null;
+  const p = ref.split(":");
+  return p[0] === "climate" && p[1] ? p[1] : null;
+}
+// basis "걸린 관문: 미야코해협 · 100km · …" → 관문명
+function fcVia(basis: string[] | null): string | null {
+  const line = (basis || []).find((b) => b.startsWith("걸린 관문:"));
+  return line ? line.replace("걸린 관문:", "").split("·")[0].trim() || null : null;
+}
+// statement "[기상 리스크 변화]\n…\n\n[영향]\n…" → {weather, impact}
+function fcSections(statement: string): { weather: string; impact: string } {
+  const W = "[기상 리스크 변화]", I = "[영향]";
+  const ii = statement.indexOf(I);
+  if (ii < 0) return { weather: statement.replace(W, "").trim(), impact: "" };
+  const wi = statement.indexOf(W);
+  return {
+    weather: statement.slice(wi >= 0 ? wi + W.length : 0, ii).trim(),
+    impact: statement.slice(ii + I.length).trim(),
+  };
+}
+function fcAction(note: string | null): string {
+  return (note || "").replace("[권장 행동]", "").trim();
+}
+function fcSummary(weather: string): string {
+  const first = weather.split(/(?<=[.。])\s/)[0] || weather;
+  return first.length > 160 ? `${first.slice(0, 160).trim()}…` : first;
+}
+function RouteForecast({ fc }: { fc: ClimateForecastRow }) {
+  const [open, setOpen] = useState(false);
+  const via = fcVia(fc.basis);
+  const { weather, impact } = fcSections(fc.statement);
+  const action = fcAction(fc.impact_note);
+  const sections: [string, string][] = [["기상", weather], ["영향", impact], ["권장 행동", action]];
+  return (
+    <div className="mt-3 rounded-[8px] border border-[#bfe6e0] bg-[#f0faf8] px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="rounded-[5px] bg-[#0d9488] px-1.5 py-[2px] text-[10px] font-extrabold tracking-[0.04em] text-white">AI 분석</span>
+        {via && <span className="text-[11px] font-semibold text-[#0f766e]">via {via}</span>}
+      </div>
+      <p className="mt-1.5 text-[12px] leading-[1.5] text-[#334155]">{fcSummary(weather)}</p>
+      <button type="button" onClick={() => setOpen((v) => !v)} className="mt-1.5 text-[11px] font-semibold text-[#0d9488] hover:underline">
+        {open ? "접기 ▲" : "상세 보기 ▾"}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2 border-t border-[#cfe9e4] pt-2">
+          {sections.filter(([, t]) => t).map(([lab, t]) => (
+            <div key={lab}>
+              <div className="text-[10.5px] font-bold text-[#0f766e]">{lab}</div>
+              <p className="mt-0.5 text-[12px] leading-[1.55] text-[#475569]">{t}</p>
+            </div>
+          ))}
+          <div className="text-[10.5px] text-[#94a3b8]">AI 자동 분석 · 코드 가드 검증 · 트랙 교차판정 기반</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Impact({ rm, routes, events, nodes, forecasts }: { rm: RiskMap; routes: RouteG[]; events: EventRow[]; nodes: Record<string, AssetRow>; forecasts: ClimateForecastRow[] }) {
+  // route id → 발행된 climate forecast(있으면 카드 보강). 정렬/선정엔 영향 없음(표시 보강만).
+  const fcByRoute: Record<string, ClimateForecastRow> = {};
+  for (const f of forecasts) { const rid = fcRouteId(f.metric_ref); if (rid && !fcByRoute[rid]) fcByRoute[rid] = f; }
   const ROUTE_KM = NEAR_KM; // 노선 경로점 기준 이벤트 근접 반경
   const rows = routes
     .map((r) => {
@@ -327,6 +392,7 @@ function Impact({ rm, routes, events, nodes }: { rm: RiskMap; routes: RouteG[]; 
                 {evs.length > 0 && <span className="rounded-[6px] border border-[#fde6c8] bg-[#fff7ed] px-2 py-[3px] text-[11px] font-semibold text-[#b45309]">활성 이벤트 {evs.length}건 인근</span>}
               </div>
               <Spark vals={traj} color={rc(c)} className="my-2.5 block h-[30px] w-full" />
+              {fcByRoute[r.id] && <RouteForecast fc={fcByRoute[r.id]} />}
             </div>
           );
         })}
@@ -490,7 +556,7 @@ export function LogisightClimate() {
           </div>
           <Kpis items={kpis} />
           {capeRoute && <CapeMonitor rm={rm} route={capeRoute} suez={suezRoute} nodes={nodes} />}
-          <Impact rm={rm} routes={routesG} events={data.events} nodes={nodes} />
+          <Impact rm={rm} routes={routesG} events={data.events} nodes={nodes} forecasts={data.forecasts} />
           <Straits rm={rm} chokes={chokes} routes={routesG} />
           <Timeline events={data.events} />
           {data.assets.length === 0 && data.events.length === 0 && (
