@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -12,6 +13,7 @@ import {
 import appCss from "../styles.css?url";
 import { Navigation } from "@/components/site/Navigation";
 import { Footer } from "@/components/site/Footer";
+import LogisightLoader from "@/components/LogisightLoader";
 
 // Minimal shell without IndexBar — safe to use outside QueryClientProvider
 function MinimalShell({ children }: { children: React.ReactNode }) {
@@ -169,9 +171,14 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // 최초 풀 로드(SSR→하이드레이션) 동안만 브랜드 로더 노출. SPA 내비게이션엔 RootComponent가
+  // 다시 마운트되지 않으므로 재노출되지 않는다(서브내비 클릭마다 깜빡이는 문제 방지).
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { setLoading(false); }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
+      <LogisightLoader show={loading} />
       <SiteShell>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
@@ -197,7 +204,7 @@ function SiteShell({ children }: { children: React.ReactNode }) {
 
   // 자체 Nav/Footer를 가진 리디자인 페이지(홈·포트·종합·전망)는 전체 레이아웃을 스스로 책임진다 →
   // 글로벌 Navigation/Footer/theme-light 래퍼를 건너뛴다. 다른 라우트는 영향 없음.
-  if (["/", "/policy", "/dashboard", "/forecasts", "/rates", "/climate", "/trade"].includes(pathname)) {
+  if (["/", "/policy", "/dashboard", "/forecasts", "/rates", "/climate", "/trade", "/industries"].includes(pathname)) {
     return <>{children}</>;
   }
 
