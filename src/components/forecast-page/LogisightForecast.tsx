@@ -45,6 +45,29 @@ function fmtKstStamp(iso: string | null): string {
   return iso.slice(0, 16).replace("T", " ") + " KST";
 }
 
+// 카드 리드 전용: 본문 첫 문장의 추세 종결구를 간결한 상태구로 치환(미리보기 한정 — 상세 본문은 원문 유지).
+const LEAD_ENDINGS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/(상승\s*우세\s*국면)을\s*나타냈다\.?$/, "$1"],
+  [/(하락\s*우세\s*국면)을\s*나타냈다\.?$/, "$1"],
+  [/(보합\s*우세\s*국면)을\s*나타냈다\.?$/, "$1"],
+  [/오름세가\s*이어지고\s*있다\.?$/, "상승세 이어짐"],
+  [/하락세가\s*이어지고\s*있다\.?$/, "하락세 이어짐"],
+  [/오름세를\s*이어왔다\.?$/, "상승세 이어짐"],
+  [/하락세를\s*이어왔다\.?$/, "하락세 이어짐"],
+  [/내림세를\s*이어왔다\.?$/, "하락세 이어짐"],
+  [/오름세를\s*나타냈다\.?$/, "상승중"],
+  [/하락세를\s*나타냈다\.?$/, "하락중"],
+  [/내림세를\s*나타냈다\.?$/, "하락중"],
+  [/보합세를\s*(나타냈다|이어왔다)\.?$/, "보합"],
+];
+function cardLead(statement: string | null | undefined): string {
+  const first = sentences(statement ?? "")[0] ?? (statement ?? "");
+  for (const [re, rep] of LEAD_ENDINGS) {
+    if (re.test(first)) return first.replace(re, rep).replace(/\s*\.+$/, "");
+  }
+  return first;
+}
+
 /* ---------- spark / dots / donut ---------- */
 function Spark({ vals, color, className }: { vals: number[]; color: string; className?: string }) {
   const rawId = useId();
@@ -169,7 +192,7 @@ function Hero({ kpis, lastUpdated, modules, activeModule, onModule }: {
         <div className="max-w-[760px] pt-[58px] pb-[68px]">
           <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">Verified Forecast</span>
           <h1 className="mt-3.5 text-[clamp(32px,4.4vw,50px)] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#e9eef7]">물류 시장 <span className="text-[#2dd4bf]">전망</span></h1>
-          <p className="mt-4 max-w-[640px] text-[15px] leading-[1.6] text-[#93a1b7]">향후 2~4주 운임 방향을 정량 모델 + 에디터 검수로 발행하고, 판정일 실측으로 사후 적중을 매깁니다. 적중률 분모는 발행된 전망 전수입니다.</p>
+          <p className="mt-4 max-w-[640px] text-[15px] leading-[1.6] text-[#93a1b7]">Logisight AI가 현재와 과거 데이터를 분석하여 운임 방향을 전망합니다.</p>
           {modules.length > 0 && (
             <div className="mt-[18px] flex flex-wrap gap-2">
               <button type="button" onClick={() => onModule(null)} className={`rounded-full border px-3 py-[5px] text-[12px] ${activeModule == null ? "border-[#2dd4bf73] bg-[#0e2a2a] text-[#2dd4bf]" : "border-[#78a0cd1c] bg-[#0e1626] text-[#93a1b7]"}`}>전체</button>
@@ -281,7 +304,7 @@ function ForecastCards({ cards, series, selectedId, onSelect }: {
             </div>
             <div className="mt-2 flex items-center gap-2"><span className="text-[11.5px] text-[#828d9d]">근거 {ev.present}/{ev.total}</span><Dots n={ev.present} total={ev.total} /></div>
             {sp.length > 1 && <Spark vals={sp} color={up ? "#16a34a" : c.direction === "down" ? "#dc2626" : "#94a3b8"} className="my-[10px] block h-[38px] w-full" />}
-            <p className="mt-2 text-[12.5px] leading-[1.55] text-[#54606f]">{sentences(c.statement)[0] ?? c.statement}</p>
+            <p className="mt-2 text-[12.5px] leading-[1.55] text-[#54606f]">{cardLead(c.statement)}</p>
             {src && <div className="mt-[9px] text-[11px] text-[#828d9d]">기준 지표: {src}</div>}
           </div>
         );
