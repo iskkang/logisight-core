@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { setResponseHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
@@ -170,6 +171,11 @@ const INDEX_CODES = ["SCFI", "KCCI", "CCFI", "FBX", "WCI", "BDI"] as const;
 
 export const getIndexStats = createServerFn({ method: "GET" }).handler(
   async (): Promise<IndexStats[]> => {
+    // 운임 지수는 주 단위 갱신 → CDN 1시간 캐시 + 24시간 stale-while-revalidate.
+    setResponseHeader(
+      "cache-control",
+      "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+    );
     const rows: (FreightIndexPoint & { index_code: string; source: string | null })[] = [];
     let from = 0;
     while (true) {

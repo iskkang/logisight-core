@@ -5,11 +5,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
+import LogisightLoader from "@/components/LogisightLoader";
 import {
   formatPeriod,
   pctChange,
@@ -697,9 +698,7 @@ function TopAndSide({ model }: { model: TradeModel }) {
 }
 
 /* ============================ PAGE ============================ */
-export function LogisightTrade() {
-  const { data: bundle } = useSuspenseQuery(tradeStatisticsBundleQueryOptions());
-  const { data: indexStats } = useSuspenseQuery(indexStatsQueryOptions());
+function TradeBody({ bundle, indexStats }: { bundle: TradeStatisticsBundle; indexStats: IndexStats[] }) {
   const [region, setRegion] = useState<RegionKey>("전체");
   const [metricKo, setMetricKo] = useState<MetricKo>("교역액");
   const metric = METRIC_BY_KO[metricKo];
@@ -735,5 +734,70 @@ export function LogisightTrade() {
 
       <HomeFooter />
     </div>
+  );
+}
+
+/* 데이터 도착 전 즉시 그려지는 스켈레톤. SSR 이 이 화면을 곧바로 내보내(빠른 TTFB),
+   사용자는 빈 화면 대신 로딩 상태를 본다. 실제 데이터는 클라이언트 useQuery 가 받아
+   TradeBody 로 교체한다. */
+function TradeSkeleton() {
+  return (
+    <div className="lsgt-root min-h-screen bg-[#070b16] text-[#1a2433]">
+      <style>{STYLE}</style>
+      <HomeNav active="insight" />
+      <InsightSubNav />
+      <section className="relative overflow-hidden bg-[#070b16]">
+        <div className={`${WRAP} relative z-[1] pb-[74px] pt-[52px]`}>
+          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">Trade Intelligence <span className="lsgt-live" /><span className="text-[#34d399]">LIVE</span></span>
+          <h1 className="mt-3 text-[clamp(30px,4vw,46px)] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#e9eef7]">무역 동향</h1>
+          <p className="mt-3.5 max-w-[640px] text-[15px] leading-[1.6] text-[#93a1b7]">관세청 수출입무역통계를 불러오는 중입니다…</p>
+        </div>
+      </section>
+
+      <div className="relative z-[2] -mt-7 rounded-t-[28px] bg-[#e6eaf1] pb-2.5" style={{ boxShadow: "0 -24px 60px -34px rgba(0,0,0,.7)" }}>
+        <div className={WRAP}>
+          <div className="mt-3.5 rounded-[16px] border border-[#d8dfe9] p-[18px_20px]" style={{ background: "linear-gradient(180deg,#fbfcfe,#f4f7fb)" }}>
+            <span className="sk h-5 w-full max-w-[520px]" />
+            <span className="sk mt-2 h-4 w-full max-w-[680px]" />
+            <div className="mt-3.5 grid grid-cols-2 gap-3 min-[880px]:grid-cols-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="rounded-[12px] border border-[#d8dfe9] bg-white px-3.5 py-[13px]">
+                  <span className="sk h-3.5 w-20" />
+                  <span className="sk mt-2 h-6 w-28" />
+                  <span className="sk mt-2 h-3 w-24" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-3.5 grid grid-cols-1 gap-3.5 min-[980px]:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className={`p-[16px_17px] ${CARD}`}>
+                <span className="sk h-4 w-24" />
+                <span className="sk mt-3 h-5 w-40" />
+                <span className="sk mt-3 h-16 w-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <HomeFooter />
+    </div>
+  );
+}
+
+export function LogisightTrade() {
+  // useSuspenseQuery → useQuery: SSR 을 막지 않는다. 데이터가 없는 동안 스켈레톤을 즉시
+  // 렌더하고, 클라이언트에서 데이터가 도착하면 TradeBody 로 교체한다.
+  const { data: bundle } = useQuery(tradeStatisticsBundleQueryOptions());
+  const { data: indexStats } = useQuery(indexStatsQueryOptions());
+  const loading = !bundle || !indexStats;
+
+  // 데이터 로드가 끝날 때까지 브랜드 로딩 오버레이를 띄우고, 도착하면 페이드아웃.
+  return (
+    <>
+      <LogisightLoader show={loading} />
+      {loading ? <TradeSkeleton /> : <TradeBody bundle={bundle} indexStats={indexStats} />}
+    </>
   );
 }

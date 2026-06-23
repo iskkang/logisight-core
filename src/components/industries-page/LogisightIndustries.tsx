@@ -4,11 +4,12 @@
 // 파이프라인 미연동이라 규칙 기반 요약(실데이터 파생)으로 대체 — 미검수 AI 문구 생성 금지(Phase-6).
 import { useId, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
+import LogisightLoader from "@/components/LogisightLoader";
 import {
   tradeStatisticsQueryOptions,
   hsChapter,
@@ -17,7 +18,7 @@ import {
   formatUSD,
   type TradeStatRow,
 } from "@/lib/api/industries";
-import { indexStatsQueryOptions } from "@/lib/api/rates";
+import { indexStatsQueryOptions, type IndexStats } from "@/lib/api/rates";
 
 /* ============================ STYLE (.lsgi-root 스코프) ============================ */
 const STYLE = `
@@ -225,9 +226,20 @@ const TM_SHADES = ["#3b4f7a", "#5a6f9e", "#6478a6", "#7d8fb8", "#8294ba", "#92a2
 const DONUT_COLORS = ["#1864ab", "#38bdf8", "#3b82f6", "#f59e0b", "#8b9dc9", "#cbb6d6"];
 
 /* ============================ PAGE ============================ */
+// 데이터 로드가 끝날 때까지 브랜드 로딩 오버레이를 띄우고, 도착하면 페이드아웃(/trade 와 동일).
 export function LogisightIndustries() {
-  const { data: allRows } = useSuspenseQuery(tradeStatisticsQueryOptions());
-  const { data: indexStats } = useSuspenseQuery(indexStatsQueryOptions());
+  const { data: allRows } = useQuery(tradeStatisticsQueryOptions());
+  const { data: indexStats } = useQuery(indexStatsQueryOptions());
+  const loading = !allRows || !indexStats;
+  return (
+    <>
+      <LogisightLoader show={loading} />
+      {loading ? null : <IndustriesBody allRows={allRows} indexStats={indexStats} />}
+    </>
+  );
+}
+
+function IndustriesBody({ allRows, indexStats }: { allRows: TradeStatRow[]; indexStats: IndexStats[] }) {
   const [metric, setMetric] = useState<"exp" | "imp" | "bal">("exp");
 
   const model = useMemo(() => {

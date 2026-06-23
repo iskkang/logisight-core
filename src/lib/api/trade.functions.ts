@@ -1,6 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
+import { setResponseHeader } from "@tanstack/react-start/server";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
+
+// 관세청 통계는 월 단위로만 갱신된다 → CDN(s-maxage)에서 1시간 캐시하고, 만료 후에도 24시간
+// 동안은 stale 응답을 즉시 주면서 백그라운드 갱신(stale-while-revalidate)한다. 결과적으로
+// 첫 1회(또는 갱신 직후)만 원본을 치고, 나머지 방문자는 sub-second 로 받는다.
+const TRADE_CACHE_CONTROL =
+  "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400";
 import type {
   TradeProvisionalRow,
   TradeCountryRow,
@@ -152,6 +159,7 @@ export const getTradeByItem = createServerFn({ method: "GET" }).handler(
 
 export const getTradeStatisticsBundle = createServerFn({ method: "GET" }).handler(
   async (): Promise<TradeStatisticsBundle> => {
+    setResponseHeader("cache-control", TRADE_CACHE_CONTROL);
     const [country, provisional, continent, item, itemCountryExport, itemCountryImport, newnatureExport, newnatureImport] =
       await Promise.all([
         fetchPagedByType("country", 5000),

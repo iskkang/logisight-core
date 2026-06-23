@@ -1,16 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { LogisightTrade } from "@/components/trade-page/LogisightTrade";
-import { tradeStatisticsBundleQueryOptions } from "@/lib/api/trade";
-import { indexStatsQueryOptions } from "@/lib/api/rates";
 
 export const Route = createFileRoute("/trade")({
-  loader: async ({ context }) => {
-    await Promise.all([
-      context.queryClient.ensureQueryData(tradeStatisticsBundleQueryOptions()),
-      context.queryClient.ensureQueryData(indexStatsQueryOptions()),
-    ]);
-  },
+  // 데이터는 클라이언트에서 useQuery 로 로드한다(스켈레톤 즉시 표시). SSR 을 막던 블로킹
+  // loader 를 제거해 첫 바이트(TTFB)가 수초 → 즉시로 단축된다. 데이터 캐싱은 서버 함수의
+  // Cache-Control(s-maxage·stale-while-revalidate)로 CDN 레벨에서 처리한다.
   head: () => ({
     meta: [
       { title: "무역 동향 인사이트 - Logisight" },

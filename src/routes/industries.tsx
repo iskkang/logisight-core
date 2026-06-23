@@ -1,14 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { LogisightIndustries } from "@/components/industries-page/LogisightIndustries";
-import { tradeStatisticsQueryOptions } from "@/lib/api/industries";
-import { indexStatsQueryOptions } from "@/lib/api/rates";
 
 export const Route = createFileRoute("/industries")({
-  loader: ({ context }) => {
-    context.queryClient.ensureQueryData(tradeStatisticsQueryOptions());
-    context.queryClient.ensureQueryData(indexStatsQueryOptions());
-  },
+  // 데이터는 클라이언트에서 useQuery 로 로드한다(로딩 오버레이 즉시 표시). SSR 블로킹 loader 를
+  // 제거해 첫 바이트(TTFB)를 단축한다. /trade 와 동일 패턴.
   head: () => ({
     meta: [
       { title: "산업별 교역 동향 — Logisight" },
