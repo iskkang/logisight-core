@@ -310,15 +310,17 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
       ctx.font = MONO;
       ctx.textAlign = "center";
       const w = ctx.measureText(t).width + 12;
+      const bx = Math.max(w / 2 + 4, Math.min(sc.W - w / 2 - 4, x));
+      const by = Math.max(13, Math.min(sc.H - 13, y));
       ctx.fillStyle = "rgba(7,15,28,.78)";
       ctx.strokeStyle = "rgba(239,68,68,.52)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(x - w / 2, y - 9, w, 18, 5);
+      ctx.roundRect(bx - w / 2, by - 9, w, 18, 5);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = "rgba(254,202,202,.94)";
-      ctx.fillText(t, x, y + 3);
+      ctx.fillText(t, bx, by + 3);
       ctx.restore();
     };
     const drawArrow = (from: [number, number], to: [number, number], color: string, alpha = 0.9) => {
@@ -474,6 +476,15 @@ export function RiskGlobe({ data }: { data: ClimateRiskData }) {
             if (horizon.label) badgeLabel(horizon.label, p[0], p[1] - base - 12);
             else label(KIND_LABEL[e.kind] || "ê²½ë³´", p[0], p[1] - base - 7);
             eventHit.push({ id: e.id, x: p[0], y: p[1], r: base + 10 });
+          }
+        } else if (horizon.label) {
+          for (let i = track.points.length - 1; i >= 0; i--) {
+            const pt = track.points[i];
+            if (!visible(pt.lon, pt.lat)) continue;
+            const p = projection([pt.lon, pt.lat]);
+            if (!p) continue;
+            badgeLabel(horizon.label, p[0], p[1] - 16);
+            break;
           }
         }
         ctx.restore();
