@@ -29,7 +29,7 @@ export const getClimateRisk = createServerFn({ method: "GET" }).handler(
       sb.from("routes").select("id,name,waypoints,chokes").limit(100),
       sb
         .from("events")
-        .select("id,source,kind,title,severity,lon,lat,area,url")
+        .select("id,source,kind,title,severity,lon,lat,area,url,starts_at,ends_at,updated_at,track")
         .limit(500),
       // 발행된 기후 영향 AI 분석(파이프라인 자동발행) — read만. anon RLS는 published/resolved만 허용.
       sb

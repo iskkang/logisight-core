@@ -53,6 +53,10 @@ export type EventRow = {
   lat: number | null;
   area: string | null;
   url: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  updated_at: string | null;
+  track: unknown;
 };
 
 // 발행된 기후 영향 AI 분석(forecasts module='climate', status='published').
