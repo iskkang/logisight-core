@@ -31,6 +31,7 @@ export type RiskRow = {
   snowfall: number | null;
   temp_min: number | null;
   is_freeze: boolean;
+  updated_at: string | null;
 };
 
 // routes.waypoints: ["shanghai",[60,8],"suez",...] — 문자열(asset id) 또는 [lon,lat].

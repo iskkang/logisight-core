@@ -23,7 +23,7 @@ export const getClimateRisk = createServerFn({ method: "GET" }).handler(
       sb
         .from("asset_risk")
         .select(
-          "asset_id,horizon_days,score,level,driver,wind_gust,wave_height,precip,snowfall,temp_min,is_freeze",
+          "asset_id,horizon_days,score,level,driver,wind_gust,wave_height,precip,snowfall,temp_min,is_freeze,updated_at",
         )
         .limit(2000),
       sb.from("routes").select("id,name,waypoints,chokes").limit(100),
