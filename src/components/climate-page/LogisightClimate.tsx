@@ -197,7 +197,7 @@ function HeroAndGlobe({ data, pills }: { data: Parameters<typeof RiskGlobe>[0]["
         <div className="pt-12 pb-[22px]">
           <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">Global Climate Forecast</span>
           <h1 className="mt-3 text-[clamp(30px,4vw,46px)] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#e9eef7]">세계 기후 예측</h1>
-          <p className="mt-3.5 max-w-[620px] text-[15px] leading-[1.6] text-[#93a1b7]">전 세계 항만·주요 해협·내륙 철도 거점의 기상 리스크를 AI 예보 기반으로 지구본에 표시하고, 영향을 받는 노선과 리스크를 연결합니다.</p>
+          <p className="mt-3.5 max-w-[620px] text-[15px] leading-[1.6] text-[#93a1b7]">전 세계 항만·주요 해협·내륙 철도 거점의 기상 리스크를 AI 예보 기반, 영향을 받는 노선과 리스크를 감지합니다.</p>
           <div className="mt-5 flex flex-wrap gap-2.5">
             {pills.map((p, i) => <span key={i} className="inline-flex items-center gap-2 rounded-full border border-[#78a0cd1c] bg-[#0e1626] px-[13px] py-[7px] text-[12.5px] text-[#93a1b7]"><span className={`h-[7px] w-[7px] rounded-full ${p.c}`} />{p.t}</span>)}
           </div>
