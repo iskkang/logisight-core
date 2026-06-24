@@ -17,10 +17,10 @@ const SUB_GNB = [
   { to: "/climate", label: "기후예측" },
 ] as const;
 
-export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insight" }) {
+export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insight" | "reports" }) {
   const [open, setOpen] = useState(false);
   const underline = <span className="absolute -bottom-0.5 left-0 right-0 h-0.5 rounded bg-[#2dd4bf]" />;
-  const topCls = (key: "home" | "news" | "insight") =>
+  const topCls = (key: "home" | "news" | "insight" | "reports") =>
     key === active ? "relative py-1 text-white" : "py-1 text-[#93a1b7] transition-colors hover:text-white";
   return (
     <header className="sticky top-0 z-50 border-b border-[#78a0cd1c] bg-[#070b16cc] backdrop-blur-[14px] backdrop-saturate-150">
@@ -50,6 +50,9 @@ export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insig
               </div>
             </div>
           )}
+          <Link to="/reports" className={topCls("reports")}>
+            리포트{active === "reports" && underline}
+          </Link>
         </nav>
         <div className="ml-auto hidden text-[13px] text-[#5d6b80] min-[620px]:block">
           <b className="text-white">KOR</b> · ENG
@@ -80,6 +83,7 @@ export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insig
               ))}
             </>
           )}
+          <Link to="/reports" onClick={() => setOpen(false)} className={`block rounded-md px-3 py-2 text-[15px] ${active === "reports" ? "text-white" : "text-[#93a1b7]"}`}>리포트</Link>
         </nav>
       )}
     </header>

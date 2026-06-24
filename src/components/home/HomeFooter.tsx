@@ -28,6 +28,7 @@ export function HomeFooter() {
             <Link to="/rates" className={itemCls}>운임 대시보드</Link>
             <Link to="/eurasia" className={itemCls}>유라시아 코리도어</Link>
             <Link to="/industries" className={itemCls}>산업별 교역</Link>
+            <Link to="/reports" className={itemCls}>마켓 리포트</Link>
           </Col>
           <Col title="뉴스">
             {(["해상", "항공", "철도", "무역"] as const).map((cat) => (

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TradeRouteImport } from './routes/trade'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as PolicyRouteImport } from './routes/policy'
 import { Route as NewsRouteImport } from './routes/news'
@@ -37,6 +38,11 @@ const TradeRoute = TradeRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RatesRoute = RatesRouteImport.update({
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
+  '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
   '/admin/forecasts': typeof AdminForecastsRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
+  '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
   '/admin/forecasts': typeof AdminForecastsRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/rates': typeof RatesRoute
+  '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
   '/admin/forecasts': typeof AdminForecastsRoute
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/policy'
     | '/rates'
+    | '/reports'
     | '/sitemap.xml'
     | '/trade'
     | '/admin/forecasts'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/policy'
     | '/rates'
+    | '/reports'
     | '/sitemap.xml'
     | '/trade'
     | '/admin/forecasts'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/policy'
     | '/rates'
+    | '/reports'
     | '/sitemap.xml'
     | '/trade'
     | '/admin/forecasts'
@@ -266,6 +278,7 @@ export interface RootRouteChildren {
   NewsRoute: typeof NewsRoute
   PolicyRoute: typeof PolicyRoute
   RatesRoute: typeof RatesRoute
+  ReportsRoute: typeof ReportsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TradeRoute: typeof TradeRoute
   AdminForecastsRoute: typeof AdminForecastsRoute
@@ -291,6 +304,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rates': {
@@ -426,6 +446,7 @@ const rootRouteChildren: RootRouteChildren = {
   NewsRoute: NewsRoute,
   PolicyRoute: PolicyRoute,
   RatesRoute: RatesRoute,
+  ReportsRoute: ReportsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TradeRoute: TradeRoute,
   AdminForecastsRoute: AdminForecastsRoute,

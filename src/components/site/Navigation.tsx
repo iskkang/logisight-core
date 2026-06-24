@@ -10,6 +10,7 @@ const GNB = [
   { to: "/", label: "홈" },
   { to: "/news", label: "뉴스" },
   { to: "/dashboard", label: "인사이트" },
+  { to: "/reports", label: "리포트" },
 ] as const;
 
 const SUB_GNB = [
@@ -42,6 +43,7 @@ export function Navigation() {
   const topActive = (to: string): boolean => {
     if (to === "/") return pathname === "/";
     if (to === "/news") return pathname === "/news" || pathname.startsWith("/article");
+    if (to === "/reports") return pathname === "/reports" || pathname.startsWith("/reports/");
     return inDash;
   };
 
