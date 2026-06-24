@@ -67,7 +67,10 @@ const STYLE = `
   font-family:"Pretendard","Pretendard Variable",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
 .lsgrp-root *{box-sizing:border-box;margin:0;padding:0}
 .lsgrp-root .mono{font-feature-settings:"tnum" 1;letter-spacing:0}
-.lsgrp-root .wrap{max-width:1180px;margin:0 auto;padding:0 26px}
+/* 폭·패딩을 공유 헤더/푸터(HomeNav·HomeFooter: max-w-1200 px-18 min-[620px]:px-7)와 맞춰
+   히어로·카드·내비·푸터가 같은 좌우 경계로 정렬되게 한다. */
+.lsgrp-root .wrap{max-width:1200px;margin:0 auto;padding:0 18px}
+@media(min-width:620px){.lsgrp-root .wrap{padding:0 28px}}
 .lsgrp-root a{color:inherit;text-decoration:none}
 .lsgrp-root button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* 공유 Wordmark(HomeNav·HomeFooter)의 's'는 전역 규칙이 필요하다. */
