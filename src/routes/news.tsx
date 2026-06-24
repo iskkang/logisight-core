@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { z } from "zod";
 import type { ReactNode } from "react";
 
@@ -12,7 +13,10 @@ import {
 import type { NewsItem } from "@/lib/api/news";
 import { articleParam } from "@/lib/api/article";
 import { NewsletterForm } from "@/components/site/NewsletterForm";
-import { RouteBreadcrumb } from "@/components/site/Breadcrumb";
+import { HomeNav } from "@/components/home/HomeNav";
+import { HomeFooter } from "@/components/home/HomeFooter";
+import LogisightNewsTop from "@/components/news-page/LogisightNewsTop";
+import type { Pick as NewsPick } from "@/components/news-page/LogisightNewsTop";
 
 const newsSearchSchema = z.object({
   cat: z.string().min(1).max(40).optional(),
@@ -21,15 +25,6 @@ const newsSearchSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
 });
-
-const CATEGORIES: { value: string | undefined; label: string }[] = [
-  { value: undefined, label: "전체" },
-  { value: "해상", label: "해상" },
-  { value: "항공", label: "항공" },
-  { value: "철도", label: "철도" },
-  { value: "물류", label: "물류" },
-  { value: "무역", label: "무역" },
-];
 
 export const Route = createFileRoute("/news")({
   validateSearch: newsSearchSchema,
@@ -59,89 +54,72 @@ export const Route = createFileRoute("/news")({
 });
 
 function NewsPage() {
+  const navigate = useNavigate();
   const { cat, date } = Route.useSearch();
   const { data } = useSuspenseQuery(
     latestNewsQueryOptions({ lang: "ko", limit: 40, category: cat, date }),
   );
-  const items: NewsItem[] = data ?? [];
-  const [lead, ...rest] = items;
+  const allItems: NewsItem[] = data ?? [];
+
+  // 기간 세그먼트는 클라이언트 측 최신성 필터(전체=비필터)로 동작 — 초기 렌더는 항상 "전체"라
+  // SSR/하이드레이션 불일치가 없다. 카테고리는 URL(cat)로 서버 측 필터된다.
+  const [period, setPeriod] = useState("전체");
+  const items = filterByPeriod(allItems, period);
+
+  // "이번 주 주목" = 현재 노출 목록의 최신 대표 헤드라인(실데이터). 별도 큐레이션 소스가 없으므로
+  // 최신 수집 기사를 자동 노출하고, 본문 목록에서는 중복을 피하려 해당 기사를 제외한다.
+  const featured = items[0] ?? null;
+  const pick: NewsPick | null = featured ? toPick(featured) : null;
+  const stories = items.slice(1);
+  const [lead, ...rest] = stories;
   const secondary = rest.slice(0, 2);
   const opinionStrip = rest.slice(2, 5);
   const gridSection = rest.slice(5, 14);
   const moreSection = rest.slice(14, 22);
-  const mostPopular = items.slice(0, 6);
+  const mostPopular = stories.slice(0, 6);
 
   return (
-    <div className="bg-[var(--color-card)]">
-      <div className="mx-auto max-w-[1280px] px-4 pt-4 lg:px-6">
-        <RouteBreadcrumb />
-      </div>
-      {/* Masthead */}
-      <header className="border-b-[3px] border-double border-[var(--color-navy-900)] bg-[var(--color-card)]">
-        <div className="mx-auto max-w-[1280px] px-4 pb-3 pt-8 text-center lg:px-6">
-          <p
-            className="text-[10px] font-semibold uppercase tracking-[0.3em]"
-            style={{ color: "var(--color-navy-600)" }}
-          >
-            Logisight · Market Desk
-          </p>
-          <p className="mx-auto mt-2 max-w-2xl text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
-            해상·항공·철도·물류·무역. 글로벌 공급망관련 뉴스
-          </p>
-          <p suppressHydrationWarning className="mt-3 text-[11px] uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
-            {new Date().toLocaleDateString("ko-KR", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-              weekday: "long",
-              timeZone: "Asia/Seoul",
-            })}
-          </p>
-        </div>
+    <div className="bg-white">
+      <HomeNav active="news" />
+      <LogisightNewsTop
+        showNav={false}
+        date={kstDateLabel()}
+        category={cat ?? "전체"}
+        onCategoryChange={(label) =>
+          navigate({ to: "/news", search: label === "전체" ? {} : { cat: label } })
+        }
+        period={period}
+        onPeriodChange={setPeriod}
+        pick={pick}
+        pickLoading={false}
+        noteText="최신 수집 기사 중 대표 헤드라인을 자동 노출합니다. 지표 기반 큐레이션은 백로그입니다."
+        renderPickLink={(_p, children, className) =>
+          featured && isInternalNewsItem(featured) ? (
+            <Link to="/article/$slug" params={{ slug: articleParam(featured) }} className={className}>
+              {children}
+            </Link>
+          ) : (
+            <a href={featured?.url ?? "#"} target="_blank" rel="noopener noreferrer" className={className}>
+              {children}
+            </a>
+          )
+        }
+      />
 
-        {/* Section nav */}
-        <nav className="border-t border-[var(--color-line)] bg-[var(--color-card)]">
-          <ul className="mx-auto flex max-w-[1280px] items-center justify-center gap-1 overflow-x-auto px-4 py-2 text-[13px] lg:px-6">
-            {CATEGORIES.map((c) => {
-              const active = (cat ?? undefined) === c.value;
-              return (
-                <li key={c.label}>
-                  <Link
-                    to="/news"
-                    search={c.value ? { cat: c.value } : {}}
-                    className={`inline-block whitespace-nowrap rounded-sm px-3 py-1.5 font-semibold uppercase tracking-wider transition ${
-                      active
-                        ? "bg-[var(--color-navy-900)] text-white"
-                        : "text-[var(--color-ink-muted)] hover:text-[var(--color-navy-900)]"
-                    }`}
-                  >
-                    {c.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        {/* Date navigator */}
-        <div className="border-t border-[var(--color-line)] bg-[var(--color-surface)]">
-          <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-4 py-2 lg:px-6">
-            <DateNavigator date={date} cat={cat} count={items.length} />
+      <div className="theme-light bg-[var(--color-card)]">
+        {stories.length === 0 ? (
+          <div className="mx-auto max-w-[1280px] px-4 py-20 text-center text-sm text-[var(--color-ink-muted)] lg:px-6">
+            {allItems.length === 0
+              ? "기사가 수집되는 대로 게재합니다."
+              : "선택한 기간에 해당하는 기사가 더 없습니다."}
           </div>
-        </div>
-      </header>
-
-      {items.length === 0 ? (
-        <div className="mx-auto max-w-[1280px] px-4 py-20 text-center text-sm text-[var(--color-ink-muted)] lg:px-6">
-          해당 카테고리의 기사가 수집되는 대로 게재합니다.
-        </div>
-      ) : (
-        <div className="mx-auto max-w-[1280px] px-4 py-10 lg:px-6 lg:py-14">
-          {/* Section label */}
-          <SectionRule
-            label={date ? `${date.replace(/-/g, ".")} 뉴스` : "오늘의 헤드라인"}
-            eyebrow="Top Stories"
-          />
+        ) : (
+          <div className="mx-auto max-w-[1280px] px-4 py-10 lg:px-6 lg:py-14">
+            {/* Section label */}
+            <SectionRule
+              label={period === "전체" ? "주요 기사" : `${period} · 주요 기사`}
+              eyebrow="Top Stories"
+            />
 
           {/* Lead + secondary */}
           <div className="grid gap-10 lg:grid-cols-12">
@@ -355,8 +333,11 @@ function NewsPage() {
               <NewsletterForm compact />
             </div>
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
+
+      <HomeFooter />
     </div>
   );
 }
@@ -414,96 +395,56 @@ function Byline({ item, className = "" }: { item: NewsItem; className?: string }
   );
 }
 
-function DateNavigator({
-  date,
-  cat,
-  count,
-}: {
-  date: string | undefined;
-  cat: string | undefined;
-  count: number;
-}) {
-  const today = todayKST();
-  const displayDate = date ?? today;
+/** 기간 세그먼트(전체/오늘/이번 주/이번 달) — 클라이언트 측 최신성 필터.
+ *  "전체"는 비필터라 초기 SSR 렌더에서 Date 호출이 없어 하이드레이션 불일치가 없다. */
+function filterByPeriod(items: NewsItem[], period: string): NewsItem[] {
+  if (period === "전체") return items;
+  const today = todayKST(); // "YYYY-MM-DD" (KST)
+  return items.filter((n) => {
+    if (!n.published_at) return false;
+    const pub = new Date(n.published_at).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+    if (period === "오늘") return pub === today;
+    const diff = daysBetween(pub, today);
+    if (period === "이번 주") return diff >= 0 && diff <= 7;
+    if (period === "이번 달") return diff >= 0 && diff <= 31;
+    return true;
+  });
+}
 
-  function prevDay(d: string): string {
-    const dt = new Date(`${d}T12:00:00+09:00`);
-    dt.setDate(dt.getDate() - 1);
-    return dt.toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
-  }
+function daysBetween(fromYmd: string, toYmd: string): number {
+  const a = new Date(`${fromYmd}T00:00:00Z`).getTime();
+  const b = new Date(`${toYmd}T00:00:00Z`).getTime();
+  return Math.round((b - a) / 86_400_000);
+}
 
-  function nextDay(d: string): string {
-    const dt = new Date(`${d}T12:00:00+09:00`);
-    dt.setDate(dt.getDate() + 1);
-    return dt.toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
-  }
+/** "2026.06.24 (수)" — TZ 고정이라 서버/클라이언트 동일 출력. */
+function kstDateLabel(): string {
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    timeZone: "Asia/Seoul",
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("year")}.${get("month")}.${get("day")} (${get("weekday")})`;
+}
 
-  const isToday = displayDate >= today;
-  const baseSearch = cat ? { cat } : {};
-
-  return (
-    <div className="flex items-center gap-3 text-[13px]">
-      {/* Prev arrow */}
-      <Link
-        to="/news"
-        search={{ ...baseSearch, date: prevDay(displayDate) }}
-        className="flex h-7 w-7 items-center justify-center rounded border border-[var(--color-line)] text-[var(--color-ink-muted)] hover:border-[var(--color-navy-900)] hover:text-[var(--color-navy-900)]"
-        aria-label="이전 날짜"
-      >
-        ←
-      </Link>
-
-      {/* Date label */}
-      <span className="font-semibold text-[var(--color-navy-900)]">
-        {date
-          ? new Date(`${displayDate}T12:00:00+09:00`).toLocaleDateString("ko-KR", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-              timeZone: "Asia/Seoul",
-            })
-          : "전체 기간"}
-        {date && (
-          <span className="ml-1.5 text-[11px] font-normal text-[var(--color-ink-muted)]">
-            ({count}건)
-          </span>
-        )}
-      </span>
-
-      {/* Next arrow — disabled when at today */}
-      {isToday ? (
-        <span
-          className="flex h-7 w-7 cursor-not-allowed items-center justify-center rounded border border-[var(--color-line)] text-[var(--color-line)]"
-          aria-disabled="true"
-          aria-label="다음 날짜"
-        >
-          →
-        </span>
-      ) : (
-        <Link
-          to="/news"
-          search={{ ...baseSearch, date: nextDay(displayDate) }}
-          className="flex h-7 w-7 items-center justify-center rounded border border-[var(--color-line)] text-[var(--color-ink-muted)] hover:border-[var(--color-navy-900)] hover:text-[var(--color-navy-900)]"
-          aria-label="다음 날짜"
-        >
-          →
-        </Link>
-      )}
-
-      {/* 전체 기간 toggle */}
-      <Link
-        to="/news"
-        search={baseSearch}
-        className={`ml-2 rounded-sm px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider transition ${
-          !date
-            ? "bg-[var(--color-navy-900)] text-white"
-            : "border border-[var(--color-line)] text-[var(--color-ink-muted)] hover:border-[var(--color-navy-900)] hover:text-[var(--color-navy-900)]"
-        }`}
-      >
-        전체 기간
-      </Link>
-    </div>
-  );
+/** 실데이터 NewsItem → LogisightNewsTop의 Pick. 지표 기반 선정 소스가 없으므로 조회수(views)는
+ *  싣지 않고, 선정 근거는 "최신 헤드라인"으로 정직하게 표기한다. */
+function toPick(item: NewsItem): NewsPick {
+  const internal = isInternalNewsItem(item);
+  return {
+    category: item.category ?? "뉴스",
+    why: "최신 헤드라인",
+    headline: item.title,
+    source: item.source,
+    date: formatPublishedAt(item.published_at),
+    imageUrl: item.image_url ?? undefined,
+    internal,
+    href: internal ? undefined : item.url,
+    periodLabel: "",
+  };
 }
 
 function NewsItemLink({
