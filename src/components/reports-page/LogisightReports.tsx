@@ -235,11 +235,14 @@ export default function LogisightReports({
   const filtered = archive.filter((r) => seg === "전체" ? true : seg === "주간" ? r.type === "weekly" : r.type === "monthly");
 
   return (
-    <div className="lsgrp-root min-h-screen">
+    <div className="min-h-screen bg-[#070b16]">
       <style>{STYLE}</style>
 
+      {/* HomeNav/HomeFooter 는 .lsgrp-root 밖에 둔다 — .lsgrp-root *{margin:0;padding:0}
+          리셋이 이들의 Tailwind mx-auto·px(가운데 정렬/패딩)을 죽이지 않도록. */}
       <HomeNav active="reports" />
 
+      <div className="lsgrp-root">
       <section className="hero">
         <div className="glow" />
         <svg className="motif" viewBox="0 0 520 360" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -285,6 +288,7 @@ export default function LogisightReports({
           <div className="grid">{filtered.map((r) => <ArchiveCard key={r.id} r={r} />)}</div>
         )}
       </div></div>
+      </div>
 
       <HomeFooter />
     </div>
