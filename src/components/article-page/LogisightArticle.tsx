@@ -265,7 +265,8 @@ export default function LogisightArticle({
   };
 
   return (
-    <>
+    // 다크 래퍼: 반투명 HomeNav(bg #070b16cc) 뒤 배경을 홈과 동일하게 어둡게 둬 슬레이트색 번짐 방지.
+    <div className="min-h-screen bg-[#070b16]">
       <HomeNav active="news" />
 
       <div className="lsg-root">
@@ -469,6 +470,6 @@ export default function LogisightArticle({
       </div>
 
       <HomeFooter />
-    </>
+    </div>
   );
 }
