@@ -30,7 +30,13 @@ import { buildDelayHotspots } from "@/lib/eurasia-geo";
 import { buildCalculatedDelays } from "@/lib/delay-segments";
 import { OperationalSourceStatusBar } from "@/components/dashboard/OperationalCurrentDelayMap";
 import { operationalCurrentDelayQueryOptions } from "@/lib/api/operational-delay";
-import LogisightEurasia from "@/components/eurasia-page/LogisightEurasia";
+import LogisightEurasia, {
+  type CorridorRecord,
+  type SourceStatus as EuSourceStatus,
+} from "@/components/eurasia-page/LogisightEurasia";
+import { HomeNav } from "@/components/home/HomeNav";
+import { HomeFooter } from "@/components/home/HomeFooter";
+import { InsightSubNav } from "@/components/insight/InsightSubNav";
 
 import {
   eurasiaLanesQueryOptions,
@@ -813,559 +819,615 @@ function EurasiaPage() {
     },
   ];
 
+  // 운영 현재 지연(operational) TCR 레코드 → CorridorRecord 매핑. 원본 컨테이너 비노출, 집계만.
+  const opDelay = (r: (typeof operational.records)[number]) =>
+    Math.max(0, Math.round(r.alert_delay_days ?? r.max_delay_days ?? r.median_delay_days ?? 0));
+  const tcrRecords: CorridorRecord[] = operational.records
+    .filter((r) => r.source_system === "TCR")
+    .map((r) => ({
+      route_label:
+        r.route_label ||
+        [r.current_from ?? r.origin, r.current_to ?? r.destination].filter(Boolean).join(" → ") ||
+        "경로 미확인",
+      original_eta: r.original_expected_arrival_date ?? null,
+      current_eta: r.current_eta ?? null,
+      delay_days: opDelay(r),
+      active_containers: Math.max(0, r.active_delayed_count || r.container_count || 0),
+    }))
+    .sort((a, b) => (b.delay_days ?? 0) - (a.delay_days ?? 0));
+
+  // operational SourceStatus → 컴포넌트 SourceStatus(name/state/detail) 매핑.
+  const eurasiaSources: EuSourceStatus[] = operational.sources.map((s) => ({
+    name: s.source_system === "FESCO" ? "FESCO · TSR" : "TCR · 중국 철도",
+    state: s.state,
+    detail:
+      s.state === "active"
+        ? `정상 · ${s.rows}건`
+        : s.state === "error"
+          ? "오류"
+          : s.state === "view_missing"
+            ? "보류 · 뷰 미생성"
+            : "보류 · 미수집",
+  }));
+
+  // 마지막 업데이트 = 레코드 last_checked_at 최신값(날짜). 없으면 "수집 중".
+  const lastChecked = operational.records
+    .map((r) => r.last_checked_at)
+    .filter((v): v is string => !!v)
+    .sort()
+    .at(-1);
+  const updatedLabel = lastChecked
+    ? (/^(\d{4})-(\d{2})-(\d{2})/.exec(lastChecked)?.slice(1).join(".") ?? lastChecked)
+    : "수집 중";
+
   return (
-    <LogisightEurasia records={operational.records} sources={operational.sources}>
-      <button
-        type="button"
-        className="detail-toggle"
-        aria-expanded={detailOpen}
-        onClick={() => setDetailOpen((v) => !v)}
+    <div className="min-h-screen bg-[#070b16]">
+      <HomeNav active="insight" />
+      <InsightSubNav />
+      <LogisightEurasia
+        showNav={false}
+        records={tcrRecords}
+        sources={eurasiaSources}
+        updatedLabel={updatedLabel}
       >
-        운영 상세 — 집계 지연 지수 · 수동 이슈
-        <span className="cv" aria-hidden>
-          ▾
-        </span>
-      </button>
+        <button
+          type="button"
+          aria-expanded={detailOpen}
+          onClick={() => setDetailOpen((v) => !v)}
+          className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 py-2.5 text-[13.5px] font-bold text-slate-800 hover:bg-slate-50"
+        >
+          운영 상세 — 집계 지연 지수 · 수동 이슈
+          <span
+            className={`text-[11px] text-slate-400 transition-transform ${detailOpen ? "rotate-180" : ""}`}
+            aria-hidden
+          >
+            ▾
+          </span>
+        </button>
 
-      {detailOpen && (
-        <div className="mt-4">
-          <nav className="flex flex-wrap gap-3" aria-label="유라시아 상세 보기">
-            {detailModes.map((mode) => {
-              const active = detailMode === mode.key;
-              return (
-                <button
-                  key={mode.key}
-                  type="button"
-                  onClick={() => setDetailMode(mode.key)}
-                  className={[
-                    "inline-flex h-11 min-w-[160px] items-center justify-center gap-2 rounded-xl border px-5 text-sm font-extrabold transition",
-                    active
-                      ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/25"
-                      : "border-slate-200 bg-white text-slate-900 shadow-md shadow-slate-900/5 hover:border-blue-200 hover:bg-blue-50",
-                  ].join(" ")}
-                >
-                  {mode.label}
-                </button>
-              );
-            })}
-          </nav>
-
-          <OperationalSourceStatusBar sources={operational.sources} className="mt-4" />
-
-          {showAdminForm && (
-            <div className="mt-4 space-y-3 rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-950">장애 원인 입력 (어드민)</h3>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-500">회랑</label>
-                  <select
-                    value={draft.lane_id}
-                    onChange={(e) => setDraft((d) => ({ ...d, lane_id: e.target.value }))}
-                    className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
-                  >
-                    <option value="">선택</option>
-                    {lanes.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name_ko ?? l.name_en ?? l.id}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-500">구간</label>
-                  <input
-                    value={draft.segment}
-                    onChange={(e) => setDraft((d) => ({ ...d, segment: e.target.value }))}
-                    placeholder="예: 알라산커우 환적"
-                    className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="text-[11px] font-semibold text-slate-500">제목</label>
-                  <input
-                    value={draft.title}
-                    onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-                    placeholder="예: 알라산커우 세관 검사 지연"
-                    className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-500">심각도</label>
-                  <select
-                    value={draft.severity}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        severity: e.target.value as "high" | "medium" | "low",
-                      }))
-                    }
-                    className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
-                  >
-                    <option value="high">높음</option>
-                    <option value="medium">중간</option>
-                    <option value="low">낮음</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-500">기여 지연 (일)</label>
-                  <input
-                    type="number"
-                    value={draft.delay_contribution_days}
-                    onChange={(e) =>
-                      setDraft((d) => ({ ...d, delay_contribution_days: e.target.value }))
-                    }
-                    placeholder="0"
-                    min={0}
-                    className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-500">시작일</label>
-                  <input
-                    type="date"
-                    value={draft.started_at}
-                    onChange={(e) => setDraft((d) => ({ ...d, started_at: e.target.value }))}
-                    className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-500">출처</label>
-                  <input
-                    value={draft.source}
-                    onChange={(e) => setDraft((d) => ({ ...d, source: e.target.value }))}
-                    placeholder="예: FESCO 공지"
-                    className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={!draft.segment || !draft.title || upsertMut.isPending}
-                  onClick={() =>
-                    upsertMut.mutate({
-                      data: {
-                        lane_id: draft.lane_id || null,
-                        segment: draft.segment,
-                        title: draft.title,
-                        severity: draft.severity,
-                        delay_contribution_days: draft.delay_contribution_days
-                          ? parseFloat(draft.delay_contribution_days)
-                          : null,
-                        started_at: draft.started_at || null,
-                        source: draft.source || null,
-                        confidence: draft.confidence,
-                      },
-                    })
-                  }
-                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
-                >
-                  {upsertMut.isPending ? "저장 중…" : "저장"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAdminForm(false);
-                    setDraft(EMPTY_DRAFT);
-                  }}
-                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50"
-                >
-                  취소
-                </button>
-                {adminMsg && <span className="text-xs text-slate-500">{adminMsg}</span>}
-              </div>
-            </div>
-          )}
-
+        {detailOpen && (
           <div className="mt-4">
-            {detailMode === "index" && (
-              <div className="space-y-5">
-                <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-                  <KpiCard
-                    label="현재 병목"
-                    value={disruptions.length === 0 ? "없음" : `${disruptions.length} 건`}
-                    sub="활성 구간 기준"
-                    iconColor="var(--status-alert)"
-                    icon={<span style={{ fontWeight: 700 }}>!</span>}
-                    mono={false}
-                  />
-                  <KpiCard
-                    label="평균 추가 지연"
-                    value={avgDelay !== null ? `+${avgDelay} 일` : "—"}
-                    sub="평시 대비 (관측 노선)"
-                    iconColor="var(--status-caution)"
-                    icon={<span style={{ fontWeight: 700 }}>⏱</span>}
-                    mono={false}
-                  />
-                  <KpiCard
-                    label="정상 도착 비율"
-                    value={avgOtp !== null ? `${avgOtp}%` : "—"}
-                    sub="최근 관측 주차 기준"
-                    iconColor="var(--status-observe)"
-                    icon={<span style={{ fontWeight: 700 }}>◷</span>}
-                    mono={false}
-                  />
-                  <KpiCard
-                    label="TCR 운송중"
-                    value={latestTcr?.in_transit != null ? `${latestTcr.in_transit} 편` : "—"}
-                    sub={
-                      latestTcr?.snapshot_date
-                        ? `스냅샷 ${latestTcr.snapshot_date}`
-                        : "스냅샷 수집 중"
-                    }
-                    iconColor="var(--cyan)"
-                    icon={<span style={{ fontWeight: 700 }}>🚉</span>}
-                    mono={false}
-                  />
-                </div>
-
-                {focusLane && <RouteAnswerPanel lane={focusLane} />}
-
-                <Panel
-                  title="유라시아 지연 지도"
-                  badge={<PBadge variant="navy">집계 지수 {calcDelays.calculated.length}</PBadge>}
-                >
-                  <div
-                    className="mb-3 rounded-lg border px-3 py-2 text-[12px] leading-relaxed"
-                    style={{
-                      borderColor: "var(--status-caution)",
-                      background: "color-mix(in oklch, var(--status-caution) 8%, transparent)",
-                    }}
+            <nav className="flex flex-wrap gap-3" aria-label="유라시아 상세 보기">
+              {detailModes.map((mode) => {
+                const active = detailMode === mode.key;
+                return (
+                  <button
+                    key={mode.key}
+                    type="button"
+                    onClick={() => setDetailMode(mode.key)}
+                    className={[
+                      "inline-flex h-11 min-w-[160px] items-center justify-center gap-2 rounded-xl border px-5 text-sm font-extrabold transition",
+                      active
+                        ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/25"
+                        : "border-slate-200 bg-white text-slate-900 shadow-md shadow-slate-900/5 hover:border-blue-200 hover:bg-blue-50",
+                    ].join(" ")}
                   >
-                    <b className="font-semibold text-foreground">
-                      이 화면은 현재 운영 컨테이너 지연이 아니라 집계된 지연 지수 기준입니다.
-                    </b>{" "}
-                    현재 컨테이너 현황은 ‘현재 지연’ 탭을 보세요. (delay_index_weekly = 주간/집계
-                    median, 일부 노선은 stale·저표본)
-                  </div>
-                  <DelayHotspotMap
-                    calculated={calcDelays.calculated}
-                    calcUnmapped={calcDelays.unmapped}
-                    manual={manualMarkers}
-                  />
+                    {mode.label}
+                  </button>
+                );
+              })}
+            </nav>
 
-                  {featuredLanes.length > 0 && (
-                    <details className="mt-4">
-                      <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
-                        노선별 개념도 상세 ({featuredLanes.length}개 회랑)
-                      </summary>
-                      <div className="mt-3" style={{ display: "flex", flexDirection: "column" }}>
-                        {featuredLanes.map((lane, i) => {
-                          const tier = TIER[tierOf(positiveDelayDays(lane))];
-                          return (
-                            <div
-                              key={lane.id}
-                              style={{
-                                paddingTop: i ? 14 : 0,
-                                marginTop: i ? 14 : 0,
-                                borderTop: i ? "1px solid var(--border)" : "none",
-                              }}
-                            >
+            <OperationalSourceStatusBar sources={operational.sources} className="mt-4" />
+
+            {showAdminForm && (
+              <div className="mt-4 space-y-3 rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-slate-950">장애 원인 입력 (어드민)</h3>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500">회랑</label>
+                    <select
+                      value={draft.lane_id}
+                      onChange={(e) => setDraft((d) => ({ ...d, lane_id: e.target.value }))}
+                      className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                    >
+                      <option value="">선택</option>
+                      {lanes.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.name_ko ?? l.name_en ?? l.id}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500">구간</label>
+                    <input
+                      value={draft.segment}
+                      onChange={(e) => setDraft((d) => ({ ...d, segment: e.target.value }))}
+                      placeholder="예: 알라산커우 환적"
+                      className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="text-[11px] font-semibold text-slate-500">제목</label>
+                    <input
+                      value={draft.title}
+                      onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+                      placeholder="예: 알라산커우 세관 검사 지연"
+                      className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500">심각도</label>
+                    <select
+                      value={draft.severity}
+                      onChange={(e) =>
+                        setDraft((d) => ({
+                          ...d,
+                          severity: e.target.value as "high" | "medium" | "low",
+                        }))
+                      }
+                      className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                    >
+                      <option value="high">높음</option>
+                      <option value="medium">중간</option>
+                      <option value="low">낮음</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500">
+                      기여 지연 (일)
+                    </label>
+                    <input
+                      type="number"
+                      value={draft.delay_contribution_days}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, delay_contribution_days: e.target.value }))
+                      }
+                      placeholder="0"
+                      min={0}
+                      className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500">시작일</label>
+                    <input
+                      type="date"
+                      value={draft.started_at}
+                      onChange={(e) => setDraft((d) => ({ ...d, started_at: e.target.value }))}
+                      className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500">출처</label>
+                    <input
+                      value={draft.source}
+                      onChange={(e) => setDraft((d) => ({ ...d, source: e.target.value }))}
+                      placeholder="예: FESCO 공지"
+                      className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={!draft.segment || !draft.title || upsertMut.isPending}
+                    onClick={() =>
+                      upsertMut.mutate({
+                        data: {
+                          lane_id: draft.lane_id || null,
+                          segment: draft.segment,
+                          title: draft.title,
+                          severity: draft.severity,
+                          delay_contribution_days: draft.delay_contribution_days
+                            ? parseFloat(draft.delay_contribution_days)
+                            : null,
+                          started_at: draft.started_at || null,
+                          source: draft.source || null,
+                          confidence: draft.confidence,
+                        },
+                      })
+                    }
+                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                  >
+                    {upsertMut.isPending ? "저장 중…" : "저장"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAdminForm(false);
+                      setDraft(EMPTY_DRAFT);
+                    }}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50"
+                  >
+                    취소
+                  </button>
+                  {adminMsg && <span className="text-xs text-slate-500">{adminMsg}</span>}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4">
+              {detailMode === "index" && (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+                    <KpiCard
+                      label="현재 병목"
+                      value={disruptions.length === 0 ? "없음" : `${disruptions.length} 건`}
+                      sub="활성 구간 기준"
+                      iconColor="var(--status-alert)"
+                      icon={<span style={{ fontWeight: 700 }}>!</span>}
+                      mono={false}
+                    />
+                    <KpiCard
+                      label="평균 추가 지연"
+                      value={avgDelay !== null ? `+${avgDelay} 일` : "—"}
+                      sub="평시 대비 (관측 노선)"
+                      iconColor="var(--status-caution)"
+                      icon={<span style={{ fontWeight: 700 }}>⏱</span>}
+                      mono={false}
+                    />
+                    <KpiCard
+                      label="정상 도착 비율"
+                      value={avgOtp !== null ? `${avgOtp}%` : "—"}
+                      sub="최근 관측 주차 기준"
+                      iconColor="var(--status-observe)"
+                      icon={<span style={{ fontWeight: 700 }}>◷</span>}
+                      mono={false}
+                    />
+                    <KpiCard
+                      label="TCR 운송중"
+                      value={latestTcr?.in_transit != null ? `${latestTcr.in_transit} 편` : "—"}
+                      sub={
+                        latestTcr?.snapshot_date
+                          ? `스냅샷 ${latestTcr.snapshot_date}`
+                          : "스냅샷 수집 중"
+                      }
+                      iconColor="var(--cyan)"
+                      icon={<span style={{ fontWeight: 700 }}>🚉</span>}
+                      mono={false}
+                    />
+                  </div>
+
+                  {focusLane && <RouteAnswerPanel lane={focusLane} />}
+
+                  <Panel
+                    title="유라시아 지연 지도"
+                    badge={<PBadge variant="navy">집계 지수 {calcDelays.calculated.length}</PBadge>}
+                  >
+                    <div
+                      className="mb-3 rounded-lg border px-3 py-2 text-[12px] leading-relaxed"
+                      style={{
+                        borderColor: "var(--status-caution)",
+                        background: "color-mix(in oklch, var(--status-caution) 8%, transparent)",
+                      }}
+                    >
+                      <b className="font-semibold text-foreground">
+                        이 화면은 현재 운영 컨테이너 지연이 아니라 집계된 지연 지수 기준입니다.
+                      </b>{" "}
+                      현재 컨테이너 현황은 ‘현재 지연’ 탭을 보세요. (delay_index_weekly = 주간/집계
+                      median, 일부 노선은 stale·저표본)
+                    </div>
+                    <DelayHotspotMap
+                      calculated={calcDelays.calculated}
+                      calcUnmapped={calcDelays.unmapped}
+                      manual={manualMarkers}
+                    />
+
+                    {featuredLanes.length > 0 && (
+                      <details className="mt-4">
+                        <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
+                          노선별 개념도 상세 ({featuredLanes.length}개 회랑)
+                        </summary>
+                        <div className="mt-3" style={{ display: "flex", flexDirection: "column" }}>
+                          {featuredLanes.map((lane, i) => {
+                            const tier = TIER[tierOf(positiveDelayDays(lane))];
+                            return (
                               <div
+                                key={lane.id}
                                 style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 9,
-                                  flexWrap: "wrap",
+                                  paddingTop: i ? 14 : 0,
+                                  marginTop: i ? 14 : 0,
+                                  borderTop: i ? "1px solid var(--border)" : "none",
                                 }}
                               >
-                                <span
-                                  style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 9,
+                                    flexWrap: "wrap",
+                                  }}
                                 >
-                                  {lane.name_ko ?? lane.name_en ?? lane.id}
-                                </span>
-                                <PBadge variant="secondary">{tier.label}</PBadge>
-                                {lane.activeDisruptions.length > 0 && (
                                   <span
+                                    style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}
+                                  >
+                                    {lane.name_ko ?? lane.name_en ?? lane.id}
+                                  </span>
+                                  <PBadge variant="secondary">{tier.label}</PBadge>
+                                  {lane.activeDisruptions.length > 0 && (
+                                    <span
+                                      style={{
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        color: "var(--status-alert)",
+                                      }}
+                                    >
+                                      활성 병목 {lane.activeDisruptions.length}
+                                    </span>
+                                  )}
+                                </div>
+                                <CorridorDiagram lane={lane} />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </details>
+                    )}
+                    <div style={{ marginTop: 6, fontSize: 11, color: "var(--ink-muted)" }}>
+                      ※ 미확인 실시간 위치는 표시하지 않습니다. 국경·환적 지점과 활성
+                      병목(eurasia_disruptions)만 표기합니다.
+                    </div>
+                  </Panel>
+
+                  <Panel
+                    title="주간 지연 지수 추이"
+                    badge={<PBadge>FESCO · delay_index_weekly</PBadge>}
+                  >
+                    {weeklyTrend.length >= 2 ? (
+                      <ResponsiveContainer width="100%" height={210}>
+                        <LineChart
+                          data={weeklyTrend}
+                          margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
+                        >
+                          <CartesianGrid stroke="var(--border)" vertical={false} />
+                          <XAxis
+                            dataKey="week"
+                            tick={{ fontSize: 10, fill: "var(--ink-muted)" }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            tickFormatter={(v: number) => `${v}일`}
+                            width={40}
+                            tick={{ fontSize: 10, fill: "var(--ink-muted)" }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <Tooltip
+                            formatter={(v: number) => [`${v}일`, "평균 추가 지연"]}
+                            contentStyle={{
+                              background: "var(--card)",
+                              border: "1px solid var(--border)",
+                              borderRadius: 8,
+                              fontSize: 12,
+                            }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="avg"
+                            stroke="var(--status-caution)"
+                            strokeWidth={2}
+                            dot={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <Collecting note="주간 지연 관측이 2주 이상 누적되면 추이가 표시됩니다." />
+                    )}
+                  </Panel>
+
+                  <Panel
+                    title="노선별 회랑 상태"
+                    badge={<PBadge>{lanesWithDelay.length}개 노선 · 행 클릭 시 상세</PBadge>}
+                    bodyPad={0}
+                  >
+                    {lanesWithDelay.length === 0 ? (
+                      <Collecting note="노선 데이터 수집 중" />
+                    ) : (
+                      <div style={{ overflowX: "auto" }}>
+                        <table
+                          style={{
+                            width: "100%",
+                            borderCollapse: "collapse",
+                            fontSize: 13,
+                            minWidth: 640,
+                          }}
+                        >
+                          <thead>
+                            <tr>
+                              <th style={thStyle("left")}>노선</th>
+                              <th style={thStyle("right")}>평시</th>
+                              <th style={thStyle("right")}>현재 예상</th>
+                              <th style={thStyle("right")}>추가 지연</th>
+                              <th style={thStyle("left")}>상태</th>
+                              <th style={thStyle("left")}>근거</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lanesWithDelay.map((lane) => {
+                              const delay = positiveDelayDays(lane);
+                              const tierKey = tierOf(delay);
+                              const tier = TIER[tierKey];
+                              const collecting = tierKey === "none";
+                              return (
+                                <tr
+                                  key={lane.id}
+                                  onClick={() => {
+                                    setSelectedLane(lane);
+                                    setFocusLaneId(lane.id);
+                                  }}
+                                  className="cursor-pointer transition-colors hover:bg-muted/40"
+                                  style={{ opacity: collecting ? 0.72 : 1 }}
+                                >
+                                  <td
                                     style={{
-                                      fontSize: 11,
-                                      fontWeight: 700,
-                                      color: "var(--status-alert)",
+                                      ...tdStyle("left"),
+                                      fontWeight: 600,
+                                      color: "var(--ink)",
                                     }}
                                   >
-                                    활성 병목 {lane.activeDisruptions.length}
-                                  </span>
+                                    {lane.name_ko ?? lane.name_en ?? lane.id}
+                                  </td>
+                                  <td
+                                    style={{
+                                      ...tdStyle("right"),
+                                      fontFamily: "var(--font-mono)",
+                                      color: "var(--ink-muted)",
+                                    }}
+                                  >
+                                    {baseTransitLabel(lane)}
+                                  </td>
+                                  <td
+                                    style={{
+                                      ...tdStyle("right"),
+                                      fontFamily: "var(--font-mono)",
+                                      fontWeight: 700,
+                                      color: collecting ? "var(--ink-muted)" : "var(--ink)",
+                                    }}
+                                  >
+                                    {currentTransitLabel(lane)}
+                                  </td>
+                                  <td
+                                    style={{
+                                      ...tdStyle("right"),
+                                      fontFamily: "var(--font-mono)",
+                                      fontWeight: 700,
+                                      color: tier.color,
+                                    }}
+                                  >
+                                    {delay !== null ? `+${formatDays(delay)}` : "—"}
+                                  </td>
+                                  <td style={tdStyle("left")}>
+                                    {collecting ? (
+                                      <PBadge variant="outline">수집 중</PBadge>
+                                    ) : (
+                                      <StatusPill state={tier.state} label={tier.label} />
+                                    )}
+                                  </td>
+                                  <td
+                                    style={{
+                                      ...tdStyle("left"),
+                                      fontSize: 11.5,
+                                      fontFamily: "var(--font-mono)",
+                                      color: "var(--ink-muted)",
+                                    }}
+                                  >
+                                    {evidenceText(lane)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        padding: "12px 18px",
+                        borderTop: "1px solid var(--border)",
+                        fontSize: 11.5,
+                        color: "var(--ink-muted)",
+                      }}
+                    >
+                      ※ 데이터가 충분치 않은 노선은 추정치를 지어내지 않고 "수집 중"으로 표기합니다.
+                    </div>
+                  </Panel>
+
+                  <ForecastTracking
+                    forecasts={forecasts}
+                    module="eurasia"
+                    title="유라시아 전망 트래킹"
+                  />
+                  <DataQualityBar sources={dataQualitySources} />
+
+                  <p className="border-t border-slate-200 pt-3 text-[11px] text-slate-500">
+                    원본 shipment_legs 비공개 — 집계 지연·신뢰도만 표시
+                  </p>
+                </div>
+              )}
+
+              {detailMode === "manual" && (
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+                  <Panel
+                    title="수동 이슈"
+                    badge={<PBadge>{disruptions.length}건 · eurasia_disruptions</PBadge>}
+                  >
+                    {disruptions.length === 0 ? (
+                      <Collecting note="현재 수동 입력 활성 이슈가 없습니다." />
+                    ) : (
+                      <div className="space-y-2">
+                        {disruptions.map((d) => {
+                          const lane = lanes.find((l) => l.id === d.lane_id);
+                          return (
+                            <div
+                              key={d.id}
+                              className="flex flex-wrap items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs"
+                            >
+                              <SevBadge level={d.severity} />
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-slate-900">{d.title}</p>
+                                <p className="text-slate-500">
+                                  {lane ? (lane.name_ko ?? lane.name_en) : "—"} · {d.segment}
+                                  {d.delay_contribution_days !== null
+                                    ? ` · ${d.delay_contribution_days}일 기여 추정`
+                                    : ""}
+                                </p>
+                                {d.started_at && (
+                                  <p className="text-slate-500">시작: {d.started_at}</p>
                                 )}
                               </div>
-                              <CorridorDiagram lane={lane} />
+                              {d.confidence && (
+                                <span className="text-[10px] text-slate-500">
+                                  신뢰도 {d.confidence}
+                                </span>
+                              )}
                             </div>
                           );
                         })}
                       </div>
-                    </details>
-                  )}
-                  <div style={{ marginTop: 6, fontSize: 11, color: "var(--ink-muted)" }}>
-                    ※ 미확인 실시간 위치는 표시하지 않습니다. 국경·환적 지점과 활성
-                    병목(eurasia_disruptions)만 표기합니다.
-                  </div>
-                </Panel>
+                    )}
+                  </Panel>
 
-                <Panel
-                  title="주간 지연 지수 추이"
-                  badge={<PBadge>FESCO · delay_index_weekly</PBadge>}
-                >
-                  {weeklyTrend.length >= 2 ? (
-                    <ResponsiveContainer width="100%" height={210}>
-                      <LineChart
-                        data={weeklyTrend}
-                        margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
+                  <div className="space-y-5">
+                    <Panel title="입력 관리" badge={<PBadge variant="outline">어드민 보완</PBadge>}>
+                      <p className="text-sm leading-relaxed text-slate-500">
+                        자동 집계로 단정할 수 없는 구간 원인만 수동 이슈로 보완합니다. 현재 지연
+                        산식이나 FESCO/TCR 집계 행과 합산하지 않습니다.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowAdminForm((v) => !v)}
+                        className="mt-3 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white"
                       >
-                        <CartesianGrid stroke="var(--border)" vertical={false} />
-                        <XAxis
-                          dataKey="week"
-                          tick={{ fontSize: 10, fill: "var(--ink-muted)" }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis
-                          tickFormatter={(v: number) => `${v}일`}
-                          width={40}
-                          tick={{ fontSize: 10, fill: "var(--ink-muted)" }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <Tooltip
-                          formatter={(v: number) => [`${v}일`, "평균 추가 지연"]}
-                          contentStyle={{
-                            background: "var(--card)",
-                            border: "1px solid var(--border)",
-                            borderRadius: 8,
-                            fontSize: 12,
-                          }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="avg"
-                          stroke="var(--status-caution)"
-                          strokeWidth={2}
-                          dot={false}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <Collecting note="주간 지연 관측이 2주 이상 누적되면 추이가 표시됩니다." />
-                  )}
-                </Panel>
+                        {showAdminForm ? "입력 폼 닫기" : "장애 입력"}
+                      </button>
+                    </Panel>
 
-                <Panel
-                  title="노선별 회랑 상태"
-                  badge={<PBadge>{lanesWithDelay.length}개 노선 · 행 클릭 시 상세</PBadge>}
-                  bodyPad={0}
-                >
-                  {lanesWithDelay.length === 0 ? (
-                    <Collecting note="노선 데이터 수집 중" />
-                  ) : (
-                    <div style={{ overflowX: "auto" }}>
-                      <table
-                        style={{
-                          width: "100%",
-                          borderCollapse: "collapse",
-                          fontSize: 13,
-                          minWidth: 640,
-                        }}
-                      >
-                        <thead>
-                          <tr>
-                            <th style={thStyle("left")}>노선</th>
-                            <th style={thStyle("right")}>평시</th>
-                            <th style={thStyle("right")}>현재 예상</th>
-                            <th style={thStyle("right")}>추가 지연</th>
-                            <th style={thStyle("left")}>상태</th>
-                            <th style={thStyle("left")}>근거</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {lanesWithDelay.map((lane) => {
-                            const delay = positiveDelayDays(lane);
-                            const tierKey = tierOf(delay);
-                            const tier = TIER[tierKey];
-                            const collecting = tierKey === "none";
-                            return (
-                              <tr
-                                key={lane.id}
-                                onClick={() => {
-                                  setSelectedLane(lane);
-                                  setFocusLaneId(lane.id);
-                                }}
-                                className="cursor-pointer transition-colors hover:bg-muted/40"
-                                style={{ opacity: collecting ? 0.72 : 1 }}
-                              >
-                                <td
-                                  style={{
-                                    ...tdStyle("left"),
-                                    fontWeight: 600,
-                                    color: "var(--ink)",
-                                  }}
-                                >
-                                  {lane.name_ko ?? lane.name_en ?? lane.id}
-                                </td>
-                                <td
-                                  style={{
-                                    ...tdStyle("right"),
-                                    fontFamily: "var(--font-mono)",
-                                    color: "var(--ink-muted)",
-                                  }}
-                                >
-                                  {baseTransitLabel(lane)}
-                                </td>
-                                <td
-                                  style={{
-                                    ...tdStyle("right"),
-                                    fontFamily: "var(--font-mono)",
-                                    fontWeight: 700,
-                                    color: collecting ? "var(--ink-muted)" : "var(--ink)",
-                                  }}
-                                >
-                                  {currentTransitLabel(lane)}
-                                </td>
-                                <td
-                                  style={{
-                                    ...tdStyle("right"),
-                                    fontFamily: "var(--font-mono)",
-                                    fontWeight: 700,
-                                    color: tier.color,
-                                  }}
-                                >
-                                  {delay !== null ? `+${formatDays(delay)}` : "—"}
-                                </td>
-                                <td style={tdStyle("left")}>
-                                  {collecting ? (
-                                    <PBadge variant="outline">수집 중</PBadge>
-                                  ) : (
-                                    <StatusPill state={tier.state} label={tier.label} />
-                                  )}
-                                </td>
-                                <td
-                                  style={{
-                                    ...tdStyle("left"),
-                                    fontSize: 11.5,
-                                    fontFamily: "var(--font-mono)",
-                                    color: "var(--ink-muted)",
-                                  }}
-                                >
-                                  {evidenceText(lane)}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  <div
-                    style={{
-                      padding: "12px 18px",
-                      borderTop: "1px solid var(--border)",
-                      fontSize: 11.5,
-                      color: "var(--ink-muted)",
-                    }}
-                  >
-                    ※ 데이터가 충분치 않은 노선은 추정치를 지어내지 않고 "수집 중"으로 표기합니다.
-                  </div>
-                </Panel>
-
-                <ForecastTracking
-                  forecasts={forecasts}
-                  module="eurasia"
-                  title="유라시아 전망 트래킹"
-                />
-                <DataQualityBar sources={dataQualitySources} />
-
-                <p className="border-t border-slate-200 pt-3 text-[11px] text-slate-500">
-                  원본 shipment_legs 비공개 — 집계 지연·신뢰도만 표시
-                </p>
-              </div>
-            )}
-
-            {detailMode === "manual" && (
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-                <Panel
-                  title="수동 이슈"
-                  badge={<PBadge>{disruptions.length}건 · eurasia_disruptions</PBadge>}
-                >
-                  {disruptions.length === 0 ? (
-                    <Collecting note="현재 수동 입력 활성 이슈가 없습니다." />
-                  ) : (
-                    <div className="space-y-2">
-                      {disruptions.map((d) => {
-                        const lane = lanes.find((l) => l.id === d.lane_id);
-                        return (
-                          <div
-                            key={d.id}
-                            className="flex flex-wrap items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs"
-                          >
-                            <SevBadge level={d.severity} />
-                            <div className="min-w-0 flex-1">
-                              <p className="font-bold text-slate-900">{d.title}</p>
-                              <p className="text-slate-500">
-                                {lane ? (lane.name_ko ?? lane.name_en) : "—"} · {d.segment}
-                                {d.delay_contribution_days !== null
-                                  ? ` · ${d.delay_contribution_days}일 기여 추정`
-                                  : ""}
-                              </p>
-                              {d.started_at && (
-                                <p className="text-slate-500">시작: {d.started_at}</p>
-                              )}
-                            </div>
-                            {d.confidence && (
-                              <span className="text-[10px] text-slate-500">
-                                신뢰도 {d.confidence}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </Panel>
-
-                <div className="space-y-5">
-                  <Panel title="입력 관리" badge={<PBadge variant="outline">어드민 보완</PBadge>}>
-                    <p className="text-sm leading-relaxed text-slate-500">
-                      자동 집계로 단정할 수 없는 구간 원인만 수동 이슈로 보완합니다. 현재 지연
-                      산식이나 FESCO/TCR 집계 행과 합산하지 않습니다.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setShowAdminForm((v) => !v)}
-                      className="mt-3 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white"
+                    <Panel
+                      title="수동 이슈 기준"
+                      badge={<PBadge variant="outline">raw 비노출</PBadge>}
                     >
-                      {showAdminForm ? "입력 폼 닫기" : "장애 입력"}
-                    </button>
-                  </Panel>
+                      <ul className="space-y-2 text-xs leading-relaxed text-slate-500">
+                        <li>· 원본 shipment_legs 또는 컨테이너 ID는 표시하지 않습니다.</li>
+                        <li>· 수동 이슈는 위치와 사유 설명용 오버레이입니다.</li>
+                        <li>
+                          · TCR 현재 지연은 실제 뷰/행이 생길 때까지 완료 상태로 표시하지 않습니다.
+                        </li>
+                      </ul>
+                    </Panel>
+                  </div>
 
-                  <Panel
-                    title="수동 이슈 기준"
-                    badge={<PBadge variant="outline">raw 비노출</PBadge>}
-                  >
-                    <ul className="space-y-2 text-xs leading-relaxed text-slate-500">
-                      <li>· 원본 shipment_legs 또는 컨테이너 ID는 표시하지 않습니다.</li>
-                      <li>· 수동 이슈는 위치와 사유 설명용 오버레이입니다.</li>
-                      <li>
-                        · TCR 현재 지연은 실제 뷰/행이 생길 때까지 완료 상태로 표시하지 않습니다.
-                      </li>
-                    </ul>
-                  </Panel>
+                  <div className="lg:col-span-2">
+                    <DataQualityBar sources={dataQualitySources} />
+                  </div>
                 </div>
-
-                <div className="lg:col-span-2">
-                  <DataQualityBar sources={dataQualitySources} />
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <DetailDrawer
-        open={selectedLane !== null}
-        onClose={() => setSelectedLane(null)}
-        title={
-          selectedLane ? (selectedLane.name_ko ?? selectedLane.name_en ?? selectedLane.id) : ""
-        }
-      >
-        {drawerContent}
-      </DetailDrawer>
-    </LogisightEurasia>
+        <DetailDrawer
+          open={selectedLane !== null}
+          onClose={() => setSelectedLane(null)}
+          title={
+            selectedLane ? (selectedLane.name_ko ?? selectedLane.name_en ?? selectedLane.id) : ""
+          }
+        >
+          {drawerContent}
+        </DetailDrawer>
+      </LogisightEurasia>
+      <HomeFooter />
+    </div>
   );
 }
