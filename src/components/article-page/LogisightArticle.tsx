@@ -15,6 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { Fragment, useState } from "react";
 import type { ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 
 import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
@@ -121,6 +122,7 @@ const STYLE = `
 .lsg-ls{background:linear-gradient(95deg,#fff 35%,#2dd4bf);-webkit-background-clip:text;background-clip:text;color:transparent}
 
 .lsg-root .bc{padding-top:22px;font-size:12px;color:var(--mute)}.lsg-root .bc b{color:var(--body);font-weight:500}
+.lsg-root .bc a{color:var(--body)}.lsg-root .bc a:hover{color:var(--ink);text-decoration:underline}
 .lsg-root .cat{display:inline-block;margin-top:18px;font-size:11px;font-weight:700;letter-spacing:.04em;color:#fff;background:#0f1b33;border-radius:6px;padding:4px 10px}
 .lsg-root h1{margin-top:14px;font-size:clamp(28px,4.4vw,40px);font-weight:800;line-height:1.18;letter-spacing:-.035em;color:var(--ink)}
 .lsg-root .deck{margin-top:14px;font-size:18px;line-height:1.6;color:var(--body);font-weight:400}
@@ -277,11 +279,14 @@ export default function LogisightArticle({
         <article>
           <div className="read">
             <div className="bc">
-              홈 <b>›</b> 뉴스
+              <Link to="/">홈</Link> <b>›</b> <Link to="/news">뉴스</Link>
               {a.category ? (
                 <>
                   {" "}
-                  <b>›</b> {a.category}
+                  <b>›</b>{" "}
+                  <Link to="/news" search={{ cat: a.category }}>
+                    {a.category}
+                  </Link>
                 </>
               ) : null}
             </div>
