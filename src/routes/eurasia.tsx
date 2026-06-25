@@ -33,7 +33,7 @@ function EurasiaPage() {
   // 운영 현재 지연(operational) TCR 레코드 → CorridorRecord 매핑. 원본 컨테이너 비노출, 집계만.
   const opDelay = (r: (typeof operational.records)[number]) =>
     Math.max(0, Math.round(r.alert_delay_days ?? r.max_delay_days ?? r.median_delay_days ?? 0));
-  const realRecords: CorridorRecord[] = operational.records
+  const tcrRecords: CorridorRecord[] = operational.records
     .filter((r) => r.source_system === "TCR")
     .map((r) => ({
       route_label:
@@ -44,20 +44,18 @@ function EurasiaPage() {
       current_eta: r.current_eta ?? null,
       delay_days: opDelay(r),
       // 영향 컨테이너(active_delayed_count)는 회사 기밀 — 외부 페이지에 노출/전송하지 않는다.
-    }))
-    .sort((a, b) => (b.delay_days ?? 0) - (a.delay_days ?? 0));
+    }));
 
-  // 예시(실데이터 없음): 인천-청도-알마티. 청도 40일 대기 후 발차, 기준 40일 → 현재 70일+(+30일↑).
-  // '예시' 라벨로 명확히 구분되며 컴포넌트가 집계·맵에서 제외한다. 표 맨 끝에 1행 추가.
-  const ALMATY_EXAMPLE: CorridorRecord = {
+  // 수동 입력(자동 파이프라인 밖, 어드민 수기 레이어 성격의 실정보): 인천-청도-알마티.
+  // 청도 40일 대기 후 발차, 기준 리드타임 40일 → 현재 70일+ (지연 약 30일). 일반 지연 행으로 표기.
+  tcrRecords.push({
     route_label: "인천 → 청도 → 알마티",
-    example: true,
-    note: "예시 · 청도 40일 대기 후 발차 · 기준 40일 → 현재 70일+",
+    note: "청도 40일 대기 후 발차 · 기준 40일 → 현재 70일+",
     original_eta: null,
     current_eta: null,
     delay_days: 30,
-  };
-  const tcrRecords: CorridorRecord[] = [...realRecords, ALMATY_EXAMPLE];
+  });
+  tcrRecords.sort((a, b) => (b.delay_days ?? 0) - (a.delay_days ?? 0));
 
   // operational SourceStatus → 컴포넌트 SourceStatus(name/state/detail) 매핑.
   const eurasiaSources: EuSourceStatus[] = operational.sources.map((s) => ({
