@@ -52,7 +52,7 @@ type TrackHorizonPosition = {
 };
 
 const MONO = '600 10px "JetBrains Mono", ui-monospace, monospace';
-const KIND_LABEL: Record<string, string> = { cyclone: "태풍", storm: "폭풍", flood: "홍수", snow: "폭설", other: "경보" };
+const KIND_LABEL: Record<string, string> = { cyclone: "태풍", storm: "폭풍", flood: "홍수", snow: "폭설", earthquake: "지진", tsunami: "쓰나미", other: "경보" };
 const TYPE_KO: Record<AssetType, string> = { port: "항만", choke: "초크포인트", rail: "철도" };
 const TYPE_BADGE: Record<AssetType, string> = { port: "항만", choke: "관문", rail: "철도" };
 
