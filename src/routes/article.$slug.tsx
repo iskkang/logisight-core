@@ -1,7 +1,6 @@
 import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
-import type { ReactNode } from "react";
 
 import {
   articleQueryOptions,
@@ -10,9 +9,12 @@ import {
   estimateReadMinutes,
 } from "@/lib/api/article";
 import { formatPublishedAt, isInternalNewsItem } from "@/lib/api/news";
-import type { NewsItem } from "@/lib/api/news";
 import { normalizeArticleContent } from "@/lib/article-content";
-import { Breadcrumb } from "@/components/site/Breadcrumb";
+import LogisightArticle from "@/components/article-page/LogisightArticle";
+import type {
+  Article as LsArticle,
+  RelatedArticle,
+} from "@/components/article-page/LogisightArticle";
 
 export const Route = createFileRoute("/article/$slug")({
   loader: async ({ params, context }) => {
@@ -96,24 +98,6 @@ export const Route = createFileRoute("/article/$slug")({
   component: ArticlePage,
 });
 
-const CATEGORY_COLORS: Record<string, { bg: string; fg: string }> = {
-  해상: { bg: "var(--color-cat-sea, var(--color-navy-900))", fg: "#fff" },
-  항공: { bg: "var(--color-cat-air, var(--color-navy-600))", fg: "#fff" },
-  철도: { bg: "var(--color-cat-rail, #6b3a2a)", fg: "#fff" },
-  물류: { bg: "var(--color-cat-logistics, #1f2937)", fg: "#fff" },
-  무역: { bg: "var(--color-cat-trade, #0d7a5f)", fg: "#fff" },
-};
-
-function categoryStyle(cat: string | null) {
-  if (!cat) return { bg: "var(--color-navy-900)", fg: "var(--color-cyan)" };
-  return (
-    CATEGORY_COLORS[cat] ?? {
-      bg: "var(--color-navy-900)",
-      fg: "var(--color-cyan)",
-    }
-  );
-}
-
 function ArticlePage() {
   const { slug } = Route.useParams();
   const { data: article } = useSuspenseQuery(articleQueryOptions(slug));
@@ -131,190 +115,60 @@ function ArticlePage() {
     imageUrl: article.image_url,
     imageCredit: article.image_credit,
   });
-  const readMin = estimateReadMinutes(normalizedContent);
-  const catStyle = categoryStyle(article.category);
   const hasContent = normalizedContent.length > 0;
+  const readMin = estimateReadMinutes(normalizedContent);
   const isExternalSource =
     !!article.url &&
     /^https?:\/\//.test(article.url) &&
     !article.url.includes("logisight.mtlship.com/sample");
 
+  // 인텔리전스 필드(summary_points·impact)는 maritime_news 에 없으므로 전달하지 않는다 → 자동 숨김.
+  const articleProp: LsArticle = {
+    id: String(article.id),
+    category: article.category,
+    title: article.title,
+    deck: article.summary,
+    source: article.source,
+    published_at: formatPublishedAt(article.published_at),
+    read_minutes: readMin,
+    image_url: article.image_url,
+    image_caption: article.image_credit,
+    contentNode: hasContent ? (
+      <ReactMarkdown>{normalizedContent}</ReactMarkdown>
+    ) : (
+      // 본문 없음 → 더미 대신 "수집 예정" 안내(데이터 안전 규칙).
+      <p>이 기사의 전문은 수집 예정입니다.</p>
+    ),
+    source_origin: isExternalSource ? null : article.source,
+    source_url: isExternalSource ? article.url : null,
+    tags: article.tags,
+  };
+
+  const relatedById = new Map(related.map((n) => [String(n.id), n]));
+  const relatedProp: RelatedArticle[] = related.map((n) => ({
+    id: String(n.id),
+    category: n.category,
+    title: n.title,
+    source: n.source,
+    published_at: formatPublishedAt(n.published_at),
+  }));
+
   return (
-    <article className="mx-auto max-w-3xl px-4 py-10 lg:py-14">
-      <Breadcrumb
-        className="mb-6"
-        items={[{ label: "홈", to: "/" }, { label: "뉴스", to: "/news" }, { label: article.title }]}
-      />
-      <header className="border-b border-[var(--color-line)] pb-6">
-        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.15em]">
-          {article.category && (
-            <span
-              className="rounded-sm px-2 py-0.5 font-semibold"
-              style={{ background: catStyle.bg, color: catStyle.fg }}
-            >
-              {article.category}
-            </span>
-          )}
-        </div>
-        <h1
-          className="mt-4 text-3xl font-bold leading-tight text-[var(--color-ink)] lg:text-4xl"
-          style={{ wordBreak: "keep-all" }}
-        >
-          {article.title}
-        </h1>
-        {article.summary && (
-          <p className="mt-4 text-lg leading-relaxed text-[var(--color-ink-muted)]">
-            {article.summary}
-          </p>
-        )}
-        <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-ink-muted)]">
-          <span className="font-semibold">{article.source}</span>
-          <span>·</span>
-          <time dateTime={article.published_at ?? undefined}>
-            {formatPublishedAt(article.published_at)}
-          </time>
-          {readMin && (
-            <>
-              <span>·</span>
-              <span>읽는 시간 약 {readMin}분</span>
-            </>
-          )}
-        </div>
-      </header>
-
-      {article.image_url && (
-        <figure className="my-8">
-          <img
-            src={article.image_url}
-            alt={article.title}
-            className="w-full rounded-lg border border-[var(--color-line)]"
-            loading="lazy"
-          />
-          {article.image_credit && (
-            <figcaption className="mt-2 text-xs text-[var(--color-ink-muted)]">
-              {article.image_credit}
-            </figcaption>
-          )}
-        </figure>
-      )}
-
-      {hasContent ? (
-        <div
-          className="prose prose-neutral max-w-none text-[var(--color-ink)]"
-          style={{ lineHeight: 1.8, wordBreak: "keep-all" }}
-        >
-          <ReactMarkdown>{normalizedContent}</ReactMarkdown>
-        </div>
-      ) : (
-        <div
-          className="my-8 rounded-lg border border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-navy-900)_4%,white)] p-6"
-          style={{ lineHeight: 1.8, wordBreak: "keep-all" }}
-        >
-          {article.summary && (
-            <p className="text-base text-[var(--color-ink)]">{article.summary}</p>
-          )}
-          <p className="mt-4 text-sm text-[var(--color-ink-muted)]">
-            이 기사의 전문은 수집 예정입니다.
-          </p>
-        </div>
-      )}
-
-      {article.tags && article.tags.length > 0 && (
-        <ul className="mt-8 flex flex-wrap gap-2">
-          {article.tags.map((t: string) => (
-            <li
-              key={t}
-              className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs text-[var(--color-ink-muted)]"
-            >
-              #{t}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <footer className="mt-10 border-t border-[var(--color-line)] pt-6 text-sm text-[var(--color-ink-muted)]">
-        출처:{" "}
-        {isExternalSource ? (
-          <a
-            href={article.url!}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-[var(--color-navy-600)] underline"
-          >
-            {article.source}
-          </a>
+    <LogisightArticle
+      article={articleProp}
+      related={relatedProp}
+      renderRelatedLink={(item, children, className) => {
+        const n = item.id ? relatedById.get(item.id) : undefined;
+        return n && isInternalNewsItem(n) ? (
+          <Link to="/article/$slug" params={{ slug: articleParam(n) }} className={className}>
+            {children}
+          </Link>
         ) : (
-          <span className="font-semibold text-[var(--color-ink)]">{article.source}</span>
-        )}
-      </footer>
-
-      {related.length > 0 && (
-        <section className="mt-16">
-          <h2 className="mb-6 text-lg font-bold text-[var(--color-ink)]">관련 기사</h2>
-          <ul className="grid gap-6 sm:grid-cols-3">
-            {related.map((n) => (
-              <RelatedCard key={n.id} item={n} />
-            ))}
-          </ul>
-        </section>
-      )}
-    </article>
-  );
-}
-
-function RelatedCard({ item }: { item: NewsItem }) {
-  const content = (
-    <>
-      {item.category && (
-        <span
-          className="inline-block rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase"
-          style={{
-            background: "var(--color-navy-900)",
-            color: "var(--color-cyan)",
-          }}
-        >
-          {item.category}
-        </span>
-      )}
-      <h3
-        className="mt-2 text-sm font-bold leading-snug text-[var(--color-ink)]"
-        style={{ wordBreak: "keep-all" }}
-      >
-        {item.title}
-      </h3>
-      <p className="mt-2 text-xs text-[var(--color-ink-muted)]">
-        {item.source} · {formatPublishedAt(item.published_at)}
-      </p>
-    </>
-  );
-  return (
-    <li>
-      <NewsItemLink
-        item={item}
-        className="block h-full rounded-lg border border-[var(--color-line)] bg-[var(--color-card)] p-4 transition hover:border-[var(--color-navy-600)]"
-      >
-        {content}
-      </NewsItemLink>
-    </li>
-  );
-}
-
-function NewsItemLink({
-  item,
-  className,
-  children,
-}: {
-  item: NewsItem;
-  className?: string;
-  children: ReactNode;
-}) {
-  return isInternalNewsItem(item) ? (
-    <Link to="/article/$slug" params={{ slug: articleParam(item) }} className={className}>
-      {children}
-    </Link>
-  ) : (
-    <a href={item.url} target="_blank" rel="noopener noreferrer" className={className}>
-      {children}
-    </a>
+          <a href={n?.url ?? "#"} target="_blank" rel="noopener noreferrer" className={className}>
+            {children}
+          </a>
+        );
+      }}
+    />
   );
 }
