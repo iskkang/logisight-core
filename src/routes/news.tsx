@@ -79,7 +79,9 @@ function NewsPage() {
   const mostPopular = stories.slice(0, 6);
 
   return (
-    <div className="bg-white">
+    // 다크 래퍼: 반투명 HomeNav(bg #070b16cc) 뒤 배경을 홈과 동일하게 어둡게 둬 슬레이트색 번짐 방지.
+    // 본문(LogisightNewsTop 흰색 + theme-light 카드 + 다크 푸터)이 내비 아래를 모두 덮는다.
+    <div className="min-h-screen bg-[#070b16]">
       <HomeNav active="news" />
       <LogisightNewsTop
         showNav={false}
@@ -95,11 +97,20 @@ function NewsPage() {
         noteText="최신 수집 기사 중 대표 헤드라인을 자동 노출합니다. 지표 기반 큐레이션은 백로그입니다."
         renderPickLink={(_p, children, className) =>
           featured && isInternalNewsItem(featured) ? (
-            <Link to="/article/$slug" params={{ slug: articleParam(featured) }} className={className}>
+            <Link
+              to="/article/$slug"
+              params={{ slug: articleParam(featured) }}
+              className={className}
+            >
               {children}
             </Link>
           ) : (
-            <a href={featured?.url ?? "#"} target="_blank" rel="noopener noreferrer" className={className}>
+            <a
+              href={featured?.url ?? "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={className}
+            >
               {children}
             </a>
           )
@@ -121,50 +132,150 @@ function NewsPage() {
               eyebrow="Top Stories"
             />
 
-          {/* Lead + secondary */}
-          <div className="grid gap-10 lg:grid-cols-12">
-            {/* Lead story */}
-            {lead && (
-              <article className="lg:col-span-7 lg:border-r lg:border-[var(--color-line)] lg:pr-10">
-                <Exclusive item={lead} />
-                <h2 className="font-serif-display mt-3 text-3xl font-black leading-[1.1] text-[var(--color-navy-900)] lg:text-[44px]">
-                  <NewsItemLink
-                    item={lead}
-                    className="hover:underline decoration-[var(--color-cyan)] decoration-2 underline-offset-4"
-                  >
-                    {lead.title}
-                  </NewsItemLink>
-                </h2>
-                {lead.summary && (
-                  <p className="mt-4 text-[17px] leading-[1.65] text-[var(--color-ink)]">
-                    {lead.summary}
-                  </p>
-                )}
-                <Byline item={lead} className="mt-4" />
-                {lead.image_url && (
-                  <NewsItemLink item={lead} className="mt-6 block">
-                    <figure>
-                      <img
-                        src={lead.image_url}
-                        alt={lead.title}
-                        className="aspect-[16/10] w-full object-cover"
-                        loading="eager"
-                      />
-                      <figcaption className="mt-2 text-[12px] text-[var(--color-ink-muted)]">
-                        사진 · {lead.source}
-                      </figcaption>
-                    </figure>
-                  </NewsItemLink>
-                )}
-              </article>
+            {/* Lead + secondary */}
+            <div className="grid gap-10 lg:grid-cols-12">
+              {/* Lead story */}
+              {lead && (
+                <article className="lg:col-span-7 lg:border-r lg:border-[var(--color-line)] lg:pr-10">
+                  <Exclusive item={lead} />
+                  <h2 className="font-serif-display mt-3 text-3xl font-black leading-[1.1] text-[var(--color-navy-900)] lg:text-[44px]">
+                    <NewsItemLink
+                      item={lead}
+                      className="hover:underline decoration-[var(--color-cyan)] decoration-2 underline-offset-4"
+                    >
+                      {lead.title}
+                    </NewsItemLink>
+                  </h2>
+                  {lead.summary && (
+                    <p className="mt-4 text-[17px] leading-[1.65] text-[var(--color-ink)]">
+                      {lead.summary}
+                    </p>
+                  )}
+                  <Byline item={lead} className="mt-4" />
+                  {lead.image_url && (
+                    <NewsItemLink item={lead} className="mt-6 block">
+                      <figure>
+                        <img
+                          src={lead.image_url}
+                          alt={lead.title}
+                          className="aspect-[16/10] w-full object-cover"
+                          loading="eager"
+                        />
+                        <figcaption className="mt-2 text-[12px] text-[var(--color-ink-muted)]">
+                          사진 · {lead.source}
+                        </figcaption>
+                      </figure>
+                    </NewsItemLink>
+                  )}
+                </article>
+              )}
+
+              {/* Secondary stories column */}
+              <div className="lg:col-span-5 lg:pl-2">
+                <ul className="divide-y divide-[var(--color-line)]">
+                  {secondary.map((n) => (
+                    <li key={n.id} className="grid grid-cols-3 gap-4 py-5 first:pt-0">
+                      <div className="col-span-2">
+                        <KickerCat item={n} />
+                        <h3 className="font-serif-display mt-2 text-xl font-bold leading-snug text-[var(--color-navy-900)]">
+                          <NewsItemLink
+                            item={n}
+                            className="hover:underline decoration-[var(--color-cyan)] underline-offset-4"
+                          >
+                            {n.title}
+                          </NewsItemLink>
+                        </h3>
+                        {n.summary && (
+                          <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
+                            {n.summary}
+                          </p>
+                        )}
+                        <Byline item={n} className="mt-2 text-[11px]" />
+                      </div>
+                      {n.image_url ? (
+                        <NewsItemLink item={n} className="col-span-1 block">
+                          <img
+                            src={n.image_url}
+                            alt={n.title}
+                            className="aspect-[4/3] h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        </NewsItemLink>
+                      ) : (
+                        <div className="col-span-1 aspect-[4/3] bg-[var(--color-surface)]" />
+                      )}
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Most Popular */}
+                <aside className="mt-8 border-t-[3px] border-[var(--color-navy-900)] pt-4">
+                  <h3 className="font-serif-display text-lg font-bold text-[var(--color-navy-900)]">
+                    Most Popular · 많이 본 기사
+                  </h3>
+                  <ol className="mt-4 space-y-3">
+                    {mostPopular.map((n, i) => (
+                      <li
+                        key={n.id}
+                        className="flex gap-3 border-b border-[var(--color-line)] pb-3 last:border-0"
+                      >
+                        <span className="font-serif-display text-2xl font-black leading-none text-[var(--color-cyan)]">
+                          {i + 1}
+                        </span>
+                        <NewsItemLink
+                          item={n}
+                          className="text-[13px] font-semibold leading-snug text-[var(--color-navy-900)] hover:underline"
+                        >
+                          {n.title}
+                        </NewsItemLink>
+                      </li>
+                    ))}
+                  </ol>
+                </aside>
+              </div>
+            </div>
+
+            {/* Opinion / In-depth strip */}
+            {opinionStrip.length > 0 && (
+              <>
+                <div className="mt-14">
+                  <SectionRule label="기획·심층" eyebrow="In Depth" />
+                </div>
+                <div className="grid gap-8 border-y border-[var(--color-line)] py-6 md:grid-cols-3">
+                  {opinionStrip.map((n) => (
+                    <article key={n.id} className="border-l-2 border-[var(--color-navy-900)] pl-4">
+                      <KickerCat item={n} />
+                      <h3 className="font-serif-display mt-2 text-lg font-bold italic leading-snug text-[var(--color-navy-900)]">
+                        <NewsItemLink item={n} className="hover:underline">
+                          {n.title}
+                        </NewsItemLink>
+                      </h3>
+                      <Byline item={n} className="mt-2 text-[11px]" />
+                    </article>
+                  ))}
+                </div>
+              </>
             )}
 
-            {/* Secondary stories column */}
-            <div className="lg:col-span-5 lg:pl-2">
-              <ul className="divide-y divide-[var(--color-line)]">
-                {secondary.map((n) => (
-                  <li key={n.id} className="grid grid-cols-3 gap-4 py-5 first:pt-0">
-                    <div className="col-span-2">
+            {/* Grid section */}
+            {gridSection.length > 0 && (
+              <>
+                <div className="mt-14">
+                  <SectionRule label="더 많은 보도" eyebrow="More News" />
+                </div>
+                <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
+                  {gridSection.map((n) => (
+                    <article key={n.id} className="flex flex-col">
+                      {n.image_url && (
+                        <NewsItemLink item={n} className="mb-3 block overflow-hidden">
+                          <img
+                            src={n.image_url}
+                            alt={n.title}
+                            className="aspect-[16/10] w-full object-cover transition-transform duration-500 hover:scale-105"
+                            loading="lazy"
+                          />
+                        </NewsItemLink>
+                      )}
                       <KickerCat item={n} />
                       <h3 className="font-serif-display mt-2 text-xl font-bold leading-snug text-[var(--color-navy-900)]">
                         <NewsItemLink
@@ -179,160 +290,60 @@ function NewsPage() {
                           {n.summary}
                         </p>
                       )}
-                      <Byline item={n} className="mt-2 text-[11px]" />
-                    </div>
-                    {n.image_url ? (
-                      <NewsItemLink item={n} className="col-span-1 block">
-                        <img
-                          src={n.image_url}
-                          alt={n.title}
-                          className="aspect-[4/3] h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      </NewsItemLink>
-                    ) : (
-                      <div className="col-span-1 aspect-[4/3] bg-[var(--color-surface)]" />
-                    )}
-                  </li>
-                ))}
-              </ul>
+                      <Byline item={n} className="mt-3 text-[11px]" />
+                    </article>
+                  ))}
+                </div>
+              </>
+            )}
 
-              {/* Most Popular */}
-              <aside className="mt-8 border-t-[3px] border-[var(--color-navy-900)] pt-4">
-                <h3 className="font-serif-display text-lg font-bold text-[var(--color-navy-900)]">
-                  Most Popular · 많이 본 기사
-                </h3>
-                <ol className="mt-4 space-y-3">
-                  {mostPopular.map((n, i) => (
+            {/* Wire feed (compact list) */}
+            {moreSection.length > 0 && (
+              <>
+                <div className="mt-14">
+                  <SectionRule label="실시간 와이어" eyebrow="Latest Wire" />
+                </div>
+                <ul className="grid gap-x-10 gap-y-4 md:grid-cols-2">
+                  {moreSection.map((n) => (
                     <li
                       key={n.id}
-                      className="flex gap-3 border-b border-[var(--color-line)] pb-3 last:border-0"
+                      className="flex gap-4 border-b border-dotted border-[var(--color-line)] pb-4"
                     >
-                      <span className="font-serif-display text-2xl font-black leading-none text-[var(--color-cyan)]">
-                        {i + 1}
-                      </span>
-                      <NewsItemLink
-                        item={n}
-                        className="text-[13px] font-semibold leading-snug text-[var(--color-navy-900)] hover:underline"
+                      <time
+                        dateTime={n.published_at ?? undefined}
+                        className="shrink-0 pt-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]"
                       >
-                        {n.title}
-                      </NewsItemLink>
+                        {formatPublishedAt(n.published_at)}
+                      </time>
+                      <div>
+                        <KickerCat item={n} small />
+                        <h4 className="mt-1 text-[14px] font-semibold leading-snug text-[var(--color-navy-900)]">
+                          <NewsItemLink item={n} className="hover:underline">
+                            {n.title}
+                          </NewsItemLink>
+                        </h4>
+                      </div>
                     </li>
                   ))}
-                </ol>
-              </aside>
+                </ul>
+              </>
+            )}
+
+            {/* Newsletter band */}
+            <div
+              className="mt-14 flex flex-wrap items-center justify-between gap-6 rounded-lg px-7 py-6 text-white"
+              style={{ background: "var(--color-navy-900)" }}
+            >
+              <div>
+                <div className="text-lg font-bold">📨 매주 한 편의 물류 브리핑</div>
+                <p className="mt-1.5 text-[13px] text-white/78">
+                  운임 지수·정책 변화·회랑 동향을 정리한 뉴스레터를 받아보세요.
+                </p>
+              </div>
+              <div className="min-w-[280px] max-w-[460px] flex-1">
+                <NewsletterForm compact />
+              </div>
             </div>
-          </div>
-
-          {/* Opinion / In-depth strip */}
-          {opinionStrip.length > 0 && (
-            <>
-              <div className="mt-14">
-                <SectionRule label="기획·심층" eyebrow="In Depth" />
-              </div>
-              <div className="grid gap-8 border-y border-[var(--color-line)] py-6 md:grid-cols-3">
-                {opinionStrip.map((n) => (
-                  <article key={n.id} className="border-l-2 border-[var(--color-navy-900)] pl-4">
-                    <KickerCat item={n} />
-                    <h3 className="font-serif-display mt-2 text-lg font-bold italic leading-snug text-[var(--color-navy-900)]">
-                      <NewsItemLink item={n} className="hover:underline">
-                        {n.title}
-                      </NewsItemLink>
-                    </h3>
-                    <Byline item={n} className="mt-2 text-[11px]" />
-                  </article>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Grid section */}
-          {gridSection.length > 0 && (
-            <>
-              <div className="mt-14">
-                <SectionRule label="더 많은 보도" eyebrow="More News" />
-              </div>
-              <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
-                {gridSection.map((n) => (
-                  <article key={n.id} className="flex flex-col">
-                    {n.image_url && (
-                      <NewsItemLink item={n} className="mb-3 block overflow-hidden">
-                        <img
-                          src={n.image_url}
-                          alt={n.title}
-                          className="aspect-[16/10] w-full object-cover transition-transform duration-500 hover:scale-105"
-                          loading="lazy"
-                        />
-                      </NewsItemLink>
-                    )}
-                    <KickerCat item={n} />
-                    <h3 className="font-serif-display mt-2 text-xl font-bold leading-snug text-[var(--color-navy-900)]">
-                      <NewsItemLink
-                        item={n}
-                        className="hover:underline decoration-[var(--color-cyan)] underline-offset-4"
-                      >
-                        {n.title}
-                      </NewsItemLink>
-                    </h3>
-                    {n.summary && (
-                      <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
-                        {n.summary}
-                      </p>
-                    )}
-                    <Byline item={n} className="mt-3 text-[11px]" />
-                  </article>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Wire feed (compact list) */}
-          {moreSection.length > 0 && (
-            <>
-              <div className="mt-14">
-                <SectionRule label="실시간 와이어" eyebrow="Latest Wire" />
-              </div>
-              <ul className="grid gap-x-10 gap-y-4 md:grid-cols-2">
-                {moreSection.map((n) => (
-                  <li
-                    key={n.id}
-                    className="flex gap-4 border-b border-dotted border-[var(--color-line)] pb-4"
-                  >
-                    <time
-                      dateTime={n.published_at ?? undefined}
-                      className="shrink-0 pt-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]"
-                    >
-                      {formatPublishedAt(n.published_at)}
-                    </time>
-                    <div>
-                      <KickerCat item={n} small />
-                      <h4 className="mt-1 text-[14px] font-semibold leading-snug text-[var(--color-navy-900)]">
-                        <NewsItemLink item={n} className="hover:underline">
-                          {n.title}
-                        </NewsItemLink>
-                      </h4>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          {/* Newsletter band */}
-          <div
-            className="mt-14 flex flex-wrap items-center justify-between gap-6 rounded-lg px-7 py-6 text-white"
-            style={{ background: "var(--color-navy-900)" }}
-          >
-            <div>
-              <div className="text-lg font-bold">📨 매주 한 편의 물류 브리핑</div>
-              <p className="mt-1.5 text-[13px] text-white/78">
-                운임 지수·정책 변화·회랑 동향을 정리한 뉴스레터를 받아보세요.
-              </p>
-            </div>
-            <div className="min-w-[280px] max-w-[460px] flex-1">
-              <NewsletterForm compact />
-            </div>
-          </div>
           </div>
         )}
       </div>
