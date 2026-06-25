@@ -94,6 +94,8 @@ function AdminForecastsPage() {
     supabase
       .from("forecasts")
       .select(SELECT)
+      // 운임 전망 검수 화면 — climate(기후 영향 초안)는 별도 파이프라인 소관이라 제외(모듈 혼입 방지).
+      .in("module", ["rates", "eurasia", "trade", "policy"])
       .order("created_at", { ascending: false })
       .limit(200)
       .then(({ data }) => setRows((data ?? []) as Forecast[]));

@@ -8,6 +8,10 @@ import type { Forecast } from "./forecasts";
 // and the query never 400s if the scoring migration hasn't been applied yet (resilient).
 const SELECT = "*";
 
+// 운임 전망 페이지가 다루는 모듈. climate(기후 영향 초안)는 globe/기후 페이지 소관 —
+// 같은 forecasts 테이블을 쓰지만 climate-generate가 직접 적재하므로 read에서 명시적으로 제외한다.
+const RATE_MODULES = ["rates", "eurasia", "trade", "policy"] as const;
+
 async function serviceClient() {
   const { createClient } = await import("@supabase/supabase-js");
   return createClient(
@@ -27,6 +31,7 @@ export const getPublishedForecasts = createServerFn({ method: "GET" }).handler(
       .from("forecasts")
       .select(SELECT)
       .in("status", ["published", "resolved"])
+      .in("module", [...RATE_MODULES])
       .order("published_at", { ascending: false, nullsFirst: false })
       .limit(100);
     if (error) throw new Error(error.message);
@@ -133,6 +138,7 @@ export const getForecastSeriesBatch = createServerFn({ method: "GET" }).handler(
       .from("forecasts")
       .select("id,metric_ref,cadence,published_at,horizon_date")
       .in("status", ["published", "resolved"])
+      .in("module", [...RATE_MODULES])
       .limit(100);
     if (error) throw new Error(error.message);
     const out: Record<string, ForecastSeries> = {};
