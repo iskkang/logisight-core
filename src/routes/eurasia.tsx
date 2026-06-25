@@ -43,7 +43,7 @@ function EurasiaPage() {
       original_eta: r.original_expected_arrival_date ?? null,
       current_eta: r.current_eta ?? null,
       delay_days: opDelay(r),
-      active_containers: Math.max(0, r.active_delayed_count || r.container_count || 0),
+      // 영향 컨테이너(active_delayed_count)는 회사 기밀 — 외부 페이지에 노출/전송하지 않는다.
     }))
     .sort((a, b) => (b.delay_days ?? 0) - (a.delay_days ?? 0));
 

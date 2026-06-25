@@ -136,7 +136,7 @@ const STYLE = `
 .lsg-root .s-ok{background:#ecfdf3;color:#067647;border:1px solid #c7ead6}.lsg-root .s-ok .d{background:#16a34a}
 .lsg-root .s-hold{background:#f1f5f9;color:#5b6677;border:1px solid #dbe3ec}.lsg-root .s-hold .d{background:#94a3b8}
 .lsg-root .s-bad{background:#fef2f2;color:#b42318;border:1px solid #fbd5d5}.lsg-root .s-bad .d{background:#dc2626}
-.lsg-root .tiles{margin-top:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.lsg-root .tiles{margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 @media(max-width:880px){.lsg-root .tiles{grid-template-columns:repeat(2,1fr)}}
 .lsg-root .tile{border:1px solid var(--line);background:#fff;border-radius:12px;padding:13px 14px}
 .lsg-root .tile .k{font-size:11.5px;color:var(--mute)}
@@ -265,13 +265,12 @@ export default function LogisightEurasia({
     const n = recs.length;
     const delays = recs.map((r) => r.delay_days ?? 0);
     const avg = n ? Math.round(delays.reduce((a, b) => a + b, 0) / n) : null;
-    const cont = recs.reduce((a, r) => a + (r.active_containers ?? 0), 0);
     const worst = recs.reduce<CorridorRecord | null>(
       (w, r) => (!w || (r.delay_days ?? 0) > (w.delay_days ?? 0) ? r : w),
       null,
     );
     const gaugePct = avg == null ? 0 : Math.min(100, Math.round((avg / 25) * 100));
-    return { n, avg, cont, worst, gaugePct };
+    return { n, avg, worst, gaugePct };
   }, [records]);
 
   const verdict =
@@ -294,7 +293,7 @@ export default function LogisightEurasia({
   const aiLine =
     m.n === 0
       ? "TCR 스냅샷이 수집되면 노선별 상태·지연이 표시됩니다. FESCO·TSR은 데이터 보류 중입니다."
-      : `영향 컨테이너 합계 ${m.cont}건, 평균 ETA 지연 ${m.avg}일. 지연은 노선 최초 예정 ETA(baseline) 대비입니다. FESCO·TSR은 데이터 보류 중.`;
+      : `평균 ETA 지연 ${m.avg}일. 지연은 노선 최초 예정 ETA(baseline) 대비입니다. FESCO·TSR은 데이터 보류 중.`;
 
   return (
     <div className="lsg-root">
@@ -446,11 +445,6 @@ export default function LogisightEurasia({
                 </div>
               </div>
               <div className="tile">
-                <div className="k">영향 컨테이너</div>
-                <div className="v mono">{m.n ? m.cont : "—"}</div>
-                <div className="d">{m.n ? `${m.n}개 노선 합산` : "수집 중"}</div>
-              </div>
-              <div className="tile">
                 <div className="k">최대 지연 노선</div>
                 <div className={`v mono ${m.worst && (m.worst.delay_days ?? 0) >= 5 ? "bad" : ""}`}>
                   {m.worst ? `+${m.worst.delay_days}일` : "—"}
@@ -462,7 +456,7 @@ export default function LogisightEurasia({
 
           {/* 코리도어 헬스 */}
           <div className="sect-h">
-            <h2>코리도어 헬스</h2>
+            <h2>지연 현황</h2>
             <span className="chip">노선별 상태 · ETA 지연</span>
           </div>
           <div className="htbl-wrap">
@@ -474,19 +468,18 @@ export default function LogisightEurasia({
                   <th className="c">최초 ETA</th>
                   <th className="c">최신 ETA</th>
                   <th className="r">지연(vs 최초)</th>
-                  <th className="r">영향 컨테이너</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td className="emptytd" colSpan={6}>
+                    <td className="emptytd" colSpan={5}>
                       불러오는 중…
                     </td>
                   </tr>
                 ) : records.length === 0 ? (
                   <tr>
-                    <td className="emptytd" colSpan={6}>
+                    <td className="emptytd" colSpan={5}>
                       TCR 지연 데이터 수집 중
                     </td>
                   </tr>
@@ -505,7 +498,6 @@ export default function LogisightEurasia({
                         <td className="c mono">{eta(r.original_eta)}</td>
                         <td className="c mono">{eta(r.current_eta)}</td>
                         <td className="r">{delayCell(r.delay_days)}</td>
-                        <td className="r mono">{r.active_containers ?? "—"}</td>
                       </tr>
                     );
                   })
