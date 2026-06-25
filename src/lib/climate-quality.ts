@@ -119,7 +119,9 @@ export function buildClimateForecastQuality(data: ClimateRiskData, nowMs = Date.
         pushIssue(
           issues,
           coverage.wave === 0
-            ? `${HLBL[hIdx]} 해상 파고 예보 없음`
+            ? horizonDays > 7
+              ? `${HLBL[hIdx]} 해상 파고는 장기예보 미제공(모델 한계)`
+              : `${HLBL[hIdx]} 해상 파고 예보 미제공`
             : `${HLBL[hIdx]} 해상 파고 ${coverage.wave}/${maritimeRows}개만 수신`,
         );
       }
@@ -153,8 +155,8 @@ export function buildClimateForecastQuality(data: ClimateRiskData, nowMs = Date.
 }
 
 export function forecastQualityLabel(status: ForecastQualityStatus): string {
-  if (status === "blocked") return "예보 불충분";
-  if (status === "warn") return "부분 예보";
+  if (status === "blocked") return "예보 데이터 부족";
+  if (status === "warn") return "일부 데이터 제한";
   return "예보 정상";
 }
 

@@ -790,7 +790,7 @@ export function RiskGlobe({ data, forecastQuality }: { data: ClimateRiskData; fo
 
           <div className="rg-note">
             <div className="rg-qrow"><span className="rg-qdot" /><span className="rg-q">이 화면 보는 법</span></div>
-            <div className="rg-a">자산 색상과 항로 색상은 {HDAYS[hIdx]}일 후 예보장 기반 asset_risk입니다. 관측·경보 이벤트는 별도 레이어이며, 해당 시점 예보가 없으면 미래 탭에 유지하지 않습니다. 지구본을 돌려 보고, 시점 탭을 바꿔 확인하세요.</div>
+            <div className="rg-a">지도 색상은 선택한 시점({HLBL[hIdx]})의 기상 예보로 산출한 자산·항로 리스크 등급입니다. 태풍·지진 등 실제 이벤트는 별도 핀으로 표시되며, 그 시점 예보가 없으면 색상을 표시하지 않습니다. 지구본을 돌리고 시점 탭을 바꿔 확인하세요.</div>
           </div>
         </aside>
       </div>

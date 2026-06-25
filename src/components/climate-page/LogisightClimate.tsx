@@ -252,11 +252,11 @@ function ForecastQualityPanel({ quality }: { quality: ClimateForecastQuality }) 
         <div>
           <div className={`inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] ${tone.text}`}>
             <span className={`h-2 w-2 rounded-full ${tone.dot}`} />
-            Forecast data gate
+            예보 데이터 상태
           </div>
           <h2 className="mt-1 text-[16px] font-extrabold tracking-[-0.02em] text-[#1a2433]">{forecastQualityLabel(quality.status)}</h2>
           <p className="mt-1 text-[12.5px] leading-[1.55] text-[#54606f]">
-            자산 색상과 항로 리스크는 asset_risk 예보장을 기준으로 표시합니다. 관측 이벤트는 보조 레이어이며, 예보 시각과 맞지 않으면 미래 탭에 표시하지 않습니다.
+            지도의 자산·항로 색상은 선택한 시점의 기상 예보로 산출한 리스크 등급입니다. 태풍·지진 등 실제 발생 이벤트는 별도 핀으로 표시되며, 그 시점의 예보가 없으면 색상은 표시하지 않습니다.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
