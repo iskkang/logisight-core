@@ -25,6 +25,8 @@ export type CorridorRecord = {
   current_eta?: string | null; // 최신 ETA
   delay_days?: number | null; // 지연(vs 최초) = max/alert delay
   active_containers?: number | null; // 영향 컨테이너 (active_delayed_count)
+  example?: boolean; // 실데이터 아님 — '예시/시뮬레이션' 행. 집계·맵에서 제외, 라벨 표시.
+  note?: string | null; // 노선명 아래 보조 설명(예시 서술 등)
 };
 export type SourceStatus = {
   name: string; // 'TCR · 중국 철도' / 'FESCO · TSR'
@@ -158,6 +160,9 @@ const STYLE = `
 .lsg-root .b-normal{background:#ecfdf3;color:#067647;border:1px solid #c7ead6}
 .lsg-root .b-warn{background:#fff7ed;color:#b45309;border:1px solid #fde6c8}
 .lsg-root .b-delay{background:#fef2f2;color:#b42318;border:1px solid #fbd5d5}
+.lsg-root .b-ex{background:#eef2f7;color:#5b6677;border:1px solid #dbe3ec}
+.lsg-root .htbl tbody tr.ex td{background:#fbfcfe}
+.lsg-root .htbl tbody tr.ex .route{color:var(--body)}.lsg-root .htbl tbody tr.ex .route small{color:#94a3b8}
 .lsg-root .delay{font-weight:800}.lsg-root .delay.bad{color:var(--down)}.lsg-root .delay.warn{color:var(--warn)}
 .lsg-root .emptytd{padding:26px 16px;text-align:center;color:var(--mute);font-size:13px}
 .lsg-root .hnote{padding:11px 16px;font-size:11.5px;color:var(--mute);background:#f0f3f8;border-top:1px solid var(--line)}
@@ -261,11 +266,12 @@ export default function LogisightEurasia({
   children,
 }: Props) {
   const m = useMemo(() => {
-    const recs = records ?? [];
-    const n = recs.length;
-    const delays = recs.map((r) => r.delay_days ?? 0);
+    // 집계는 실데이터(예시 제외)만 — 예시 행이 노선 수·평균·최대 지연을 오염시키지 않게.
+    const real = (records ?? []).filter((r) => !r.example);
+    const n = real.length;
+    const delays = real.map((r) => r.delay_days ?? 0);
     const avg = n ? Math.round(delays.reduce((a, b) => a + b, 0) / n) : null;
-    const worst = recs.reduce<CorridorRecord | null>(
+    const worst = real.reduce<CorridorRecord | null>(
       (w, r) => (!w || (r.delay_days ?? 0) > (w.delay_days ?? 0) ? r : w),
       null,
     );
@@ -487,13 +493,17 @@ export default function LogisightEurasia({
                   records.map((r, i) => {
                     const st = statusOf(r);
                     return (
-                      <tr key={i}>
+                      <tr key={i} className={r.example ? "ex" : undefined}>
                         <td className="route">
                           {r.route_label}
-                          <small>TCR · 중국 철도</small>
+                          <small>{r.note ?? "TCR · 중국 철도"}</small>
                         </td>
                         <td className="c">
-                          <span className={`sbadge ${STATUS_CLS[st]}`}>● {st}</span>
+                          {r.example ? (
+                            <span className="sbadge b-ex">● 예시</span>
+                          ) : (
+                            <span className={`sbadge ${STATUS_CLS[st]}`}>● {st}</span>
+                          )}
                         </td>
                         <td className="c mono">{eta(r.original_eta)}</td>
                         <td className="c mono">{eta(r.current_eta)}</td>
@@ -517,32 +527,36 @@ export default function LogisightEurasia({
                 <span className="t">코리도어 맵</span>
                 <span className="chip">TCR 노선 개요</span>
               </div>
-              {records.length === 0 ? (
-                <div className="emptytd">노선 데이터 수집 중</div>
-              ) : (
-                <div className="cmap">
-                  {records.map((r, i) => {
-                    const st = statusOf(r);
-                    const [o, d] = splitRoute(r.route_label);
-                    return (
-                      <div className={`crow ${STATUS_ROW[st]}`} key={i}>
-                        <div className="cnode">
-                          <span className="cdia" />
-                          <span className="lbl">{o}</span>
+              {(() => {
+                // 맵은 실데이터 TCR 노선만 — 예시 행은 제외.
+                const mapRoutes = records.filter((r) => !r.example);
+                return mapRoutes.length === 0 ? (
+                  <div className="emptytd">노선 데이터 수집 중</div>
+                ) : (
+                  <div className="cmap">
+                    {mapRoutes.map((r, i) => {
+                      const st = statusOf(r);
+                      const [o, d] = splitRoute(r.route_label);
+                      return (
+                        <div className={`crow ${STATUS_ROW[st]}`} key={i}>
+                          <div className="cnode">
+                            <span className="cdia" />
+                            <span className="lbl">{o}</span>
+                          </div>
+                          <div className="cmid">
+                            <div className="ln" />
+                            {r.delay_days != null && <div className="bg">+{r.delay_days}일</div>}
+                          </div>
+                          <div className="cnode r">
+                            <span className="lbl">{d || "—"}</span>
+                            <span className="cdia" />
+                          </div>
                         </div>
-                        <div className="cmid">
-                          <div className="ln" />
-                          {r.delay_days != null && <div className="bg">+{r.delay_days}일</div>}
-                        </div>
-                        <div className="cnode r">
-                          <span className="lbl">{d || "—"}</span>
-                          <span className="cdia" />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
               <div className="leg">
                 <span>
                   <i style={{ background: "#16a34a" }} /> 정상
