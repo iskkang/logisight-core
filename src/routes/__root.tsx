@@ -216,6 +216,7 @@ function SiteShell({ children }: { children: React.ReactNode }) {
       "/dashboard",
       "/forecasts",
       "/rates",
+      "/eurasia",
       "/climate",
       "/trade",
       "/industries",
