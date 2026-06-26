@@ -14,6 +14,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as RailMapRouteImport } from './routes/rail-map'
+import { Route as RailRouteImport } from './routes/rail'
 import { Route as PolicyRouteImport } from './routes/policy'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as IndustriesRouteImport } from './routes/industries'
@@ -23,6 +24,10 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClimateRouteImport } from './routes/climate'
 import { Route as BriefingRouteImport } from './routes/briefing'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RailIndexRouteImport } from './routes/rail.index'
+import { Route as RailEuropeRouteImport } from './routes/rail.europe'
+import { Route as RailEurasiaRouteImport } from './routes/rail.eurasia'
+import { Route as RailAmericasRouteImport } from './routes/rail.americas'
 import { Route as ArticleSlugRouteImport } from './routes/article.$slug'
 import { Route as AdminRoutesRouteImport } from './routes/admin.routes'
 import { Route as AdminPoliciesRouteImport } from './routes/admin.policies'
@@ -54,6 +59,11 @@ const RatesRoute = RatesRouteImport.update({
 const RailMapRoute = RailMapRouteImport.update({
   id: '/rail-map',
   path: '/rail-map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RailRoute = RailRouteImport.update({
+  id: '/rail',
+  path: '/rail',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PolicyRoute = PolicyRouteImport.update({
@@ -101,6 +111,26 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RailIndexRoute = RailIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RailRoute,
+} as any)
+const RailEuropeRoute = RailEuropeRouteImport.update({
+  id: '/europe',
+  path: '/europe',
+  getParentRoute: () => RailRoute,
+} as any)
+const RailEurasiaRoute = RailEurasiaRouteImport.update({
+  id: '/eurasia',
+  path: '/eurasia',
+  getParentRoute: () => RailRoute,
+} as any)
+const RailAmericasRoute = RailAmericasRouteImport.update({
+  id: '/americas',
+  path: '/americas',
+  getParentRoute: () => RailRoute,
+} as any)
 const ArticleSlugRoute = ArticleSlugRouteImport.update({
   id: '/article/$slug',
   path: '/article/$slug',
@@ -147,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
+  '/rail': typeof RailRouteWithChildren
   '/rail-map': typeof RailMapRoute
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
@@ -158,6 +189,10 @@ export interface FileRoutesByFullPath {
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
+  '/rail/americas': typeof RailAmericasRoute
+  '/rail/eurasia': typeof RailEurasiaRoute
+  '/rail/europe': typeof RailEuropeRoute
+  '/rail/': typeof RailIndexRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
 }
 export interface FileRoutesByTo {
@@ -181,6 +216,10 @@ export interface FileRoutesByTo {
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
+  '/rail/americas': typeof RailAmericasRoute
+  '/rail/eurasia': typeof RailEurasiaRoute
+  '/rail/europe': typeof RailEuropeRoute
+  '/rail': typeof RailIndexRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
 }
 export interface FileRoutesById {
@@ -194,6 +233,7 @@ export interface FileRoutesById {
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
+  '/rail': typeof RailRouteWithChildren
   '/rail-map': typeof RailMapRoute
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
@@ -205,6 +245,10 @@ export interface FileRoutesById {
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
+  '/rail/americas': typeof RailAmericasRoute
+  '/rail/eurasia': typeof RailEurasiaRoute
+  '/rail/europe': typeof RailEuropeRoute
+  '/rail/': typeof RailIndexRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
 }
 export interface FileRouteTypes {
@@ -219,6 +263,7 @@ export interface FileRouteTypes {
     | '/industries'
     | '/news'
     | '/policy'
+    | '/rail'
     | '/rail-map'
     | '/rates'
     | '/reports'
@@ -230,6 +275,10 @@ export interface FileRouteTypes {
     | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
+    | '/rail/americas'
+    | '/rail/eurasia'
+    | '/rail/europe'
+    | '/rail/'
     | '/api/trade/brief'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -253,6 +302,10 @@ export interface FileRouteTypes {
     | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
+    | '/rail/americas'
+    | '/rail/eurasia'
+    | '/rail/europe'
+    | '/rail'
     | '/api/trade/brief'
   id:
     | '__root__'
@@ -265,6 +318,7 @@ export interface FileRouteTypes {
     | '/industries'
     | '/news'
     | '/policy'
+    | '/rail'
     | '/rail-map'
     | '/rates'
     | '/reports'
@@ -276,6 +330,10 @@ export interface FileRouteTypes {
     | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
+    | '/rail/americas'
+    | '/rail/eurasia'
+    | '/rail/europe'
+    | '/rail/'
     | '/api/trade/brief'
   fileRoutesById: FileRoutesById
 }
@@ -289,6 +347,7 @@ export interface RootRouteChildren {
   IndustriesRoute: typeof IndustriesRoute
   NewsRoute: typeof NewsRoute
   PolicyRoute: typeof PolicyRoute
+  RailRoute: typeof RailRouteWithChildren
   RailMapRoute: typeof RailMapRoute
   RatesRoute: typeof RatesRoute
   ReportsRoute: typeof ReportsRoute
@@ -338,6 +397,13 @@ declare module '@tanstack/react-router' {
       path: '/rail-map'
       fullPath: '/rail-map'
       preLoaderRoute: typeof RailMapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rail': {
+      id: '/rail'
+      path: '/rail'
+      fullPath: '/rail'
+      preLoaderRoute: typeof RailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/policy': {
@@ -403,6 +469,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rail/': {
+      id: '/rail/'
+      path: '/'
+      fullPath: '/rail/'
+      preLoaderRoute: typeof RailIndexRouteImport
+      parentRoute: typeof RailRoute
+    }
+    '/rail/europe': {
+      id: '/rail/europe'
+      path: '/europe'
+      fullPath: '/rail/europe'
+      preLoaderRoute: typeof RailEuropeRouteImport
+      parentRoute: typeof RailRoute
+    }
+    '/rail/eurasia': {
+      id: '/rail/eurasia'
+      path: '/eurasia'
+      fullPath: '/rail/eurasia'
+      preLoaderRoute: typeof RailEurasiaRouteImport
+      parentRoute: typeof RailRoute
+    }
+    '/rail/americas': {
+      id: '/rail/americas'
+      path: '/americas'
+      fullPath: '/rail/americas'
+      preLoaderRoute: typeof RailAmericasRouteImport
+      parentRoute: typeof RailRoute
+    }
     '/article/$slug': {
       id: '/article/$slug'
       path: '/article/$slug'
@@ -455,6 +549,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface RailRouteChildren {
+  RailAmericasRoute: typeof RailAmericasRoute
+  RailEurasiaRoute: typeof RailEurasiaRoute
+  RailEuropeRoute: typeof RailEuropeRoute
+  RailIndexRoute: typeof RailIndexRoute
+}
+
+const RailRouteChildren: RailRouteChildren = {
+  RailAmericasRoute: RailAmericasRoute,
+  RailEurasiaRoute: RailEurasiaRoute,
+  RailEuropeRoute: RailEuropeRoute,
+  RailIndexRoute: RailIndexRoute,
+}
+
+const RailRouteWithChildren = RailRoute._addFileChildren(RailRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BriefingRoute: BriefingRoute,
@@ -465,6 +575,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndustriesRoute: IndustriesRoute,
   NewsRoute: NewsRoute,
   PolicyRoute: PolicyRoute,
+  RailRoute: RailRouteWithChildren,
   RailMapRoute: RailMapRoute,
   RatesRoute: RatesRoute,
   ReportsRoute: ReportsRoute,

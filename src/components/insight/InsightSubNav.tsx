@@ -10,7 +10,7 @@ const TABS = [
   { to: "/dashboard", label: "종합" },
   { to: "/forecasts", label: "전망" },
   { to: "/rates", label: "운임" },
-  { to: "/eurasia", label: "유라시아" },
+  { to: "/rail", label: "철도" },
   { to: "/policy", label: "포트" },
   { to: "/trade", label: "무역" },
   { to: "/industries", label: "산업" },
