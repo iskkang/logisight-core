@@ -3,6 +3,8 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { reportsQueryOptions } from "@/lib/api/reports";
 import LogisightReports from "@/components/reports-page/LogisightReports";
+import { HomeNav } from "@/components/home/HomeNav";
+import { HomeFooter } from "@/components/home/HomeFooter";
 
 export const Route = createFileRoute("/reports")({
   loader: ({ context }) => context.queryClient.ensureQueryData(reportsQueryOptions()),
@@ -29,10 +31,17 @@ export const Route = createFileRoute("/reports")({
 function ReportsPage() {
   const { data } = useSuspenseQuery(reportsQueryOptions());
   return (
-    <LogisightReports
-      latestWeekly={data.weekly}
-      latestMonthly={data.monthly}
-      archive={data.archive}
-    />
+    // 다크 래퍼: 반투명 HomeNav 뒤 배경을 홈과 동일하게 어둡게(슬레이트 번짐 방지).
+    <div className="min-h-screen bg-[#070b16]">
+      <HomeNav active="reports" />
+      <LogisightReports
+        showNav={false}
+        latestWeekly={data.weekly}
+        latestMonthly={data.monthly}
+        archive={data.archive}
+        regionOrder={["미주", "유럽", "극동(러시아·CIS)"]}
+      />
+      <HomeFooter />
+    </div>
   );
 }
