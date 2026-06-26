@@ -11,6 +11,7 @@ import {
   getKitaSeaRates,
   getIndexStats,
   getKcciRouteStats,
+  getEraiStats,
 } from "./rates.functions";
 
 export type { IataJetFuelRow } from "./rates.functions";
@@ -223,6 +224,28 @@ export const kcciRouteStatsQueryOptions = () =>
   queryOptions({
     queryKey: ["freight_indices", "kcci_routes"],
     queryFn: () => getKcciRouteStats(),
+    staleTime: 30 * 60 * 1000,
+  });
+
+// ERAI(index1520 유라시아 철도 운임 컴포지트, USD/FEU 월별) + 철도 transit time(일).
+export type EraiStat = {
+  index_code: string;
+  latest_value: number | null;
+  latest_date: string | null;
+  change_pct: number | null;
+};
+
+export const ERAI_LABELS: Record<string, string> = {
+  ERAI: "ERAI 종합",
+  ERAI_EAST: "ERAI East",
+  ERAI_WEST: "ERAI West",
+  ERAI_TRANSIT_DAYS: "철도 운송기간",
+};
+
+export const eraiStatsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["freight_indices", "erai"],
+    queryFn: () => getEraiStats(),
     staleTime: 30 * 60 * 1000,
   });
 

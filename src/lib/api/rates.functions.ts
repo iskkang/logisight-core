@@ -14,6 +14,7 @@ import type {
   KitaPercentileResult,
   IndexStats,
   KcciRouteStat,
+  EraiStat,
 } from "./rates";
 
 const CODES = ["SCFI", "FBX", "KCCI", "CCFI", "WCI", "BDI"] as const;
@@ -318,6 +319,51 @@ export const getKcciRouteStats = createServerFn({ method: "GET" }).handler(
         latest_date: last.week_date,
         change_pct: last.change_pct,
         mom_pct,
+      };
+    });
+  },
+);
+
+// ERAI(index1520 유라시아 철도 운임 컴포지트, USD/FEU 월별) + 철도 transit time. change_pct=출처 보고 MoM.
+const ERAI_CODES = ["ERAI", "ERAI_EAST", "ERAI_WEST", "ERAI_TRANSIT_DAYS"] as const;
+
+export const getEraiStats = createServerFn({ method: "GET" }).handler(
+  async (): Promise<EraiStat[]> => {
+    setResponseHeader(
+      "cache-control",
+      "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+    );
+    type Row = { index_code: string; value: number | null; change_pct: number | null; week_date: string };
+    const rows: Row[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabasePublicServer
+        .from("freight_indices")
+        .select("index_code,value,change_pct,week_date")
+        .in("index_code", ERAI_CODES as unknown as string[])
+        .order("week_date", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw new Error(error.message);
+      const pageRows = (data ?? []) as Row[];
+      rows.push(...pageRows);
+      if (pageRows.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+      if (from > 10000) break;
+    }
+    const grouped = new Map<string, Row[]>();
+    for (const r of rows) {
+      const arr = grouped.get(r.index_code) ?? [];
+      arr.push(r);
+      grouped.set(r.index_code, arr);
+    }
+    return ERAI_CODES.map((code) => {
+      const series = grouped.get(code) ?? [];
+      const last = series.at(-1);
+      return {
+        index_code: code,
+        latest_value: last?.value ?? null,
+        latest_date: last?.week_date ?? null,
+        change_pct: last?.change_pct ?? null,
       };
     });
   },

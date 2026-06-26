@@ -3,13 +3,16 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { operationalCurrentDelayQueryOptions } from "@/lib/api/operational-delay";
+import { latestNewsQueryOptions } from "@/lib/api/news";
 import LogisightEurasia, {
   type CorridorRecord,
   type SourceStatus as EuSourceStatus,
 } from "@/components/eurasia-page/LogisightEurasia";
+import { EraiWidget, RailNewsFeed } from "./RailWidgets";
 
 export function RailEurasiaContent() {
   const { data: operational } = useSuspenseQuery(operationalCurrentDelayQueryOptions());
+  const { data: news } = useSuspenseQuery(latestNewsQueryOptions({ category: "철도", lang: "en", limit: 20 }));
 
   // 운영 현재 지연(operational) TCR 레코드 → CorridorRecord 매핑. 원본 컨테이너 비노출, 집계만.
   const opDelay = (r: (typeof operational.records)[number]) =>
@@ -63,11 +66,20 @@ export function RailEurasiaContent() {
     : "수집 중";
 
   return (
-    <LogisightEurasia
-      showNav={false}
-      records={tcrRecords}
-      sources={eurasiaSources}
-      updatedLabel={updatedLabel}
-    />
+    <>
+      <LogisightEurasia
+        showNav={false}
+        records={tcrRecords}
+        sources={eurasiaSources}
+        updatedLabel={updatedLabel}
+      />
+      <EraiWidget />
+      <RailNewsFeed
+        title="유라시아 철도 뉴스"
+        chip="index1520 메타피드"
+        items={news}
+        emptyText="수집된 유라시아 철도 뉴스가 없습니다."
+      />
+    </>
   );
 }

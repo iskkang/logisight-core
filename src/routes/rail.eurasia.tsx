@@ -1,12 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { operationalCurrentDelayQueryOptions } from "@/lib/api/operational-delay";
+import { eraiStatsQueryOptions } from "@/lib/api/rates";
+import { latestNewsQueryOptions } from "@/lib/api/news";
 import { RailEurasiaContent } from "@/components/rail-page/RailEurasiaContent";
 
-// 유라시아 — TCR 노선 운영 상태·ETA 지연(기존 /eurasia 콘텐츠 재사용).
+// 유라시아 — TCR ETA(기존) + ERAI 매크로 위젯 + index1520 뉴스피드.
 export const Route = createFileRoute("/rail/eurasia")({
   loader: ({ context }) => {
     context.queryClient.ensureQueryData(operationalCurrentDelayQueryOptions());
+    context.queryClient.ensureQueryData(eraiStatsQueryOptions());
+    context.queryClient.ensureQueryData(latestNewsQueryOptions({ category: "철도", lang: "en", limit: 20 }));
   },
   head: () => ({
     meta: [
