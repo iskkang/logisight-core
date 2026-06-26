@@ -7,6 +7,7 @@ import {
   kitaAirRatesQueryOptions,
   kitaSeaRatesQueryOptions,
   indexStatsQueryOptions,
+  kcciRouteStatsQueryOptions,
 } from "@/lib/api/rates";
 import { latestExchangeRateQueryOptions } from "@/lib/api/exchange-rates";
 import { publishedForecastsQueryOptions } from "@/lib/api/forecasts";
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/rates")({
       context.queryClient.ensureQueryData(publishedForecastsQueryOptions()),
       context.queryClient.ensureQueryData(publishedPartnerRatesQueryOptions()),
       context.queryClient.ensureQueryData(indexStatsQueryOptions()),
+      context.queryClient.ensureQueryData(kcciRouteStatsQueryOptions()),
     ]);
   },
   head: () => ({

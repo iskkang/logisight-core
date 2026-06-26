@@ -27,6 +27,8 @@ import {
   kitaAirRatesQueryOptions,
   kitaSeaRatesQueryOptions,
   indexStatsQueryOptions,
+  kcciRouteStatsQueryOptions,
+  KCCI_ROUTE_LABELS,
   type KitaAirRateRow,
   type KitaSeaRateRow,
 } from "@/lib/api/rates";
@@ -306,6 +308,7 @@ export function LogisightRates() {
   const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
   const { data: partnerRates } = useSuspenseQuery(publishedPartnerRatesQueryOptions());
   const { data: indexStats } = useSuspenseQuery(indexStatsQueryOptions());
+  const { data: kcciRoutes } = useSuspenseQuery(kcciRouteStatsQueryOptions());
 
   const [mode, setMode] = useState<Mode2>("sea");
   const [regionState, setRegion] = useState<string>("");
@@ -740,6 +743,37 @@ export function LogisightRates() {
               )}
               <div className="mt-2.5 rounded-[10px] border border-dashed border-[#d8dfe9] px-3.5 py-2.5 text-[11.5px] text-[#828d9d] lsg-mono">{fxCaption ? `환율 기준 ${fxCaption}` : "환율 수집 중"}</div>
             </div>
+          </div>
+
+          {/* KCCI 권역별 항로 — 한국(부산)발 13개 항로($/FEU). 종합 외 항로별 운임 노출(KOBC 주간). */}
+          <div className="mb-3.5 mt-[26px] flex items-center justify-between gap-2.5">
+            <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">KCCI 권역별 항로</h2>
+            <span className={CHIP}>한국(부산)발 · $/FEU · 주간</span>
+          </div>
+          <div className={`overflow-x-auto px-[22px] py-5 ${CARD}`}>
+            {kcciRoutes.filter((r) => r.latest_value != null).length === 0 ? (
+              <div className="grid min-h-[120px] place-items-center text-[13px] text-[#828d9d]">데이터 수집 중</div>
+            ) : (
+              <table className="w-full border-collapse text-[13px]">
+                <thead><tr>
+                  {["항로", "최신값", "기준", "WoW", "MoM"].map((h, i) => (
+                    <th key={h} className={`border-b border-[#d8dfe9] px-3.5 pb-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#828d9d] ${i >= 1 ? "text-right" : "text-left"}`}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {kcciRoutes.filter((r) => r.latest_value != null).map((r) => (
+                    <tr key={r.index_code}>
+                      <td className="border-b border-[#e6ebf2] px-3.5 py-3 font-bold text-[#1a2433]">{KCCI_ROUTE_LABELS[r.index_code] ?? r.index_code}</td>
+                      <td className="border-b border-[#e6ebf2] px-3.5 py-3 text-right text-[#1a2433] lsg-mono">${Math.round(r.latest_value!).toLocaleString()}</td>
+                      <td className="border-b border-[#e6ebf2] px-3.5 py-3 text-right text-[#828d9d] lsg-mono">{r.latest_date ? `${r.latest_date.slice(5, 7)}/${r.latest_date.slice(8, 10)}` : "—"}</td>
+                      <td className={`border-b border-[#e6ebf2] px-3.5 py-3 text-right font-bold lsg-mono ${r.change_pct == null ? "text-[#828d9d]" : r.change_pct >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>{fmtPct(r.change_pct)}</td>
+                      <td className={`border-b border-[#e6ebf2] px-3.5 py-3 text-right font-bold lsg-mono ${r.mom_pct == null ? "text-[#828d9d]" : r.mom_pct >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>{fmtPct(r.mom_pct)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <div className="mt-3 text-[11px] text-[#828d9d]">출처: KOBC KCCI · 부산 출발 권역별 컨테이너 운임지수</div>
           </div>
         </div>
       </div>

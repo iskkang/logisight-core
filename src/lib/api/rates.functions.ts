@@ -13,6 +13,7 @@ import type {
   KitaSeaRateRow,
   KitaPercentileResult,
   IndexStats,
+  KcciRouteStat,
 } from "./rates";
 
 const CODES = ["SCFI", "FBX", "KCCI", "CCFI", "WCI", "BDI"] as const;
@@ -254,6 +255,69 @@ export const getIndexStats = createServerFn({ method: "GET" }).handler(
         pct_52w,
         normal_range,
         source: last.source,
+      };
+    });
+  },
+);
+
+// KCCI 권역별 항로 — 한국발 $/FEU. WoW는 KOBC 보고 change_pct, MoM은 4주 전 대비(주차 누락에도 날짜 기준).
+const KCCI_ROUTE_CODES = [
+  "KCCI_USWC", "KCCI_USEC", "KCCI_NEU", "KCCI_MED", "KCCI_ME",
+  "KCCI_SEA", "KCCI_CN", "KCCI_JP", "KCCI_SAE", "KCCI_SAW",
+  "KCCI_ZAF", "KCCI_WAF", "KCCI_AU",
+] as const;
+
+export const getKcciRouteStats = createServerFn({ method: "GET" }).handler(
+  async (): Promise<KcciRouteStat[]> => {
+    setResponseHeader(
+      "cache-control",
+      "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+    );
+    type Row = { index_code: string; value: number | null; change_pct: number | null; week_date: string };
+    const rows: Row[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabasePublicServer
+        .from("freight_indices")
+        .select("index_code,value,change_pct,week_date")
+        .in("index_code", KCCI_ROUTE_CODES as unknown as string[])
+        .order("week_date", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw new Error(error.message);
+      const pageRows = (data ?? []) as Row[];
+      rows.push(...pageRows);
+      if (pageRows.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+      if (from > 10000) break;
+    }
+
+    const grouped = new Map<string, Row[]>();
+    for (const r of rows) {
+      const arr = grouped.get(r.index_code) ?? [];
+      arr.push(r);
+      grouped.set(r.index_code, arr);
+    }
+
+    return KCCI_ROUTE_CODES.map((code) => {
+      const series = grouped.get(code) ?? [];
+      const last = series.at(-1);
+      if (!last || last.value === null) {
+        return { index_code: code, latest_value: null, latest_date: null, change_pct: null, mom_pct: null };
+      }
+      const lastDate = new Date(last.week_date).getTime();
+      const monthAgo = series
+        .filter((p) => p.value !== null && new Date(p.week_date).getTime() <= lastDate - 28 * 86400000)
+        .at(-1);
+      const mom_pct =
+        monthAgo?.value && last.value
+          ? Math.round(((last.value - monthAgo.value) / monthAgo.value) * 1000) / 10
+          : null;
+      return {
+        index_code: code,
+        latest_value: last.value,
+        latest_date: last.week_date,
+        change_pct: last.change_pct,
+        mom_pct,
       };
     });
   },

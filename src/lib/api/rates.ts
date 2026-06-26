@@ -10,6 +10,7 @@ import {
   getKitaAirRates,
   getKitaSeaRates,
   getIndexStats,
+  getKcciRouteStats,
 } from "./rates.functions";
 
 export type { IataJetFuelRow } from "./rates.functions";
@@ -200,6 +201,28 @@ export const indexStatsQueryOptions = () =>
   queryOptions({
     queryKey: ["freight_indices", "stats"],
     queryFn: () => getIndexStats(),
+    staleTime: 30 * 60 * 1000,
+  });
+
+// KCCI 권역별 항로(한국발 $/FEU) — change_pct=KOBC 보고 WoW, mom_pct=4주 전 대비.
+export type KcciRouteStat = {
+  index_code: string;
+  latest_value: number | null;
+  latest_date: string | null;
+  change_pct: number | null;
+  mom_pct: number | null;
+};
+
+export const KCCI_ROUTE_LABELS: Record<string, string> = {
+  KCCI_USWC: "미주서안", KCCI_USEC: "미주동안", KCCI_NEU: "북유럽", KCCI_MED: "지중해",
+  KCCI_ME: "중동", KCCI_SEA: "동남아", KCCI_CN: "중국", KCCI_JP: "일본",
+  KCCI_SAE: "남미동안", KCCI_SAW: "남미서안", KCCI_ZAF: "남아프리카", KCCI_WAF: "서아프리카", KCCI_AU: "호주",
+};
+
+export const kcciRouteStatsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["freight_indices", "kcci_routes"],
+    queryFn: () => getKcciRouteStats(),
     staleTime: 30 * 60 * 1000,
   });
 
