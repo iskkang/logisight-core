@@ -39,7 +39,16 @@ function ReportsPage() {
         latestWeekly={data.weekly}
         latestMonthly={data.monthly}
         archive={data.archive}
-        regionOrder={["미주", "유럽", "극동(러시아·CIS)"]}
+        regionOrder={[
+          "미주",
+          "유럽",
+          "극동(러시아·CIS)",
+          "중국",
+          "일본",
+          "동남아",
+          "중동",
+          "아프리카",
+        ]}
       />
       <HomeFooter />
     </div>
