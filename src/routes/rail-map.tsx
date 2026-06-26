@@ -155,7 +155,7 @@ function RailMapPage() {
             <div className="text-[12px] font-semibold uppercase text-[#667085]">Rail Risk Map</div>
             <h1 className="mt-1 text-[22px] font-bold leading-tight text-[#101828]">North America Intermodal Corridors</h1>
             <p className="mt-2 text-[13px] leading-[1.55] text-[#54606f]">
-              Phase 1 seed view. All corridors are intentionally unknown until the collection pipeline is connected.
+              Carrier advisory + news monitored. Green = source checked, no reported disruption. Gray = limited public visibility.
             </p>
           </div>
 
@@ -182,14 +182,14 @@ function RailMapPage() {
 
           <div className="mt-5 rounded-lg border border-[#d8dfe9] bg-white p-4">
             <div className="text-[13px] font-bold text-[#1a2433]">Active Severe / Delayed</div>
-            <div className="mt-2 text-[13px] text-[#667085]">No severe or delayed corridors in Phase 1 seed data.</div>
+            <div className="mt-2 text-[13px] text-[#667085]">No severe or delayed corridors in the current monitoring window.</div>
           </div>
         </aside>
 
         <section className="relative min-h-0">
           <div ref={containerRef} className="h-full min-h-[520px] w-full" data-testid="rail-map-canvas" />
           <div className="pointer-events-none absolute left-4 top-4 rounded-md border border-[#d8dfe9] bg-white/92 px-3 py-2 text-[12px] font-semibold text-[#344054] shadow-sm">
-            {geojson.features.length} corridors / unknown shown in gray
+            {geojson.features.length} corridors / normal green, limited visibility gray
           </div>
         </section>
 
