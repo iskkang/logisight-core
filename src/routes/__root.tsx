@@ -221,7 +221,8 @@ function SiteShell({ children }: { children: React.ReactNode }) {
       "/trade",
       "/industries",
     ].includes(pathname) ||
-    pathname.startsWith("/article/")
+    pathname.startsWith("/article/") ||
+    pathname.startsWith("/rail") // /rail 허브는 자체 HomeNav/Footer를 가짐 → 글로벌 Navigation 중복 방지
   ) {
     return <>{children}</>;
   }
