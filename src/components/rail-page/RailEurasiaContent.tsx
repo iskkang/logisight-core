@@ -5,7 +5,6 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { eurasiaChartsQueryOptions } from "@/lib/api/eurasia-charts";
 import type { ChartDataset } from "@/lib/api/eurasia-charts";
-import { latestNewsQueryOptions, formatPublishedAt } from "@/lib/api/news";
 import { EurasiaStatisticsPanel } from "@/components/index1520/EurasiaStatisticsPanel";
 import {
   EurasiaIndexChart,
@@ -65,7 +64,6 @@ function pct(c: number | null | undefined, b: number | null | undefined) {
 
 export function RailEurasiaContent() {
   const { data: charts } = useSuspenseQuery(eurasiaChartsQueryOptions());
-  const { data: news } = useSuspenseQuery(latestNewsQueryOptions({ category: "철도", lang: "en", limit: 12 }));
 
   const sum = useMemo(() => {
     const idx = charts.indexQuotes?.indexes;
@@ -179,31 +177,7 @@ export function RailEurasiaContent() {
           <EurasiaMarketMap quotes={charts.indexQuotes} />
           <EurasiaGeoRanking geo={charts.geo} />
 
-          {/* 유라시아 철도 뉴스 */}
-          <div className="mb-3 mt-[26px] flex items-center justify-between gap-2.5">
-            <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">유라시아 철도 뉴스</h2>
-            <span className="rounded-full border border-[#d8dfe9] bg-[#eef1f6] px-[9px] py-[3px] text-[11px] text-[#828d9d]">index1520 메타피드</span>
-          </div>
-          {news.length === 0 ? (
-            <div className="news-card px-5 py-10 text-center text-[13px] text-[#828d9d]">수집된 유라시아 철도 뉴스가 없습니다.</div>
-          ) : (
-            <ul className="news-card divide-y divide-[#e6ebf2]">
-              {news.map((n) => (
-                <li key={n.id} className="px-4 py-3.5 transition-colors hover:bg-[#eef2f8]">
-                  <a href={n.url} target="_blank" rel="noopener noreferrer" className="block">
-                    <div className="text-[14px] font-semibold leading-[1.4] text-[#1a2433]">{n.title}</div>
-                    {n.summary && <div className="mt-1 line-clamp-2 text-[12.5px] leading-[1.5] text-[#54606f]">{n.summary}</div>}
-                    <div className="mt-1.5 flex items-center gap-2 text-[11px] text-[#828d9d]">
-                      <span className="font-medium text-[#54606f]">{n.source}</span><span>·</span>
-                      <span className="mono">{formatPublishedAt(n.published_at)}</span>
-                    </div>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="src">데이터 출처: ERAI (Eurasian Rail Alliance Index) · <a href="https://index1520.com/en/index/" target="_blank" rel="noopener noreferrer">index1520.com</a> · 뉴스: index1520 메타피드</div>
+          <div className="src">데이터 출처: ERAI (Eurasian Rail Alliance Index) · <a href="https://index1520.com/en/index/" target="_blank" rel="noopener noreferrer">index1520.com</a> · 철도 뉴스는 <a href="/news?cat=철도">뉴스 › 철도</a></div>
           </>
           )}
         </div>
