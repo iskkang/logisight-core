@@ -13,7 +13,7 @@ import { flagEmoji } from "@/lib/iso-country-codes";
 import { CORRIDOR_NODES, CORRIDOR_SEGMENTS, CN_PROVINCE_EN_TO_CN } from "./eurasiaCorridor";
 
 const WORLD_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
-const CHINA_URL = "https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json";
+const CHINA_URL = "/china-provinces.json"; // 자체 호스팅(DataV 원본, 좌표 슬림) — aliyun 직접 호출은 브라우저 403
 
 type MetricKey = "teu" | "weight" | "qty" | "transit";
 const METRICS: Record<MetricKey, { label: string; cur: keyof RouteRow; prev: keyof RouteRow }> = {
