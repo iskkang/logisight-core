@@ -7,7 +7,6 @@ import type { Map as LMap, GeoJSON as LGeoJSON } from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 import { index1520RoutesQueryOptions } from "@/lib/api/index1520-routes";
-import type { RouteRow } from "@/lib/api/index1520-routes.functions";
 import { eurasiaChartsQueryOptions } from "@/lib/api/eurasia-charts";
 import { flagEmoji } from "@/lib/iso-country-codes";
 import { CORRIDOR_NODES, CORRIDOR_SEGMENTS, CN_PROVINCE_EN_TO_CN } from "./eurasiaCorridor";
@@ -15,17 +14,8 @@ import { CORRIDOR_NODES, CORRIDOR_SEGMENTS, CN_PROVINCE_EN_TO_CN } from "./euras
 const WORLD_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 const CHINA_URL = "/china-provinces.json"; // 자체 호스팅(DataV 원본, 좌표 슬림) — aliyun 직접 호출은 브라우저 403
 
-type MetricKey = "teu" | "weight" | "qty" | "transit";
-const METRICS: Record<MetricKey, { label: string; cur: keyof RouteRow; prev: keyof RouteRow }> = {
-  teu: { label: "TEU", cur: "currentTeu", prev: "previousTeu" },
-  weight: { label: "Actual Weight (k t)", cur: "currentActualWeight", prev: "previousActualWeight" },
-  qty: { label: "Shipping Qty", cur: "currentShippingQty", prev: "previousShippingQty" },
-  transit: { label: "Travel Time (d)", cur: "currentTransitTime", prev: "previousTransitTime" },
-};
-
 type Hit = { teu: number; en: string; prev: number; rel: number | null; rank: number | null };
 
-const numOf = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 const fmt = (v: number | null | undefined, d = 0) =>
   v == null || Number.isNaN(v) ? "—" : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmtPct = (v: number | null) => (v == null || Number.isNaN(v) ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(1)}%`);
@@ -61,14 +51,10 @@ function segArc(a: [number, number, string], b: [number, number, string]): [numb
 
 export function EurasiaStatisticsPanel() {
   const [period, setPeriod] = useState<string | undefined>(undefined);
-  const [metric, setMetric] = useState<MetricKey>("teu");
-  const [depSearch, setDepSearch] = useState("");
-  const [destSearch, setDestSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data, isFetching } = useQuery({ ...index1520RoutesQueryOptions(period), placeholderData: keepPreviousData });
   const { data: charts } = useQuery(eurasiaChartsQueryOptions());
-  const m = METRICS[metric];
 
   // choropleth 룩업: 성(중국어명)·국가(영문명) → TEU
   const { cnByName, euByName, teuMin, teuMax } = useMemo(() => {
@@ -124,14 +110,8 @@ export function EurasiaStatisticsPanel() {
   const colorRef = useRef(colorFor);
   colorRef.current = colorFor;
 
-  // 표 데이터(O-D)
-  const filtered = useMemo(() => {
-    const rows = data?.routes ?? [];
-    const dq = depSearch.trim().toLowerCase(), tq = destSearch.trim().toLowerCase();
-    return rows
-      .filter((r) => (!dq || r.fromName.toLowerCase().includes(dq)) && (!tq || r.toName.toLowerCase().includes(tq)))
-      .sort((a, b) => numOf(b[m.cur]) - numOf(a[m.cur]));
-  }, [data, depSearch, destSearch, m.cur]);
+  // 표 데이터(O-D) — TEU 내림차순
+  const filtered = useMemo(() => [...(data?.routes ?? [])].sort((a, b) => b.currentTeu - a.currentTeu), [data]);
 
   const summary = useMemo(() => {
     let totalTeu = 0, prevTeu = 0, tSum = 0, tN = 0, mapped = 0;
@@ -254,17 +234,6 @@ export function EurasiaStatisticsPanel() {
         </label>
         <label className="flex flex-col gap-1 text-[12px] font-medium text-[#667085]">이전 기간
           <input value={data?.previousPeriod ?? "—"} readOnly className={`min-w-[140px] cursor-not-allowed border-[#e4e9f1] bg-[#eef1f6] text-[#828d9d] ${inp}`} />
-        </label>
-        <label className="flex flex-col gap-1 text-[12px] font-medium text-[#667085]">지표
-          <select value={metric} onChange={(e) => setMetric(e.target.value as MetricKey)} className={`min-w-[150px] ${inp}`}>
-            {Object.entries(METRICS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-[12px] font-medium text-[#667085]">출발 검색
-          <input value={depSearch} onChange={(e) => setDepSearch(e.target.value)} placeholder="예: China" className={`min-w-[140px] ${inp}`} />
-        </label>
-        <label className="flex flex-col gap-1 text-[12px] font-medium text-[#667085]">도착 검색
-          <input value={destSearch} onChange={(e) => setDestSearch(e.target.value)} placeholder="예: Poland" className={`min-w-[140px] ${inp}`} />
         </label>
         {isFetching && <span className="pb-1.5 text-[12px] text-[#828d9d]">갱신 중…</span>}
       </div>
