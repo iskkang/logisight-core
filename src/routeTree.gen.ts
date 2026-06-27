@@ -28,6 +28,7 @@ import { Route as RailIndexRouteImport } from './routes/rail.index'
 import { Route as RailEuropeRouteImport } from './routes/rail.europe'
 import { Route as RailEurasiaRouteImport } from './routes/rail.eurasia'
 import { Route as RailAmericasRouteImport } from './routes/rail.americas'
+import { Route as Index1520RoutesRouteImport } from './routes/index1520.routes'
 import { Route as ArticleSlugRouteImport } from './routes/article.$slug'
 import { Route as AdminRoutesRouteImport } from './routes/admin.routes'
 import { Route as AdminPoliciesRouteImport } from './routes/admin.policies'
@@ -131,6 +132,11 @@ const RailAmericasRoute = RailAmericasRouteImport.update({
   path: '/americas',
   getParentRoute: () => RailRoute,
 } as any)
+const Index1520RoutesRoute = Index1520RoutesRouteImport.update({
+  id: '/index1520/routes',
+  path: '/index1520/routes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ArticleSlugRoute = ArticleSlugRouteImport.update({
   id: '/article/$slug',
   path: '/article/$slug',
@@ -189,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
+  '/index1520/routes': typeof Index1520RoutesRoute
   '/rail/americas': typeof RailAmericasRoute
   '/rail/eurasia': typeof RailEurasiaRoute
   '/rail/europe': typeof RailEuropeRoute
@@ -216,6 +223,7 @@ export interface FileRoutesByTo {
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
+  '/index1520/routes': typeof Index1520RoutesRoute
   '/rail/americas': typeof RailAmericasRoute
   '/rail/eurasia': typeof RailEurasiaRoute
   '/rail/europe': typeof RailEuropeRoute
@@ -245,6 +253,7 @@ export interface FileRoutesById {
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
   '/article/$slug': typeof ArticleSlugRoute
+  '/index1520/routes': typeof Index1520RoutesRoute
   '/rail/americas': typeof RailAmericasRoute
   '/rail/eurasia': typeof RailEurasiaRoute
   '/rail/europe': typeof RailEuropeRoute
@@ -275,6 +284,7 @@ export interface FileRouteTypes {
     | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
+    | '/index1520/routes'
     | '/rail/americas'
     | '/rail/eurasia'
     | '/rail/europe'
@@ -302,6 +312,7 @@ export interface FileRouteTypes {
     | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
+    | '/index1520/routes'
     | '/rail/americas'
     | '/rail/eurasia'
     | '/rail/europe'
@@ -330,6 +341,7 @@ export interface FileRouteTypes {
     | '/admin/policies'
     | '/admin/routes'
     | '/article/$slug'
+    | '/index1520/routes'
     | '/rail/americas'
     | '/rail/eurasia'
     | '/rail/europe'
@@ -359,6 +371,7 @@ export interface RootRouteChildren {
   AdminPoliciesRoute: typeof AdminPoliciesRoute
   AdminRoutesRoute: typeof AdminRoutesRoute
   ArticleSlugRoute: typeof ArticleSlugRoute
+  Index1520RoutesRoute: typeof Index1520RoutesRoute
   ApiTradeBriefRoute: typeof ApiTradeBriefRoute
 }
 
@@ -497,6 +510,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RailAmericasRouteImport
       parentRoute: typeof RailRoute
     }
+    '/index1520/routes': {
+      id: '/index1520/routes'
+      path: '/index1520/routes'
+      fullPath: '/index1520/routes'
+      preLoaderRoute: typeof Index1520RoutesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/article/$slug': {
       id: '/article/$slug'
       path: '/article/$slug'
@@ -587,6 +607,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminPoliciesRoute: AdminPoliciesRoute,
   AdminRoutesRoute: AdminRoutesRoute,
   ArticleSlugRoute: ArticleSlugRoute,
+  Index1520RoutesRoute: Index1520RoutesRoute,
   ApiTradeBriefRoute: ApiTradeBriefRoute,
 }
 export const routeTree = rootRouteImport
