@@ -36,14 +36,17 @@ function mix(a: string, b: string, t: number): string {
   return `rgb(${c(0)}, ${c(1)}, ${c(2)})`;
 }
 
-// 살짝 휜 코리도어(2차 베지어 → [lat,lng] 포인트). 직선보다 가독성↑.
-function arcLatLng(a: LatLng, b: LatLng): [number, number][] {
-  const steps = 32;
+// 살짝 휜 코리도어(2차 베지어 → [lat,lng]). 방향 무관하게 서→동 기준으로 그려
+// 양방향 쌍(A→B, B→A)이 렌즈처럼 벌어지지 않게 하고, bulge를 캡해 과도한 호를 방지.
+function arcLatLng(p1: LatLng, p2: LatLng): [number, number][] {
+  const [a, b] = p1.lng <= p2.lng ? [p1, p2] : [p2, p1];
   const ax = a.lng, ay = a.lat, bx = b.lng, by = b.lat;
   const mx = (ax + bx) / 2, my = (ay + by) / 2;
   const dx = bx - ax, dy = by - ay, dist = Math.hypot(dx, dy) || 1;
-  const cx = mx - (dy / dist) * dist * 0.15;
-  const cy = my + (dx / dist) * dist * 0.15;
+  const bend = Math.min(dist * 0.12, 9);
+  const cx = mx - (dy / dist) * bend;
+  const cy = my + (dx / dist) * bend;
+  const steps = 40;
   const pts: [number, number][] = [];
   for (let i = 0; i <= steps; i++) {
     const t = i / steps, k = 1 - t;
