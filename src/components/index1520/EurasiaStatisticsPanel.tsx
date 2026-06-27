@@ -23,6 +23,8 @@ const METRICS: Record<MetricKey, { label: string; cur: keyof RouteRow; prev: key
   transit: { label: "Travel Time (d)", cur: "currentTransitTime", prev: "previousTransitTime" },
 };
 
+type Hit = { teu: number; en: string; prev: number; rel: number | null; rank: number | null };
+
 const numOf = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 const fmt = (v: number | null | undefined, d = 0) =>
   v == null || Number.isNaN(v) ? "—" : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -70,16 +72,23 @@ export function EurasiaStatisticsPanel() {
 
   // choropleth 룩업: 성(중국어명)·국가(영문명) → TEU
   const { cnByName, euByName, teuMin, teuMax } = useMemo(() => {
-    const cn = new Map<string, { teu: number; en: string }>();
-    const eu = new Map<string, { teu: number; en: string }>();
+    const cn = new Map<string, Hit>();
+    const eu = new Map<string, Hit>();
     const vals: number[] = [];
     for (const r of charts?.geo?.data ?? []) {
       const teu = Number(r.TEU) || 0;
       if (teu > 0) vals.push(teu);
-      if (r.countrySet === "eu") eu.set(r.name.toLowerCase(), { teu, en: r.name });
+      const hit: Hit = {
+        teu,
+        en: r.name,
+        prev: Number(r.previousTEU) || 0,
+        rel: typeof r.relativeTEU === "number" ? r.relativeTEU : null,
+        rank: typeof r.rank === "number" ? r.rank : null,
+      };
+      if (r.countrySet === "eu") eu.set(r.name.toLowerCase(), hit);
       else {
         const cnName = CN_PROVINCE_EN_TO_CN[r.name];
-        if (cnName) cn.set(cnName, { teu, en: r.name });
+        if (cnName) cn.set(cnName, hit);
       }
     }
     return { cnByName: cn, euByName: eu, teuMin: vals.length ? Math.min(...vals) : 1, teuMax: vals.length ? Math.max(...vals) : 1 };
@@ -98,13 +107,17 @@ export function EurasiaStatisticsPanel() {
     const t = (Math.log(teu) - Math.log(teuMin)) / (Math.log(teuMax) - Math.log(teuMin) || 1);
     return redScale(t);
   };
-  const regionPopupHtml = (en: string, teu: number) =>
-    `<div style="min-width:172px">
-      <div style="color:#dc2626;font-weight:700;font-size:14px">${en}</div>
-      <div style="color:#667085;font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;margin-top:5px">The total volume of containers sent and imported</div>
-      <div style="font-size:20px;font-weight:800;color:#111;margin-top:2px">${Math.round(teu).toLocaleString()} <span style="font-size:11px;font-weight:500;color:#667085">TEU</span></div>
-      <div style="font-size:10px;color:#9aa3af;margin-top:3px">${asOfRef.current}</div>
+  const cardHtml = (h: Hit) => {
+    const relCol = h.rel == null ? "#94a3b8" : h.rel >= 0 ? "#16a34a" : "#dc2626";
+    const relTxt = h.rel == null ? "—" : `${h.rel >= 0 ? "▲" : "▼"} ${Math.abs(h.rel).toFixed(1)}%`;
+    return `<div class="idx-card">
+      <div class="idx-card-name">${h.en}</div>
+      <div class="idx-card-label">Total containers sent &amp; imported</div>
+      <div class="idx-card-num">${Math.round(h.teu).toLocaleString()}<span> TEU</span></div>
+      <div class="idx-card-row"><span>YoY <b style="color:${relCol}">${relTxt}</b></span><span>vs ${Math.round(h.prev).toLocaleString()}</span>${h.rank ? `<span>Rank #${h.rank}</span>` : ""}</div>
+      <div class="idx-card-foot">${asOfRef.current}</div>
     </div>`;
+  };
   const cnByNameRef = useRef(cnByName), euByNameRef = useRef(euByName);
   cnByNameRef.current = cnByName;
   euByNameRef.current = euByName;
@@ -174,8 +187,7 @@ export function EurasiaStatisticsPanel() {
           },
           onEachFeature: (f, lyr) => {
             const get = () => euByNameRef.current.get(String((f.properties as { name?: string })?.name ?? "").toLowerCase());
-            lyr.bindTooltip(() => { const h = get(); return h ? `<b>${h.en}</b><br/>${Math.round(h.teu).toLocaleString()} TEU` : ""; }, { sticky: true });
-            lyr.bindPopup(() => { const h = get(); return h ? regionPopupHtml(h.en, h.teu) : `<b>${(f.properties as { name?: string })?.name ?? ""}</b><br/>데이터 없음`; });
+            lyr.bindTooltip(() => { const h = get(); return h ? cardHtml(h) : ""; }, { className: "idx-tip", direction: "top", sticky: false, opacity: 1 });
           },
         }).addTo(map);
       } catch { /* noop */ }
@@ -191,8 +203,7 @@ export function EurasiaStatisticsPanel() {
           },
           onEachFeature: (f, lyr) => {
             const get = () => cnByNameRef.current.get(String((f.properties as { name?: string })?.name ?? ""));
-            lyr.bindTooltip(() => { const h = get(); return h ? `<b>${h.en}</b><br/>${Math.round(h.teu).toLocaleString()} TEU` : ""; }, { sticky: true });
-            lyr.bindPopup(() => { const h = get(); return h ? regionPopupHtml(h.en, h.teu) : `<b>${(f.properties as { name?: string })?.name ?? ""}</b><br/>데이터 없음`; });
+            lyr.bindTooltip(() => { const h = get(); return h ? cardHtml(h) : ""; }, { className: "idx-tip", direction: "top", sticky: false, opacity: 1 });
           },
         }).addTo(map);
       } catch { /* noop */ }
@@ -221,6 +232,17 @@ export function EurasiaStatisticsPanel() {
 
   return (
     <div className="mt-2">
+      <style>{`
+        .leaflet-tooltip.idx-tip{background:transparent;border:0;box-shadow:none;padding:0;white-space:normal;}
+        .leaflet-tooltip.idx-tip:before{display:none!important;}
+        .idx-card{background:#fff;border:1px solid #eef1f5;border-radius:14px;box-shadow:0 14px 36px -12px rgba(16,24,40,.45);min-width:194px;padding:13px 16px;font-family:inherit;}
+        .idx-card-name{color:#dc2626;font-weight:800;font-size:15px;letter-spacing:-.01em;}
+        .idx-card-label{color:#8a93a3;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;margin-top:6px;line-height:1.35;}
+        .idx-card-num{font-size:24px;font-weight:800;color:#0f172a;margin-top:3px;line-height:1.1;font-feature-settings:"tnum" 1;}
+        .idx-card-num span{font-size:11px;font-weight:600;color:#8a93a3;}
+        .idx-card-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:9px;font-size:11px;color:#54606f;font-feature-settings:"tnum" 1;}
+        .idx-card-foot{margin-top:9px;padding-top:7px;border-top:1px solid #eef1f5;font-size:10px;color:#9aa3af;}
+      `}</style>
       {/* 필터 */}
       <div className="mb-3 flex flex-wrap items-end gap-3 rounded-[14px] border border-[#d8dfe9] bg-[#f4f7fb] px-4 py-3">
         <label className="flex flex-col gap-1 text-[12px] font-medium text-[#667085]">기간
