@@ -1,16 +1,19 @@
-// Index1520 라우트 통계(Statistics) — Leaflet 지도(타일 베이스맵 + 국가 choropleth + O-D 코리도어 라인).
-// 데이터: index1520_route_statistics(국가 O-D, route view=list) + index1520_locations 좌표. 출처: index1520.com.
+// Index1520 라우트 통계(Statistics) — Leaflet: 성(省)/국가 choropleth(물동량) + 실제 코리도어 네트워크(노드+세그먼트) + O-D 표.
+// 지도 데이터: eurasia_charts.geo(지역 TEU, DB 보유) + 정적 코리도어(eurasiaCorridor). 표: index1520_route_statistics(없으면 transit fallback).
 import { useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { feature } from "topojson-client";
-import type { Map as LMap, GeoJSON as LGeoJSON, LayerGroup, Polyline } from "leaflet";
+import type { Map as LMap, GeoJSON as LGeoJSON } from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 import { index1520RoutesQueryOptions } from "@/lib/api/index1520-routes";
-import type { RouteRow, LatLng } from "@/lib/api/index1520-routes.functions";
-import { ISO2_TO_NUMERIC, flagEmoji } from "@/lib/iso-country-codes";
+import type { RouteRow } from "@/lib/api/index1520-routes.functions";
+import { eurasiaChartsQueryOptions } from "@/lib/api/eurasia-charts";
+import { flagEmoji } from "@/lib/iso-country-codes";
+import { CORRIDOR_NODES, CORRIDOR_SEGMENTS, CN_PROVINCE_EN_TO_CN } from "./eurasiaCorridor";
 
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+const WORLD_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+const CHINA_URL = "https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json";
 
 type MetricKey = "teu" | "weight" | "qty" | "transit";
 const METRICS: Record<MetricKey, { label: string; cur: keyof RouteRow; prev: keyof RouteRow }> = {
@@ -31,41 +34,10 @@ function hexToRgb(h: string): [number, number, number] {
   return [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16)];
 }
 function mix(a: string, b: string, t: number): string {
-  const pa = hexToRgb(a), pb = hexToRgb(b);
-  const c = (i: number) => Math.round(pa[i] + (pb[i] - pa[i]) * Math.max(0, Math.min(1, t)));
+  const pa = hexToRgb(a), pb = hexToRgb(b), c = (i: number) => Math.round(pa[i] + (pb[i] - pa[i]) * Math.max(0, Math.min(1, t)));
   return `rgb(${c(0)}, ${c(1)}, ${c(2)})`;
 }
-
-// 살짝 휜 코리도어(2차 베지어 → [lat,lng]). 방향 무관하게 서→동 기준으로 그려
-// 양방향 쌍(A→B, B→A)이 렌즈처럼 벌어지지 않게 하고, bulge를 캡해 과도한 호를 방지.
-function arcLatLng(p1: LatLng, p2: LatLng): [number, number][] {
-  const [a, b] = p1.lng <= p2.lng ? [p1, p2] : [p2, p1];
-  const ax = a.lng, ay = a.lat, bx = b.lng, by = b.lat;
-  const mx = (ax + bx) / 2, my = (ay + by) / 2;
-  const dx = bx - ax, dy = by - ay, dist = Math.hypot(dx, dy) || 1;
-  const bend = Math.min(dist * 0.12, 9);
-  const cx = mx - (dy / dist) * bend;
-  const cy = my + (dx / dist) * bend;
-  const steps = 40;
-  const pts: [number, number][] = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps, k = 1 - t;
-    pts.push([k * k * ay + 2 * k * t * cy + t * t * by, k * k * ax + 2 * k * t * cx + t * t * bx]);
-  }
-  return pts;
-}
-
-function popupHtml(r: RouteRow): string {
-  const yoy = yoyOf(r.currentTeu, r.previousTeu);
-  const col = yoy == null ? "#667085" : yoy >= 0 ? "#16a34a" : "#dc2626";
-  return `<div style="font-size:12px;line-height:1.5">
-    <div style="font-weight:700;margin-bottom:3px">${flagEmoji(r.fromId)} ${r.fromName} → ${flagEmoji(r.toId)} ${r.toName}</div>
-    <div>Current TEU: <b>${fmt(r.currentTeu)}</b></div>
-    <div>Previous TEU: ${fmt(r.previousTeu)}</div>
-    <div>YoY: <span style="color:${col};font-weight:600">${fmtPct(yoy)}</span></div>
-    <div>Travel: ${r.currentTransitTime == null ? "—" : `${r.currentTransitTime.toFixed(1)}d`}</div>
-  </div>`;
-}
+const PALE = "#ffe3d6", DARK = "#8c1d13";
 
 export function EurasiaStatisticsPanel() {
   const [period, setPeriod] = useState<string | undefined>(undefined);
@@ -75,12 +47,41 @@ export function EurasiaStatisticsPanel() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data, isFetching } = useQuery({ ...index1520RoutesQueryOptions(period), placeholderData: keepPreviousData });
+  const { data: charts } = useQuery(eurasiaChartsQueryOptions());
   const m = METRICS[metric];
 
+  // choropleth 룩업: 성(중국어명)·국가(영문명) → TEU
+  const { cnByName, euByName, teuMin, teuMax } = useMemo(() => {
+    const cn = new Map<string, { teu: number; en: string }>();
+    const eu = new Map<string, { teu: number; en: string }>();
+    const vals: number[] = [];
+    for (const r of charts?.geo?.data ?? []) {
+      const teu = Number(r.TEU) || 0;
+      if (teu > 0) vals.push(teu);
+      if (r.countrySet === "eu") eu.set(r.name.toLowerCase(), { teu, en: r.name });
+      else {
+        const cnName = CN_PROVINCE_EN_TO_CN[r.name];
+        if (cnName) cn.set(cnName, { teu, en: r.name });
+      }
+    }
+    return { cnByName: cn, euByName: eu, teuMin: Math.min(...vals, 1), teuMax: Math.max(...vals, 1) };
+  }, [charts]);
+
+  const colorFor = (teu: number | undefined) => {
+    if (!teu) return "#eef1f5";
+    const t = (Math.log(teu) - Math.log(teuMin)) / (Math.log(teuMax) - Math.log(teuMin) || 1);
+    return mix(PALE, DARK, t);
+  };
+  const cnByNameRef = useRef(cnByName), euByNameRef = useRef(euByName);
+  cnByNameRef.current = cnByName;
+  euByNameRef.current = euByName;
+  const colorRef = useRef(colorFor);
+  colorRef.current = colorFor;
+
+  // 표 데이터(O-D)
   const filtered = useMemo(() => {
     const rows = data?.routes ?? [];
-    const dq = depSearch.trim().toLowerCase();
-    const tq = destSearch.trim().toLowerCase();
+    const dq = depSearch.trim().toLowerCase(), tq = destSearch.trim().toLowerCase();
     return rows
       .filter((r) => (!dq || r.fromName.toLowerCase().includes(dq)) && (!tq || r.toName.toLowerCase().includes(tq)))
       .sort((a, b) => numOf(b[m.cur]) - numOf(a[m.cur]));
@@ -89,54 +90,20 @@ export function EurasiaStatisticsPanel() {
   const summary = useMemo(() => {
     let totalTeu = 0, prevTeu = 0, tSum = 0, tN = 0, mapped = 0;
     for (const r of filtered) {
-      totalTeu += r.currentTeu;
-      prevTeu += r.previousTeu;
+      totalTeu += r.currentTeu; prevTeu += r.previousTeu;
       if (r.currentTransitTime != null) { tSum += r.currentTransitTime; tN += 1; }
       if (r.hasCoords) mapped += 1;
     }
-    return { totalTeu, prevTeu, yoy: yoyOf(totalTeu, prevTeu), avgT: tN ? tSum / tN : null, count: filtered.length, mapped, missing: filtered.length - mapped };
+    return { totalTeu, prevTeu, yoy: yoyOf(totalTeu, prevTeu), avgT: tN ? tSum / tN : null, count: filtered.length, mapped };
   }, [filtered]);
 
-  const { byNumeric, maxTeu } = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const r of filtered) {
-      for (const code of [r.fromId, r.toId]) {
-        const num = ISO2_TO_NUMERIC[(code || "").toUpperCase()];
-        if (num) map.set(num, (map.get(num) ?? 0) + r.currentTeu);
-      }
-    }
-    return { byNumeric: map, maxTeu: Math.max(1, ...map.values()) };
-  }, [filtered]);
-
-  const lines = useMemo(() => filtered.filter((r) => r.hasCoords && r.from && r.to), [filtered]);
-  const maxLineVal = useMemo(() => Math.max(1, ...lines.map((r) => numOf(r[m.cur]))), [lines, m.cur]);
-  const lineColor = (r: RouteRow) => {
-    const d = numOf(r[m.cur]) - numOf(r[m.prev]);
-    return d > 0 ? "#16a34a" : d < 0 ? "#dc2626" : "#94a3b8";
-  };
-  const lineWidth = (r: RouteRow) => 1.5 + (numOf(r[m.cur]) / maxLineVal) * 7;
-
-  // Leaflet refs
+  // Leaflet
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LMap | null>(null);
-  const LRef = useRef<typeof import("leaflet") | null>(null);
-  const geoLayerRef = useRef<LGeoJSON | null>(null);
-  const lineGroupRef = useRef<LayerGroup | null>(null);
-  const lineByIdRef = useRef<Map<string, Polyline>>(new Map());
-  const byNumericRef = useRef(byNumeric);
-  const maxTeuRef = useRef(maxTeu);
-  byNumericRef.current = byNumeric;
-  maxTeuRef.current = maxTeu;
-  const [mapReady, setMapReady] = useState(false);
-  const [geoReady, setGeoReady] = useState(false);
+  const cnLayerRef = useRef<LGeoJSON | null>(null);
+  const euLayerRef = useRef<LGeoJSON | null>(null);
+  const [ready, setReady] = useState(false);
 
-  const geoStyle = (numeric: string) => {
-    const v = byNumericRef.current.get(numeric);
-    const fill = v ? mix("#d6efe9", "#0d9488", Math.log1p(v) / Math.log1p(maxTeuRef.current)) : "#e9eef4";
-    return { fillColor: fill, fillOpacity: v ? 0.82 : 0.5, weight: 0.5, color: "#ffffff", opacity: 1 };
-  };
-
-  // 지도 초기화
   useEffect(() => {
     let disposed = false;
     (async () => {
@@ -144,91 +111,74 @@ export function EurasiaStatisticsPanel() {
       const mod = await import("leaflet");
       const L = (mod as unknown as { default?: typeof import("leaflet") }).default ?? mod;
       if (disposed || !containerRef.current) return;
-      LRef.current = L;
-      const map = L.map(containerRef.current, { center: [45, 55], zoom: 3, scrollWheelZoom: true, worldCopyJump: true });
+      const map = L.map(containerRef.current, { center: [46, 60], zoom: 3, scrollWheelZoom: true, worldCopyJump: true });
       mapRef.current = map;
-      map.createPane("odlines");
-      const odPane = map.getPane("odlines");
-      if (odPane) odPane.style.zIndex = "450"; // choropleth(overlayPane 400) 위
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-        subdomains: "abcd",
-        maxZoom: 12,
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-      }).addTo(map);
-      lineGroupRef.current = L.layerGroup().addTo(map);
-      setMapReady(true);
+      map.createPane("corridor"); map.getPane("corridor")!.style.zIndex = "450";
+      map.createPane("nodes"); map.getPane("nodes")!.style.zIndex = "460";
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", { subdomains: "abcd", maxZoom: 12, attribution: "&copy; OpenStreetMap &copy; CARTO" }).addTo(map);
       setTimeout(() => mapRef.current?.invalidateSize(), 120);
+
+      // 코리도어 네트워크(정적)
+      for (const [a, b] of CORRIDOR_SEGMENTS) {
+        const na = CORRIDOR_NODES[a], nb = CORRIDOR_NODES[b];
+        if (na && nb) L.polyline([[na[0], na[1]], [nb[0], nb[1]]], { pane: "corridor", color: "#334155", weight: 1.1, opacity: 0.65, dashArray: "4 3" }).addTo(map);
+      }
+      for (const code of Object.keys(CORRIDOR_NODES)) {
+        const [lat, lng, label] = CORRIDOR_NODES[code];
+        L.circleMarker([lat, lng], { pane: "nodes", radius: 2.6, color: "#334155", weight: 1, fillColor: "#ffffff", fillOpacity: 1 })
+          .bindTooltip(label, { direction: "top" }).addTo(map);
+      }
+
+      // 국가(EU) choropleth
       try {
-        const topo = await fetch(GEO_URL).then((r) => r.json());
+        const topo = await fetch(WORLD_URL).then((r) => r.json());
         if (disposed || !mapRef.current) return;
         const geo = feature(topo, topo.objects.countries) as unknown as GeoJSON.FeatureCollection;
-        const layer = L.geoJSON(geo, {
-          style: (f) => geoStyle(String(f?.id ?? "").padStart(3, "0")),
-          onEachFeature: (f, lyr) => {
-            lyr.bindTooltip(
-              () => {
-                const id = String(f.id ?? "").padStart(3, "0");
-                const teu = byNumericRef.current.get(id);
-                const name = (f.properties as { name?: string } | null)?.name ?? "—";
-                return `<b>${name}</b><br/>${teu ? `물동량 ${Math.round(teu).toLocaleString()} TEU` : "데이터 없음"}`;
-              },
-              { sticky: true },
-            );
+        euLayerRef.current = L.geoJSON(geo, {
+          style: (f) => {
+            const hit = euByNameRef.current.get(String((f?.properties as { name?: string })?.name ?? "").toLowerCase());
+            return { fillColor: colorRef.current(hit?.teu), fillOpacity: hit ? 0.85 : 0.25, weight: 0.4, color: "#ffffff", opacity: 1 };
           },
+          onEachFeature: (f, lyr) => lyr.bindTooltip(() => {
+            const hit = euByNameRef.current.get(String((f.properties as { name?: string })?.name ?? "").toLowerCase());
+            return hit ? `<b>${hit.en}</b><br/>${Math.round(hit.teu).toLocaleString()} TEU` : "";
+          }, { sticky: true }),
         }).addTo(map);
-        geoLayerRef.current = layer;
-        setGeoReady(true);
-      } catch {
-        /* geojson 실패해도 라인은 표시 */
-      }
+      } catch { /* noop */ }
+
+      // 중국 성(省) choropleth
+      try {
+        const cnGeo = await fetch(CHINA_URL).then((r) => r.json());
+        if (disposed || !mapRef.current) return;
+        cnLayerRef.current = L.geoJSON(cnGeo, {
+          style: (f) => {
+            const hit = cnByNameRef.current.get(String((f?.properties as { name?: string })?.name ?? ""));
+            return { fillColor: colorRef.current(hit?.teu), fillOpacity: hit ? 0.85 : 0.18, weight: 0.4, color: "#ffffff", opacity: 1 };
+          },
+          onEachFeature: (f, lyr) => lyr.bindTooltip(() => {
+            const hit = cnByNameRef.current.get(String((f.properties as { name?: string })?.name ?? ""));
+            return hit ? `<b>${hit.en}</b><br/>${Math.round(hit.teu).toLocaleString()} TEU` : "";
+          }, { sticky: true }),
+        }).addTo(map);
+      } catch { /* noop */ }
+
+      setReady(true);
     })();
-    return () => {
-      disposed = true;
-      mapRef.current?.remove();
-      mapRef.current = null;
-      geoLayerRef.current = null;
-      lineGroupRef.current = null;
-      setMapReady(false);
-      setGeoReady(false);
-    };
+    return () => { disposed = true; mapRef.current?.remove(); mapRef.current = null; cnLayerRef.current = null; euLayerRef.current = null; setReady(false); };
   }, []);
 
-  // choropleth 재색칠
+  // 데이터 도착/변경 시 choropleth 재색칠
   useEffect(() => {
-    if (!geoReady || !geoLayerRef.current) return;
-    geoLayerRef.current.setStyle((f) => geoStyle(String(f?.id ?? "").padStart(3, "0")));
-  }, [byNumeric, maxTeu, geoReady]);
-
-  // O-D 라인 그리기 + 선택 강조 + 팝업/fit
-  useEffect(() => {
-    const L = LRef.current, group = lineGroupRef.current, map = mapRef.current;
-    if (!L || !group || !map || !mapReady) return;
-    group.clearLayers();
-    lineByIdRef.current.clear();
-    for (const r of lines) {
-      const on = r.routeId === selectedId;
-      const pl = L.polyline(arcLatLng(r.from!, r.to!), {
-        pane: "odlines",
-        color: on ? "#1d4ed8" : lineColor(r),
-        weight: on ? lineWidth(r) + 2.5 : lineWidth(r),
-        opacity: on ? 0.95 : 0.82,
-        dashArray: on ? undefined : "5 4",
-        lineCap: "round",
-      });
-      pl.bindPopup(popupHtml(r));
-      pl.on("click", () => setSelectedId(r.routeId));
-      pl.addTo(group);
-      lineByIdRef.current.set(r.routeId, pl);
-    }
-    if (selectedId) {
-      const r = lines.find((x) => x.routeId === selectedId);
-      const pl = lineByIdRef.current.get(selectedId);
-      if (r && pl && r.from && r.to) {
-        pl.openPopup();
-        map.fitBounds(L.latLngBounds([[r.from.lat, r.from.lng], [r.to.lat, r.to.lng]]), { padding: [60, 60], maxZoom: 5 });
-      }
-    }
-  }, [lines, selectedId, mapReady, metric]);
+    if (!ready) return;
+    euLayerRef.current?.setStyle((f) => {
+      const hit = euByNameRef.current.get(String((f?.properties as { name?: string })?.name ?? "").toLowerCase());
+      return { fillColor: colorRef.current(hit?.teu), fillOpacity: hit ? 0.85 : 0.25, weight: 0.4, color: "#ffffff", opacity: 1 };
+    });
+    cnLayerRef.current?.setStyle((f) => {
+      const hit = cnByNameRef.current.get(String((f?.properties as { name?: string })?.name ?? ""));
+      return { fillColor: colorRef.current(hit?.teu), fillOpacity: hit ? 0.85 : 0.18, weight: 0.4, color: "#ffffff", opacity: 1 };
+    });
+  }, [cnByName, euByName, ready]);
 
   const periods = data?.periods ?? [];
   const inp = "rounded-md border border-[#d0d7e2] bg-white px-2.5 py-1.5 text-[13px] text-[#1a2433]";
@@ -262,29 +212,37 @@ export function EurasiaStatisticsPanel() {
       </div>
 
       {/* 요약 카드 */}
-      <div className="mb-3 grid grid-cols-2 gap-2.5 min-[700px]:grid-cols-4 min-[1100px]:grid-cols-7">
+      <div className="mb-3 grid grid-cols-2 gap-2.5 min-[700px]:grid-cols-3 min-[1100px]:grid-cols-6">
         <div className={cardCls}><div className="text-[11px] text-[#667085]">Total TEU</div><div className="mt-1 text-[18px] font-bold tabular-nums">{fmt(summary.totalTeu)}</div></div>
         <div className={cardCls}><div className="text-[11px] text-[#667085]">Previous TEU</div><div className="mt-1 text-[18px] font-bold tabular-nums">{fmt(summary.prevTeu)}</div></div>
         <div className={cardCls}><div className="text-[11px] text-[#667085]">YoY Change</div><div className={`mt-1 text-[18px] font-bold tabular-nums ${summary.yoy == null ? "" : summary.yoy >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>{fmtPct(summary.yoy)}</div></div>
         <div className={cardCls}><div className="text-[11px] text-[#667085]">Avg Travel (d)</div><div className="mt-1 text-[18px] font-bold tabular-nums">{summary.avgT == null ? "—" : summary.avgT.toFixed(1)}</div></div>
         <div className={cardCls}><div className="text-[11px] text-[#667085]">Routes</div><div className="mt-1 text-[18px] font-bold tabular-nums">{summary.count}</div></div>
-        <div className={cardCls}><div className="text-[11px] text-[#667085]">Mapped</div><div className="mt-1 text-[18px] font-bold tabular-nums text-[#16a34a]">{summary.mapped}</div></div>
-        <div className={cardCls}><div className="text-[11px] text-[#667085]">Missing</div><div className="mt-1 text-[18px] font-bold tabular-nums text-[#d97706]">{summary.missing}</div></div>
+        <div className={cardCls}><div className="text-[11px] text-[#667085]">코리도어 노드</div><div className="mt-1 text-[18px] font-bold tabular-nums">{Object.keys(CORRIDOR_NODES).length}</div></div>
       </div>
 
-      {/* Leaflet 지도 */}
+      {/* 지도: 성/국가 choropleth + 코리도어 네트워크 */}
       <section className="relative mb-3 overflow-hidden rounded-[14px] border border-[#d8dfe9]">
-        <div ref={containerRef} className="h-[460px] w-full" data-testid="index1520-leaflet" style={{ background: "#aadaff" }} />
+        <div ref={containerRef} className="h-[480px] w-full" data-testid="index1520-leaflet" style={{ background: "#dceaf5" }} />
         <div className="pointer-events-none absolute right-3 top-3 z-[500] rounded-md border border-[#d8dfe9] bg-white/92 px-3 py-1.5 text-[12px] font-medium text-[#344054] shadow-sm">
-          {lines.length}/{summary.count} 라우트 · <span className="text-[#16a34a]">▲ 증가</span> <span className="text-[#e74c3c]">▼ 감소</span> · 색=국가별 물동량
+          유라시아 철도 코리도어 · 색 = 지역별 물동량(TEU)
+        </div>
+        {/* 범례 */}
+        <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-md border border-[#d8dfe9] bg-white/92 px-3 py-2 shadow-sm">
+          <div className="mb-1 text-[10.5px] font-semibold text-[#344054]">The volume of containers transported, TEU</div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] tabular-nums text-[#667085]">{fmt(teuMin)}</span>
+            <span className="h-2.5 w-28 rounded-sm" style={{ background: `linear-gradient(to right, ${PALE}, ${DARK})` }} />
+            <span className="text-[10px] tabular-nums text-[#667085]">{fmt(teuMax)}</span>
+          </div>
         </div>
       </section>
 
       {/* 표 */}
       <section className="rounded-[14px] border border-[#d8dfe9] bg-white px-4 py-4">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="text-[15px] font-bold text-[#1a2433]">라우트 통계</h3>
-          <div className="text-[12px] text-[#667085]">{filtered.length} rows · 행 클릭 시 지도 강조</div>
+          <h3 className="text-[15px] font-bold text-[#1a2433]">라우트 통계 (국가 O-D)</h3>
+          <div className="text-[12px] text-[#667085]">{filtered.length} rows</div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] border-collapse text-left text-[13px]">
@@ -297,12 +255,11 @@ export function EurasiaStatisticsPanel() {
                 <th className="py-2 pr-4 text-right font-semibold">YoY %</th>
                 <th className="py-2 pr-4 text-right font-semibold">Weight</th>
                 <th className="py-2 pr-4 text-right font-semibold">Qty</th>
-                <th className="py-2 pr-4 text-right font-semibold">Travel (d)</th>
-                <th className="py-2 font-semibold">Coord</th>
+                <th className="py-2 font-semibold">Travel (d)</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={9} className="py-8 text-center text-[#667085]">표시할 라우트가 없습니다. (워크플로 실행 후 데이터가 채워집니다)</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-[#667085]">국가 O-D 데이터가 없습니다. (route_statistics 백필 또는 워크플로 force 실행)</td></tr>}
               {filtered.map((r) => {
                 const yoy = yoyOf(r.currentTeu, r.previousTeu);
                 const on = r.routeId === selectedId;
@@ -315,19 +272,14 @@ export function EurasiaStatisticsPanel() {
                     <td className={`py-2.5 pr-4 text-right tabular-nums ${yoy == null ? "text-[#667085]" : yoy >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>{fmtPct(yoy)}</td>
                     <td className="py-2.5 pr-4 text-right tabular-nums">{fmt(r.currentActualWeight, 1)}</td>
                     <td className="py-2.5 pr-4 text-right tabular-nums">{fmt(r.currentShippingQty)}</td>
-                    <td className="py-2.5 pr-4 text-right tabular-nums">{r.currentTransitTime == null ? "—" : r.currentTransitTime.toFixed(1)}</td>
-                    <td className="py-2.5">
-                      {r.hasCoords
-                        ? <span className="inline-flex items-center gap-1.5 text-[12px] text-[#16a34a]"><span className="h-2 w-2 rounded-full bg-[#16a34a]" />Mapped</span>
-                        : <span className="inline-flex items-center gap-1.5 text-[12px] text-[#d97706]"><span className="h-2 w-2 rounded-full bg-[#d97706]" />Missing</span>}
-                    </td>
+                    <td className="py-2.5 text-right tabular-nums">{r.currentTransitTime == null ? "—" : r.currentTransitTime.toFixed(1)}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <div className="mt-3 text-[11px] text-[#828d9d]">데이터 출처: index1520.com (route view=list, 국가 O-D) · 지도: Leaflet · world-atlas · © CARTO</div>
+        <div className="mt-3 text-[11px] text-[#828d9d]">출처: index1520.com · 지도: Leaflet · 성 경계 DataV.GeoAtlas · 국가 경계 world-atlas · 코리도어: index1520 route</div>
       </section>
     </div>
   );
