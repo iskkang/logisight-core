@@ -233,9 +233,10 @@ export function EurasiaStatisticsPanel() {
   return (
     <div className="mt-2">
       <style>{`
+        .leaflet-container{font-family:var(--font-sans);}
         .leaflet-tooltip.idx-tip{background:transparent;border:0;box-shadow:none;padding:0;white-space:normal;}
         .leaflet-tooltip.idx-tip:before{display:none!important;}
-        .idx-card{background:#fff;border:1px solid #eef1f5;border-radius:14px;box-shadow:0 14px 36px -12px rgba(16,24,40,.45);min-width:194px;padding:13px 16px;font-family:inherit;}
+        .idx-card{background:#fff;border:1px solid #eef1f5;border-radius:14px;box-shadow:0 14px 36px -12px rgba(16,24,40,.45);min-width:194px;padding:13px 16px;font-family:var(--font-sans);}
         .idx-card-name{color:#dc2626;font-weight:800;font-size:15px;letter-spacing:-.01em;}
         .idx-card-label{color:#8a93a3;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;margin-top:6px;line-height:1.35;}
         .idx-card-num{font-size:24px;font-weight:800;color:#0f172a;margin-top:3px;line-height:1.1;font-feature-settings:"tnum" 1;}
