@@ -37,7 +37,25 @@ function mix(a: string, b: string, t: number): string {
   const pa = hexToRgb(a), pb = hexToRgb(b), c = (i: number) => Math.round(pa[i] + (pb[i] - pa[i]) * Math.max(0, Math.min(1, t)));
   return `rgb(${c(0)}, ${c(1)}, ${c(2)})`;
 }
-const PALE = "#ffe3d6", DARK = "#8c1d13";
+// ColorBrewer Reds — index1520 레퍼런스풍 깔끔한 적색 스케일.
+const RED_STOPS = ["#fff5f0", "#fee0d2", "#fcbba1", "#fc9272", "#fb6a4a", "#ef3b2c", "#cb181d", "#a50f15", "#67000d"];
+const RED_GRADIENT = `linear-gradient(to right, ${RED_STOPS.join(", ")})`;
+function redScale(t: number): string {
+  const x = Math.max(0, Math.min(1, t)) * (RED_STOPS.length - 1);
+  const i = Math.floor(x);
+  return i >= RED_STOPS.length - 1 ? RED_STOPS[RED_STOPS.length - 1] : mix(RED_STOPS[i], RED_STOPS[i + 1], x - i);
+}
+// 완만한 곡선 세그먼트([lat,lng]). 노드 간 직선의 각짐을 줄임.
+function segArc(a: [number, number, string], b: [number, number, string]): [number, number][] {
+  const ay = a[0], ax = a[1], by = b[0], bx = b[1];
+  const mx = (ax + bx) / 2, my = (ay + by) / 2;
+  const dx = bx - ax, dy = by - ay, dist = Math.hypot(dx, dy) || 1;
+  const bend = Math.min(dist * 0.08, 4);
+  const cx = mx - (dy / dist) * bend, cy = my + (dx / dist) * bend;
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= 16; i++) { const t = i / 16, k = 1 - t; pts.push([k * k * ay + 2 * k * t * cy + t * t * by, k * k * ax + 2 * k * t * cx + t * t * bx]); }
+  return pts;
+}
 
 export function EurasiaStatisticsPanel() {
   const [period, setPeriod] = useState<string | undefined>(undefined);
@@ -64,14 +82,29 @@ export function EurasiaStatisticsPanel() {
         if (cnName) cn.set(cnName, { teu, en: r.name });
       }
     }
-    return { cnByName: cn, euByName: eu, teuMin: Math.min(...vals, 1), teuMax: Math.max(...vals, 1) };
+    return { cnByName: cn, euByName: eu, teuMin: vals.length ? Math.min(...vals) : 1, teuMax: vals.length ? Math.max(...vals) : 1 };
   }, [charts]);
 
+  const asOf = useMemo(() => {
+    const iv = charts?.geo?.interval;
+    if (iv?.minDate && iv?.maxDate) return `As of ${iv.minDate} – ${iv.maxDate}`;
+    return data?.currentPeriod ? `As of ${data.currentPeriod}` : "";
+  }, [charts, data]);
+  const asOfRef = useRef(asOf);
+  asOfRef.current = asOf;
+
   const colorFor = (teu: number | undefined) => {
-    if (!teu) return "#eef1f5";
+    if (!teu || teu <= 0) return "#eef1f5";
     const t = (Math.log(teu) - Math.log(teuMin)) / (Math.log(teuMax) - Math.log(teuMin) || 1);
-    return mix(PALE, DARK, t);
+    return redScale(t);
   };
+  const regionPopupHtml = (en: string, teu: number) =>
+    `<div style="min-width:172px">
+      <div style="color:#dc2626;font-weight:700;font-size:14px">${en}</div>
+      <div style="color:#667085;font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;margin-top:5px">The total volume of containers sent and imported</div>
+      <div style="font-size:20px;font-weight:800;color:#111;margin-top:2px">${Math.round(teu).toLocaleString()} <span style="font-size:11px;font-weight:500;color:#667085">TEU</span></div>
+      <div style="font-size:10px;color:#9aa3af;margin-top:3px">${asOfRef.current}</div>
+    </div>`;
   const cnByNameRef = useRef(cnByName), euByNameRef = useRef(euByName);
   cnByNameRef.current = cnByName;
   euByNameRef.current = euByName;
@@ -121,7 +154,7 @@ export function EurasiaStatisticsPanel() {
       // 코리도어 네트워크(정적)
       for (const [a, b] of CORRIDOR_SEGMENTS) {
         const na = CORRIDOR_NODES[a], nb = CORRIDOR_NODES[b];
-        if (na && nb) L.polyline([[na[0], na[1]], [nb[0], nb[1]]], { pane: "corridor", color: "#334155", weight: 1.1, opacity: 0.65, dashArray: "4 3" }).addTo(map);
+        if (na && nb) L.polyline(segArc(na, nb), { pane: "corridor", color: "#334155", weight: 1.1, opacity: 0.6, dashArray: "5 4" }).addTo(map);
       }
       for (const code of Object.keys(CORRIDOR_NODES)) {
         const [lat, lng, label] = CORRIDOR_NODES[code];
@@ -139,10 +172,11 @@ export function EurasiaStatisticsPanel() {
             const hit = euByNameRef.current.get(String((f?.properties as { name?: string })?.name ?? "").toLowerCase());
             return { fillColor: colorRef.current(hit?.teu), fillOpacity: hit ? 0.85 : 0.25, weight: 0.4, color: "#ffffff", opacity: 1 };
           },
-          onEachFeature: (f, lyr) => lyr.bindTooltip(() => {
-            const hit = euByNameRef.current.get(String((f.properties as { name?: string })?.name ?? "").toLowerCase());
-            return hit ? `<b>${hit.en}</b><br/>${Math.round(hit.teu).toLocaleString()} TEU` : "";
-          }, { sticky: true }),
+          onEachFeature: (f, lyr) => {
+            const get = () => euByNameRef.current.get(String((f.properties as { name?: string })?.name ?? "").toLowerCase());
+            lyr.bindTooltip(() => { const h = get(); return h ? `<b>${h.en}</b><br/>${Math.round(h.teu).toLocaleString()} TEU` : ""; }, { sticky: true });
+            lyr.bindPopup(() => { const h = get(); return h ? regionPopupHtml(h.en, h.teu) : `<b>${(f.properties as { name?: string })?.name ?? ""}</b><br/>데이터 없음`; });
+          },
         }).addTo(map);
       } catch { /* noop */ }
 
@@ -155,10 +189,11 @@ export function EurasiaStatisticsPanel() {
             const hit = cnByNameRef.current.get(String((f?.properties as { name?: string })?.name ?? ""));
             return { fillColor: colorRef.current(hit?.teu), fillOpacity: hit ? 0.85 : 0.18, weight: 0.4, color: "#ffffff", opacity: 1 };
           },
-          onEachFeature: (f, lyr) => lyr.bindTooltip(() => {
-            const hit = cnByNameRef.current.get(String((f.properties as { name?: string })?.name ?? ""));
-            return hit ? `<b>${hit.en}</b><br/>${Math.round(hit.teu).toLocaleString()} TEU` : "";
-          }, { sticky: true }),
+          onEachFeature: (f, lyr) => {
+            const get = () => cnByNameRef.current.get(String((f.properties as { name?: string })?.name ?? ""));
+            lyr.bindTooltip(() => { const h = get(); return h ? `<b>${h.en}</b><br/>${Math.round(h.teu).toLocaleString()} TEU` : ""; }, { sticky: true });
+            lyr.bindPopup(() => { const h = get(); return h ? regionPopupHtml(h.en, h.teu) : `<b>${(f.properties as { name?: string })?.name ?? ""}</b><br/>데이터 없음`; });
+          },
         }).addTo(map);
       } catch { /* noop */ }
 
@@ -232,7 +267,7 @@ export function EurasiaStatisticsPanel() {
           <div className="mb-1 text-[10.5px] font-semibold text-[#344054]">The volume of containers transported, TEU</div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] tabular-nums text-[#667085]">{fmt(teuMin)}</span>
-            <span className="h-2.5 w-28 rounded-sm" style={{ background: `linear-gradient(to right, ${PALE}, ${DARK})` }} />
+            <span className="h-2.5 w-28 rounded-sm" style={{ background: RED_GRADIENT }} />
             <span className="text-[10px] tabular-nums text-[#667085]">{fmt(teuMax)}</span>
           </div>
         </div>
