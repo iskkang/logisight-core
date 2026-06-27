@@ -144,6 +144,9 @@ export function EurasiaStatisticsPanel() {
       LRef.current = L;
       const map = L.map(containerRef.current, { center: [45, 55], zoom: 3, scrollWheelZoom: true, worldCopyJump: true });
       mapRef.current = map;
+      map.createPane("odlines");
+      const odPane = map.getPane("odlines");
+      if (odPane) odPane.style.zIndex = "450"; // choropleth(overlayPane 400) 위
       L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
         subdomains: "abcd",
         maxZoom: 12,
@@ -171,7 +174,6 @@ export function EurasiaStatisticsPanel() {
           },
         }).addTo(map);
         geoLayerRef.current = layer;
-        lineGroupRef.current?.bringToFront();
         setGeoReady(true);
       } catch {
         /* geojson 실패해도 라인은 표시 */
@@ -203,6 +205,7 @@ export function EurasiaStatisticsPanel() {
     for (const r of lines) {
       const on = r.routeId === selectedId;
       const pl = L.polyline(arcLatLng(r.from!, r.to!), {
+        pane: "odlines",
         color: on ? "#1d4ed8" : lineColor(r),
         weight: on ? lineWidth(r) + 2.5 : lineWidth(r),
         opacity: on ? 0.95 : 0.82,
@@ -214,7 +217,6 @@ export function EurasiaStatisticsPanel() {
       pl.addTo(group);
       lineByIdRef.current.set(r.routeId, pl);
     }
-    group.bringToFront();
     if (selectedId) {
       const r = lines.find((x) => x.routeId === selectedId);
       const pl = lineByIdRef.current.get(selectedId);
