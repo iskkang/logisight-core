@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { eurasiaChartsQueryOptions } from "@/lib/api/eurasia-charts";
-import { eraiStatsQueryOptions } from "@/lib/api/rates";
 import { latestNewsQueryOptions } from "@/lib/api/news";
 import { RailEurasiaContent } from "@/components/rail-page/RailEurasiaContent";
 
@@ -9,8 +8,7 @@ import { RailEurasiaContent } from "@/components/rail-page/RailEurasiaContent";
 export const Route = createFileRoute("/rail/eurasia")({
   loader: ({ context }) => {
     context.queryClient.ensureQueryData(eurasiaChartsQueryOptions());
-    context.queryClient.ensureQueryData(eraiStatsQueryOptions());
-    context.queryClient.ensureQueryData(latestNewsQueryOptions({ category: "철도", lang: "en", limit: 20 }));
+    context.queryClient.ensureQueryData(latestNewsQueryOptions({ category: "철도", lang: "en", limit: 12 }));
   },
   head: () => ({
     meta: [
