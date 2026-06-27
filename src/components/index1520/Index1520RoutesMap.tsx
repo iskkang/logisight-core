@@ -176,9 +176,11 @@ export function Index1520RoutesMap() {
               ["<", ["get", "rel"], 0], "#e74c3c",
               "#999999",
             ],
-            "line-opacity": 0.85,
+            "line-opacity": 0.9,
+            "line-dasharray": [1.6, 1.1],
           },
         });
+        map.resize();
         map.on("click", "routes-line", (e: MapMouseEvent & { features?: MapGeoJSONFeature[] }) => {
           const id = e.features?.[0]?.properties?.routeId as string | undefined;
           if (id) {
