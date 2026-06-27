@@ -1,11 +1,12 @@
 // 유라시아 ERAI 차트 포털 — 기존 LogisightEurasia 디자인(다크 히어로 + 라이트 sheet + judge/tiles)을 살리고
 // TCR ETA(내부 자료)는 ERAI 공개 지수로 대체. 데이터: eurasia_charts(index1520 스냅샷) + maritime_news('철도').
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { eurasiaChartsQueryOptions } from "@/lib/api/eurasia-charts";
 import type { ChartDataset } from "@/lib/api/eurasia-charts";
 import { latestNewsQueryOptions, formatPublishedAt } from "@/lib/api/news";
+import { EurasiaStatisticsPanel } from "@/components/index1520/EurasiaStatisticsPanel";
 import {
   EurasiaIndexChart,
   EurasiaTransitChart,
@@ -86,6 +87,7 @@ export function RailEurasiaContent() {
   }, [charts]);
 
   const dColor = (v: number | null) => (v == null ? "var(--mute)" : v >= 0 ? "var(--up)" : "var(--down)");
+  const [tab, setTab] = useState<"index" | "statistics">("index");
 
   return (
     <div className="lsg-eu">
@@ -126,6 +128,24 @@ export function RailEurasiaContent() {
         <div className="wrap">
           <div className="bc">홈 <b>›</b> 인사이트 <b>›</b> 철도 <b>›</b> 유라시아</div>
 
+          {/* Index | Statistics 탭 */}
+          <div className="mt-3.5 inline-flex rounded-[10px] border border-[#d8dfe9] bg-[#eef1f6] p-1">
+            {([["index", "Index"], ["statistics", "Statistics"]] as const).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setTab(k)}
+                className={`rounded-[7px] px-4 py-1.5 text-[13px] font-semibold transition-colors ${tab === k ? "bg-white text-[#0d9488] shadow-[0_1px_2px_rgba(16,24,40,0.08)]" : "text-[#54606f]"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {tab === "statistics" ? (
+            <EurasiaStatisticsPanel />
+          ) : (
+          <>
           {/* 종합 판단 */}
           <div className="judge">
             <div className="verdict">ERAI 종합 ${fmtVal(sum.comp)}/FEU · MoM {fmtPct(sum.compMom)}</div>
@@ -184,6 +204,8 @@ export function RailEurasiaContent() {
           )}
 
           <div className="src">데이터 출처: ERAI (Eurasian Rail Alliance Index) · <a href="https://index1520.com/en/index/" target="_blank" rel="noopener noreferrer">index1520.com</a> · 뉴스: index1520 메타피드</div>
+          </>
+          )}
         </div>
       </div>
     </div>
