@@ -1,22 +1,23 @@
-// Index1520 라우트 통계(Statistics) — 국가 choropleth + O-D 코리도어 라인 + 표.
-// 데이터: index1520_route_statistics(국가 O-D) ← route view=list, 좌표는 index1520_locations.
-// react-simple-maps 사용(repo 공통 패턴), 출처: index1520.com.
-import { useMemo, useState } from "react";
-import { ComposableMap, Geographies, Geography, Line, ZoomableGroup } from "react-simple-maps";
+// Index1520 라우트 통계(Statistics) — Leaflet 지도(타일 베이스맵 + 국가 choropleth + O-D 코리도어 라인).
+// 데이터: index1520_route_statistics(국가 O-D, route view=list) + index1520_locations 좌표. 출처: index1520.com.
+import { useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { feature } from "topojson-client";
+import type { Map as LMap, GeoJSON as LGeoJSON, LayerGroup, Polyline } from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 import { index1520RoutesQueryOptions } from "@/lib/api/index1520-routes";
-import type { RouteRow } from "@/lib/api/index1520-routes.functions";
+import type { RouteRow, LatLng } from "@/lib/api/index1520-routes.functions";
 import { ISO2_TO_NUMERIC, flagEmoji } from "@/lib/iso-country-codes";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 type MetricKey = "teu" | "weight" | "qty" | "transit";
-const METRICS: Record<MetricKey, { label: string; cur: keyof RouteRow; prev: keyof RouteRow; digits: number }> = {
-  teu: { label: "TEU", cur: "currentTeu", prev: "previousTeu", digits: 0 },
-  weight: { label: "Actual Weight (k t)", cur: "currentActualWeight", prev: "previousActualWeight", digits: 1 },
-  qty: { label: "Shipping Qty", cur: "currentShippingQty", prev: "previousShippingQty", digits: 0 },
-  transit: { label: "Travel Time (d)", cur: "currentTransitTime", prev: "previousTransitTime", digits: 1 },
+const METRICS: Record<MetricKey, { label: string; cur: keyof RouteRow; prev: keyof RouteRow }> = {
+  teu: { label: "TEU", cur: "currentTeu", prev: "previousTeu" },
+  weight: { label: "Actual Weight (k t)", cur: "currentActualWeight", prev: "previousActualWeight" },
+  qty: { label: "Shipping Qty", cur: "currentShippingQty", prev: "previousShippingQty" },
+  transit: { label: "Travel Time (d)", cur: "currentTransitTime", prev: "previousTransitTime" },
 };
 
 const numOf = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
@@ -31,8 +32,36 @@ function hexToRgb(h: string): [number, number, number] {
 }
 function mix(a: string, b: string, t: number): string {
   const pa = hexToRgb(a), pb = hexToRgb(b);
-  const c = (i: number) => Math.round(pa[i] + (pb[i] - pa[i]) * t);
+  const c = (i: number) => Math.round(pa[i] + (pb[i] - pa[i]) * Math.max(0, Math.min(1, t)));
   return `rgb(${c(0)}, ${c(1)}, ${c(2)})`;
+}
+
+// 살짝 휜 코리도어(2차 베지어 → [lat,lng] 포인트). 직선보다 가독성↑.
+function arcLatLng(a: LatLng, b: LatLng): [number, number][] {
+  const steps = 32;
+  const ax = a.lng, ay = a.lat, bx = b.lng, by = b.lat;
+  const mx = (ax + bx) / 2, my = (ay + by) / 2;
+  const dx = bx - ax, dy = by - ay, dist = Math.hypot(dx, dy) || 1;
+  const cx = mx - (dy / dist) * dist * 0.15;
+  const cy = my + (dx / dist) * dist * 0.15;
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps, k = 1 - t;
+    pts.push([k * k * ay + 2 * k * t * cy + t * t * by, k * k * ax + 2 * k * t * cx + t * t * bx]);
+  }
+  return pts;
+}
+
+function popupHtml(r: RouteRow): string {
+  const yoy = yoyOf(r.currentTeu, r.previousTeu);
+  const col = yoy == null ? "#667085" : yoy >= 0 ? "#16a34a" : "#dc2626";
+  return `<div style="font-size:12px;line-height:1.5">
+    <div style="font-weight:700;margin-bottom:3px">${flagEmoji(r.fromId)} ${r.fromName} → ${flagEmoji(r.toId)} ${r.toName}</div>
+    <div>Current TEU: <b>${fmt(r.currentTeu)}</b></div>
+    <div>Previous TEU: ${fmt(r.previousTeu)}</div>
+    <div>YoY: <span style="color:${col};font-weight:600">${fmtPct(yoy)}</span></div>
+    <div>Travel: ${r.currentTransitTime == null ? "—" : `${r.currentTransitTime.toFixed(1)}d`}</div>
+  </div>`;
 }
 
 export function EurasiaStatisticsPanel() {
@@ -41,7 +70,6 @@ export function EurasiaStatisticsPanel() {
   const [depSearch, setDepSearch] = useState("");
   const [destSearch, setDestSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [hover, setHover] = useState<{ x: number; y: number; name: string; teu: number | null } | null>(null);
 
   const { data, isFetching } = useQuery({ ...index1520RoutesQueryOptions(period), placeholderData: keepPreviousData });
   const m = METRICS[metric];
@@ -66,7 +94,6 @@ export function EurasiaStatisticsPanel() {
     return { totalTeu, prevTeu, yoy: yoyOf(totalTeu, prevTeu), avgT: tN ? tSum / tN : null, count: filtered.length, mapped, missing: filtered.length - mapped };
   }, [filtered]);
 
-  // choropleth: 국가별 TEU 합(출발+도착) → numeric ISO 코드 기준
   const { byNumeric, maxTeu } = useMemo(() => {
     const map = new Map<string, number>();
     for (const r of filtered) {
@@ -78,22 +105,127 @@ export function EurasiaStatisticsPanel() {
     return { byNumeric: map, maxTeu: Math.max(1, ...map.values()) };
   }, [filtered]);
 
-  const fillFor = (numeric: string): string => {
-    const v = byNumeric.get(numeric);
-    if (!v) return "#e9eef4";
-    return mix("#d6efe9", "#0d9488", Math.log1p(v) / Math.log1p(maxTeu));
-  };
-
   const lines = useMemo(() => filtered.filter((r) => r.hasCoords && r.from && r.to), [filtered]);
   const maxLineVal = useMemo(() => Math.max(1, ...lines.map((r) => numOf(r[m.cur]))), [lines, m.cur]);
   const lineColor = (r: RouteRow) => {
     const d = numOf(r[m.cur]) - numOf(r[m.prev]);
     return d > 0 ? "#16a34a" : d < 0 ? "#dc2626" : "#94a3b8";
   };
-  const lineWidth = (r: RouteRow) => 1.2 + (numOf(r[m.cur]) / maxLineVal) * 6.5;
+  const lineWidth = (r: RouteRow) => 1.5 + (numOf(r[m.cur]) / maxLineVal) * 7;
+
+  // Leaflet refs
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<LMap | null>(null);
+  const LRef = useRef<typeof import("leaflet") | null>(null);
+  const geoLayerRef = useRef<LGeoJSON | null>(null);
+  const lineGroupRef = useRef<LayerGroup | null>(null);
+  const lineByIdRef = useRef<Map<string, Polyline>>(new Map());
+  const byNumericRef = useRef(byNumeric);
+  const maxTeuRef = useRef(maxTeu);
+  byNumericRef.current = byNumeric;
+  maxTeuRef.current = maxTeu;
+  const [mapReady, setMapReady] = useState(false);
+  const [geoReady, setGeoReady] = useState(false);
+
+  const geoStyle = (numeric: string) => {
+    const v = byNumericRef.current.get(numeric);
+    const fill = v ? mix("#d6efe9", "#0d9488", Math.log1p(v) / Math.log1p(maxTeuRef.current)) : "#e9eef4";
+    return { fillColor: fill, fillOpacity: v ? 0.82 : 0.5, weight: 0.5, color: "#ffffff", opacity: 1 };
+  };
+
+  // 지도 초기화
+  useEffect(() => {
+    let disposed = false;
+    (async () => {
+      if (!containerRef.current || mapRef.current) return;
+      const mod = await import("leaflet");
+      const L = (mod as unknown as { default?: typeof import("leaflet") }).default ?? mod;
+      if (disposed || !containerRef.current) return;
+      LRef.current = L;
+      const map = L.map(containerRef.current, { center: [45, 55], zoom: 3, scrollWheelZoom: true, worldCopyJump: true });
+      mapRef.current = map;
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+        subdomains: "abcd",
+        maxZoom: 12,
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+      }).addTo(map);
+      lineGroupRef.current = L.layerGroup().addTo(map);
+      setMapReady(true);
+      setTimeout(() => mapRef.current?.invalidateSize(), 120);
+      try {
+        const topo = await fetch(GEO_URL).then((r) => r.json());
+        if (disposed || !mapRef.current) return;
+        const geo = feature(topo, topo.objects.countries) as unknown as GeoJSON.FeatureCollection;
+        const layer = L.geoJSON(geo, {
+          style: (f) => geoStyle(String(f?.id ?? "").padStart(3, "0")),
+          onEachFeature: (f, lyr) => {
+            lyr.bindTooltip(
+              () => {
+                const id = String(f.id ?? "").padStart(3, "0");
+                const teu = byNumericRef.current.get(id);
+                const name = (f.properties as { name?: string } | null)?.name ?? "—";
+                return `<b>${name}</b><br/>${teu ? `물동량 ${Math.round(teu).toLocaleString()} TEU` : "데이터 없음"}`;
+              },
+              { sticky: true },
+            );
+          },
+        }).addTo(map);
+        geoLayerRef.current = layer;
+        lineGroupRef.current?.bringToFront();
+        setGeoReady(true);
+      } catch {
+        /* geojson 실패해도 라인은 표시 */
+      }
+    })();
+    return () => {
+      disposed = true;
+      mapRef.current?.remove();
+      mapRef.current = null;
+      geoLayerRef.current = null;
+      lineGroupRef.current = null;
+      setMapReady(false);
+      setGeoReady(false);
+    };
+  }, []);
+
+  // choropleth 재색칠
+  useEffect(() => {
+    if (!geoReady || !geoLayerRef.current) return;
+    geoLayerRef.current.setStyle((f) => geoStyle(String(f?.id ?? "").padStart(3, "0")));
+  }, [byNumeric, maxTeu, geoReady]);
+
+  // O-D 라인 그리기 + 선택 강조 + 팝업/fit
+  useEffect(() => {
+    const L = LRef.current, group = lineGroupRef.current, map = mapRef.current;
+    if (!L || !group || !map || !mapReady) return;
+    group.clearLayers();
+    lineByIdRef.current.clear();
+    for (const r of lines) {
+      const on = r.routeId === selectedId;
+      const pl = L.polyline(arcLatLng(r.from!, r.to!), {
+        color: on ? "#1d4ed8" : lineColor(r),
+        weight: on ? lineWidth(r) + 2.5 : lineWidth(r),
+        opacity: on ? 0.95 : 0.82,
+        dashArray: on ? undefined : "5 4",
+        lineCap: "round",
+      });
+      pl.bindPopup(popupHtml(r));
+      pl.on("click", () => setSelectedId(r.routeId));
+      pl.addTo(group);
+      lineByIdRef.current.set(r.routeId, pl);
+    }
+    group.bringToFront();
+    if (selectedId) {
+      const r = lines.find((x) => x.routeId === selectedId);
+      const pl = lineByIdRef.current.get(selectedId);
+      if (r && pl && r.from && r.to) {
+        pl.openPopup();
+        map.fitBounds(L.latLngBounds([[r.from.lat, r.from.lng], [r.to.lat, r.to.lng]]), { padding: [60, 60], maxZoom: 5 });
+      }
+    }
+  }, [lines, selectedId, mapReady, metric]);
 
   const periods = data?.periods ?? [];
-  const sel = filtered.find((r) => r.routeId === selectedId) ?? null;
   const inp = "rounded-md border border-[#d0d7e2] bg-white px-2.5 py-1.5 text-[13px] text-[#1a2433]";
   const cardCls = "rounded-[12px] border border-[#d8dfe9] bg-white px-3.5 py-3";
 
@@ -135,64 +267,12 @@ export function EurasiaStatisticsPanel() {
         <div className={cardCls}><div className="text-[11px] text-[#667085]">Missing</div><div className="mt-1 text-[18px] font-bold tabular-nums text-[#d97706]">{summary.missing}</div></div>
       </div>
 
-      {/* 지도 (choropleth + O-D 라인) */}
-      <section className="relative mb-3 overflow-hidden rounded-[14px] border border-[#d8dfe9] bg-[#f4f7fb]" onMouseLeave={() => setHover(null)}>
-        <ComposableMap projection="geoNaturalEarth1" projectionConfig={{ scale: 185 }} style={{ width: "100%", height: "auto" }}>
-          <ZoomableGroup center={[60, 42]} zoom={2.2} minZoom={1} maxZoom={8}>
-            <Geographies geography={GEO_URL}>
-              {({ geographies }) =>
-                geographies.map((geo) => {
-                  const id = String(geo.id).padStart(3, "0");
-                  const teu = byNumeric.get(id) ?? null;
-                  return (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      onMouseEnter={(e) => setHover({ x: e.clientX, y: e.clientY, name: geo.properties?.name ?? "—", teu })}
-                      onMouseMove={(e) => setHover((h) => (h ? { ...h, x: e.clientX, y: e.clientY } : h))}
-                      style={{
-                        default: { fill: fillFor(id), stroke: "#ffffff", strokeWidth: 0.4, outline: "none" },
-                        hover: { fill: fillFor(id), stroke: "#0f172a", strokeWidth: 0.7, outline: "none" },
-                        pressed: { fill: fillFor(id), stroke: "#0f172a", strokeWidth: 0.7, outline: "none" },
-                      }}
-                    />
-                  );
-                })
-              }
-            </Geographies>
-            {lines.map((r) => {
-              const on = r.routeId === selectedId;
-              return (
-                <Line
-                  key={r.routeId}
-                  from={[r.from!.lng, r.from!.lat]}
-                  to={[r.to!.lng, r.to!.lat]}
-                  stroke={on ? "#1d4ed8" : lineColor(r)}
-                  strokeWidth={on ? lineWidth(r) + 2 : lineWidth(r)}
-                  strokeLinecap="round"
-                  strokeDasharray={on ? undefined : "4 3"}
-                  style={{ cursor: "pointer" }}
-                  onClick={() => setSelectedId(r.routeId)}
-                />
-              );
-            })}
-          </ZoomableGroup>
-        </ComposableMap>
-        <div className="pointer-events-none absolute left-3 top-3 rounded-md border border-[#d8dfe9] bg-white/92 px-3 py-1.5 text-[12px] font-medium text-[#344054] shadow-sm">
+      {/* Leaflet 지도 */}
+      <section className="relative mb-3 overflow-hidden rounded-[14px] border border-[#d8dfe9]">
+        <div ref={containerRef} className="h-[460px] w-full" data-testid="index1520-leaflet" style={{ background: "#aadaff" }} />
+        <div className="pointer-events-none absolute right-3 top-3 z-[500] rounded-md border border-[#d8dfe9] bg-white/92 px-3 py-1.5 text-[12px] font-medium text-[#344054] shadow-sm">
           {lines.length}/{summary.count} 라우트 · <span className="text-[#16a34a]">▲ 증가</span> <span className="text-[#e74c3c]">▼ 감소</span> · 색=국가별 물동량
         </div>
-        {sel && (
-          <div className="absolute bottom-3 left-3 rounded-md border border-[#bcd0f5] bg-white/95 px-3 py-2 text-[12px] shadow-sm">
-            <div className="font-bold text-[#1a2433]">{sel.fromName} → {sel.toName}</div>
-            <div className="mt-0.5 text-[#54606f]">TEU {fmt(sel.currentTeu)} · 전년 {fmt(sel.previousTeu)} · YoY {fmtPct(yoyOf(sel.currentTeu, sel.previousTeu))} · {sel.currentTransitTime == null ? "—" : `${sel.currentTransitTime.toFixed(1)}d`}</div>
-          </div>
-        )}
-        {hover && (
-          <div className="pointer-events-none fixed z-50 rounded-md border border-[#d8dfe9] bg-white px-3 py-2 text-[12px] shadow-lg" style={{ left: hover.x + 12, top: hover.y + 12 }}>
-            <div className="font-bold text-[#1a2433]">{hover.name}</div>
-            <div className="mt-0.5 text-[#54606f]">{hover.teu ? `물동량 ${fmt(hover.teu)} TEU` : "데이터 없음"}</div>
-          </div>
-        )}
       </section>
 
       {/* 표 */}
@@ -242,9 +322,7 @@ export function EurasiaStatisticsPanel() {
             </tbody>
           </table>
         </div>
-        <div className="mt-3 text-[11px] text-[#828d9d]">
-          데이터 출처: index1520.com (route view=list, 국가 O-D) · 지도 경계: world-atlas
-        </div>
+        <div className="mt-3 text-[11px] text-[#828d9d]">데이터 출처: index1520.com (route view=list, 국가 O-D) · 지도: Leaflet · world-atlas · © CARTO</div>
       </section>
     </div>
   );
