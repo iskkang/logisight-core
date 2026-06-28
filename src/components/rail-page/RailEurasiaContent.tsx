@@ -7,6 +7,7 @@ import { eurasiaChartsQueryOptions } from "@/lib/api/eurasia-charts";
 import type { ChartDataset } from "@/lib/api/eurasia-charts";
 import { eurasiaRailBriefQueryOptions } from "@/lib/api/eurasia-rail-brief";
 import { EurasiaStatisticsPanel } from "@/components/index1520/EurasiaStatisticsPanel";
+import { EuRailTerminals } from "./EuRailTerminals";
 import {
   EurasiaIndexChart,
   EurasiaTransitChart,
@@ -87,7 +88,7 @@ export function RailEurasiaContent() {
   }, [charts]);
 
   const dColor = (v: number | null) => (v == null ? "var(--mute)" : v >= 0 ? "var(--up)" : "var(--down)");
-  const [tab, setTab] = useState<"index" | "statistics">("index");
+  const [tab, setTab] = useState<"index" | "statistics" | "terminals">("index");
 
   return (
     <div className="lsg-eu">
@@ -130,7 +131,7 @@ export function RailEurasiaContent() {
 
           {/* Index | Statistics 탭 */}
           <div className="mt-3.5 inline-flex rounded-[10px] border border-[#d8dfe9] bg-[#eef1f6] p-1">
-            {([["index", "Index"], ["statistics", "Statistics"]] as const).map(([k, label]) => (
+            {([["index", "Index"], ["statistics", "Statistics"], ["terminals", "Terminals"]] as const).map(([k, label]) => (
               <button
                 key={k}
                 type="button"
@@ -144,6 +145,8 @@ export function RailEurasiaContent() {
 
           {tab === "statistics" ? (
             <EurasiaStatisticsPanel />
+          ) : tab === "terminals" ? (
+            <EuRailTerminals />
           ) : (
           <>
           {/* 종합 판단 */}
