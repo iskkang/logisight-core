@@ -182,7 +182,7 @@ export function RailEurasiaContent() {
           <EurasiaMarketMap quotes={charts.indexQuotes} />
           <EurasiaGeoRanking geo={charts.geo} />
 
-          <div className="src">데이터 출처: ERAI (Eurasian Rail Alliance Index) · 철도 뉴스는 <a href="/news?cat=철도">뉴스 › 철도</a></div>
+          <div className="src">데이터 출처: ERAI (Eurasian Rail Alliance Index) · <a href="https://index1520.com" target="_blank" rel="noopener noreferrer">index1520.com</a> · 철도 뉴스는 <a href="/news?cat=철도">뉴스 › 철도</a></div>
           </>
           )}
         </div>
