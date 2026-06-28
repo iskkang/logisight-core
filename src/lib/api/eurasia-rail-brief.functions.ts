@@ -8,13 +8,15 @@ import { supabasePublicServer } from "@/integrations/supabase/public.server";
 export type RailBriefSeverity = "high" | "medium" | "low";
 export type RailBriefAction = { title: string; sub: string; severity: RailBriefSeverity };
 export type RailBriefRisk = { title: string; severity: RailBriefSeverity };
+export type RailBriefOutlook = { summary: string; points: string[] };
 export type RailBrief = {
   action: RailBriefAction | null;
   risks: RailBriefRisk[];
+  outlook: RailBriefOutlook | null;
   generatedAt: string | null;
 };
 
-type Payload = { action?: RailBriefAction; risks?: RailBriefRisk[]; generatedAt?: string };
+type Payload = { action?: RailBriefAction; risks?: RailBriefRisk[]; outlook?: RailBriefOutlook; generatedAt?: string };
 
 export const getEurasiaRailBrief = createServerFn({ method: "GET" }).handler(async (): Promise<RailBrief> => {
   setResponseHeader("cache-control", "public, max-age=0, s-maxage=1800, stale-while-revalidate=86400");
@@ -33,6 +35,7 @@ export const getEurasiaRailBrief = createServerFn({ method: "GET" }).handler(asy
   return {
     action: p?.action ?? null,
     risks: Array.isArray(p?.risks) ? p!.risks : [],
+    outlook: p?.outlook?.summary ? { summary: p.outlook.summary, points: Array.isArray(p.outlook.points) ? p.outlook.points : [] } : null,
     generatedAt: p?.generatedAt ?? null,
   };
 });

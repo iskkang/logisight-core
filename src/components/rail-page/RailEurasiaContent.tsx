@@ -5,6 +5,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { eurasiaChartsQueryOptions } from "@/lib/api/eurasia-charts";
 import type { ChartDataset } from "@/lib/api/eurasia-charts";
+import { eurasiaRailBriefQueryOptions } from "@/lib/api/eurasia-rail-brief";
 import { EurasiaStatisticsPanel } from "@/components/index1520/EurasiaStatisticsPanel";
 import {
   EurasiaIndexChart,
@@ -64,6 +65,7 @@ function pct(c: number | null | undefined, b: number | null | undefined) {
 
 export function RailEurasiaContent() {
   const { data: charts } = useSuspenseQuery(eurasiaChartsQueryOptions());
+  const { data: railBrief } = useSuspenseQuery(eurasiaRailBriefQueryOptions());
 
   const sum = useMemo(() => {
     const idx = charts.indexQuotes?.indexes;
@@ -175,6 +177,24 @@ export function RailEurasiaContent() {
               </div>
             </div>
           </div>
+
+          {/* 유라시아 리스크 (AI 분석: 리포트 + 철도뉴스) */}
+          {railBrief.risks.length > 0 && (
+            <section>
+              <div className="mb-3 mt-[26px] flex items-center justify-between gap-2.5">
+                <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">유라시아 리스크</h2>
+                <span className="rounded-full border border-[#d8dfe9] bg-[#eef1f6] px-[9px] py-[3px] text-[11px] text-[#828d9d]">AI 분석</span>
+              </div>
+              <div className="divide-y divide-[#e6ebf2] rounded-[14px] border border-[#d8dfe9] bg-[#f4f7fb]">
+                {railBrief.risks.map((r, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2.5 px-4 py-3 text-[13.5px]">
+                    <span className="text-[#1a2433]">{r.title}</span>
+                    <span className={`flex-none rounded-[5px] border px-[7px] py-0.5 text-[10px] font-bold ${r.severity === "high" ? "border-[#fecaca] bg-[#fef2f2] text-[#dc2626]" : r.severity === "medium" ? "border-[#fed7aa] bg-[#fff7ed] text-[#d97706]" : "border-[#e5e7eb] bg-[#f3f4f6] text-[#6b7280]"}`}>{r.severity === "high" ? "경고" : r.severity === "medium" ? "주의" : "낮음"}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* 차트 블록 */}
           <EurasiaIndexChart quotes={charts.indexQuotes} />

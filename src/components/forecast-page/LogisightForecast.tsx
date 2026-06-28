@@ -9,6 +9,7 @@ import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
 import { publishedForecastsQueryOptions, forecastSeriesQueryOptions, MODULE_LABEL, type Forecast, type ForecastSeries } from "@/lib/api/forecasts";
+import { eurasiaRailBriefQueryOptions } from "@/lib/api/eurasia-rail-brief";
 import {
   DIR_META,
   applyFilter,
@@ -400,6 +401,7 @@ type ForecastSearch = { cadence?: "weekly" | "monthly"; dir: string[]; series: s
 export function LogisightForecast() {
   const { data: forecasts } = useSuspenseQuery(publishedForecastsQueryOptions());
   const { data: series } = useSuspenseQuery(forecastSeriesQueryOptions());
+  const { data: railBrief } = useSuspenseQuery(eurasiaRailBriefQueryOptions());
   const search = routeApi.useSearch();
   const navigate = routeApi.useNavigate();
 
@@ -435,6 +437,26 @@ export function LogisightForecast() {
           <div className="pt-[26px] text-[12.5px] text-[#828d9d]">홈 <b className="font-medium text-[#54606f]">›</b> 인사이트 <b className="font-medium text-[#54606f]">›</b> 전망</div>
           <Kpis kpis={kpis} />
           <TrendBlock trend={trend} />
+
+          {railBrief.outlook && (
+            <section className="mt-[26px]">
+              <div className="mb-3.5 flex items-center gap-2.5">
+                <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">철도 전망</h2>
+                <span className="rounded-full border border-[#d8dfe9] bg-[#eef1f6] px-[9px] py-[3px] text-[11px] text-[#828d9d]">유라시아 · AI</span>
+              </div>
+              <div className={`p-[22px] ${CARD}`}>
+                <p className="text-[14px] leading-[1.65] text-[#1a2433]">{railBrief.outlook.summary}</p>
+                {railBrief.outlook.points.length > 0 && (
+                  <ul className="mt-3.5 space-y-2">
+                    {railBrief.outlook.points.map((p, i) => (
+                      <li key={i} className="flex gap-2 text-[13px] leading-[1.5] text-[#54606f]"><span className="flex-none text-[#0d9488]">▸</span>{p}</li>
+                    ))}
+                  </ul>
+                )}
+                <div className="mt-3.5 border-t border-[#d8dfe9] pt-2.5 text-[11px] text-[#828d9d]">AI 분석 · 유라시아 격주 시장 리포트 기반{railBrief.generatedAt ? ` · ${railBrief.generatedAt.slice(0, 10)}` : ""}</div>
+              </div>
+            </section>
+          )}
 
           {open.length === 0 ? (
             <div className={`mt-[26px] px-6 py-16 text-center ${CARD}`}>

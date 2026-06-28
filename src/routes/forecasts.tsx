@@ -5,6 +5,7 @@ import {
   publishedForecastsQueryOptions,
   forecastSeriesQueryOptions,
 } from "@/lib/api/forecasts";
+import { eurasiaRailBriefQueryOptions } from "@/lib/api/eurasia-rail-brief";
 
 const arr = (v: unknown): string[] =>
   Array.isArray(v) ? v.map(String) : typeof v === "string" && v ? [v] : [];
@@ -39,6 +40,7 @@ export const Route = createFileRoute("/forecasts")({
     await Promise.all([
       context.queryClient.ensureQueryData(publishedForecastsQueryOptions()),
       context.queryClient.ensureQueryData(forecastSeriesQueryOptions()),
+      context.queryClient.ensureQueryData(eurasiaRailBriefQueryOptions()),
     ]);
   },
   component: LogisightForecast,
