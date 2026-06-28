@@ -21,6 +21,7 @@ import {
   type KitaSeaRateRow,
 } from "@/lib/api/rates";
 import { eurasiaDisruptionsActiveQueryOptions } from "@/lib/api/eurasia-disruptions";
+import { eurasiaRailBriefQueryOptions, type RailBrief } from "@/lib/api/eurasia-rail-brief";
 import { eurasiaDelaysQueryOptions, type DelayWeeklyRow } from "@/lib/api/eurasia";
 import { latestExchangeRateQueryOptions, type ExchangeRateRow } from "@/lib/api/exchange-rates";
 import {
@@ -407,17 +408,27 @@ function SideHead({ title, to }: { title: string; to: "/rates" | "/eurasia" }) {
   return <div className="mb-3.5 flex items-center justify-between"><h3 className="text-[16px] font-bold text-[#1a2433]">{title}</h3><Link to={to} className="rounded-[7px] border border-[#d8dfe9] bg-white px-[11px] py-[5px] text-[12px] text-[#828d9d] transition-colors hover:border-[#0d9488] hover:text-[#0d9488]">전체 보기</Link></div>;
 }
 
-function Sidebar({ alerts, stats, asOf, disruptions }: {
+function Sidebar({ alerts, stats, asOf, disruptions, railBrief }: {
   alerts: AlertCandidate[]; stats: IndexStats[]; asOf: string;
   disruptions: { id: string; title: string; severity: "high" | "medium" | "low"; delay_contribution_days: number | null }[];
+  railBrief: RailBrief;
 }) {
   const indexRows = orderedStats(stats).slice(0, 6);
+  // Action Queue: AI 철도 액션(리포트+철도뉴스 분석)을 최상단에 두고 기존 경보 이어 붙임.
+  const queue: { title: string; sub: string; severity: AlertCandidate["severity"] }[] = [
+    ...(railBrief.action ? [{ title: railBrief.action.title, sub: railBrief.action.sub, severity: railBrief.action.severity as AlertCandidate["severity"] }] : []),
+    ...alerts.map((a) => ({ title: a.title, sub: a.sub, severity: a.severity })),
+  ];
+  // 유라시아 리스크: AI 리스크가 있으면 그것으로 교체(없으면 기존 disruptions).
+  const risks = railBrief.risks.length
+    ? railBrief.risks.map((r, i) => ({ id: `ai-${i}`, title: r.title, severity: r.severity, delay_contribution_days: null as number | null }))
+    : disruptions;
   return (
     <div className="flex flex-col gap-5">
       <div className={`p-[22px] ${CARD}`}>
         <SideHead title="Action Queue" to="/rates" />
-        {alerts.length === 0 ? <p className="text-[12px] text-[#828d9d]">현재 활성 경보 없음</p> : alerts.slice(0, 4).map((a, i) => (
-          <div key={a.title} className={`flex gap-3 py-[13px] ${i === 0 ? "pt-0.5" : "border-t border-[#d8dfe9]"}`}>
+        {queue.length === 0 ? <p className="text-[12px] text-[#828d9d]">현재 활성 경보 없음</p> : queue.slice(0, 4).map((a, i) => (
+          <div key={`${a.title}-${i}`} className={`flex gap-3 py-[13px] ${i === 0 ? "pt-0.5" : "border-t border-[#d8dfe9]"}`}>
             <div className="grid h-[22px] w-[22px] flex-none place-items-center rounded-full bg-[#0e1626] lsg-mono text-[11px] font-bold text-white">{i + 1}</div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 text-[13.5px] font-semibold text-[#1a2433]">{a.title}<span className={`flex-none rounded-[5px] border px-[7px] py-0.5 text-[10px] font-bold ${SEV_TONE[a.severity]}`}>{SEV_LABEL[a.severity]}</span></div>
@@ -445,7 +456,7 @@ function Sidebar({ alerts, stats, asOf, disruptions }: {
 
       <div className={`p-[22px] ${CARD}`}>
         <SideHead title="유라시아 리스크" to="/eurasia" />
-        {disruptions.length === 0 ? <p className="text-[12px] text-[#828d9d]">특정 장애 없음 · 정상</p> : disruptions.slice(0, 4).map((d, i) => (
+        {risks.length === 0 ? <p className="text-[12px] text-[#828d9d]">특정 장애 없음 · 정상</p> : risks.slice(0, 4).map((d, i) => (
           <div key={d.id} className={`flex items-center justify-between gap-2.5 py-[11px] text-[13px] ${i === 0 ? "pt-0.5" : "border-t border-[#d8dfe9]"}`}>
             <span className="text-[#1a2433]">{d.title}{d.delay_contribution_days != null ? <small className="lsg-mono text-[#828d9d]"> ({d.delay_contribution_days}일)</small> : ""}</span>
             <span className={`flex-none rounded-[5px] border px-[7px] py-0.5 text-[10px] font-bold ${d.severity === "high" ? SEV_TONE.high : d.severity === "medium" ? SEV_TONE.medium : SEV_TONE.low}`}>{d.severity === "high" ? "경고" : d.severity === "medium" ? "주의" : "낮음"}</span>
@@ -530,6 +541,7 @@ export function LogisightControlTower() {
   const { data: seaRates } = useSuspenseQuery(kitaSeaRatesQueryOptions());
   const { data: airRates } = useSuspenseQuery(kitaAirRatesQueryOptions());
   const { data: disruptions } = useSuspenseQuery(eurasiaDisruptionsActiveQueryOptions());
+  const { data: railBrief } = useSuspenseQuery(eurasiaRailBriefQueryOptions());
   const { data: delays } = useSuspenseQuery(eurasiaDelaysQueryOptions());
   const { data: exRate } = useSuspenseQuery(latestExchangeRateQueryOptions());
   const { data: jetFuel } = useSuspenseQuery(iataJetFuelQueryOptions());
@@ -576,7 +588,7 @@ export function LogisightControlTower() {
               <RouteMonitor title="항공 노선 모니터" icon="✈" rows={airMonitorRows} />
               <UtilityRow asOf={asOf} dataUpdates={dataUpdates} stats={stats} seaRates={seaRates} exRate={exRate ?? null} jetFuel={jetFuel} />
             </div>
-            <Sidebar alerts={alerts} stats={stats} asOf={asOf} disruptions={disruptions} />
+            <Sidebar alerts={alerts} stats={stats} asOf={asOf} disruptions={disruptions} railBrief={railBrief} />
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import {
   kitaSeaRatesQueryOptions,
 } from "@/lib/api/rates";
 import { eurasiaDisruptionsActiveQueryOptions } from "@/lib/api/eurasia-disruptions";
+import { eurasiaRailBriefQueryOptions } from "@/lib/api/eurasia-rail-brief";
 import { eurasiaDelaysQueryOptions } from "@/lib/api/eurasia";
 import { latestExchangeRateQueryOptions } from "@/lib/api/exchange-rates";
 import {
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/dashboard")({
     qc.ensureQueryData(kitaSeaRatesQueryOptions());
     qc.ensureQueryData(kitaAirRatesQueryOptions());
     qc.ensureQueryData(eurasiaDisruptionsActiveQueryOptions());
+    qc.ensureQueryData(eurasiaRailBriefQueryOptions());
     qc.ensureQueryData(eurasiaDelaysQueryOptions());
     qc.ensureQueryData(latestExchangeRateQueryOptions());
     qc.ensureQueryData(iataJetFuelQueryOptions());
