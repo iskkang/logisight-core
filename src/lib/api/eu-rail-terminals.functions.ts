@@ -28,7 +28,6 @@ type Row = {
 };
 
 export const getEuRailTerminals = createServerFn({ method: "GET" }).handler(async (): Promise<EuRailTerminal[]> => {
-  setResponseHeader("cache-control", "public, max-age=0, s-maxage=86400, stale-while-revalidate=604800");
   const sb = supabasePublicServer as unknown as {
     from: (t: string) => {
       select: (c: string) => {
@@ -42,10 +41,13 @@ export const getEuRailTerminals = createServerFn({ method: "GET" }).handler(asyn
     .order("name", { ascending: true });
   if (error) {
     // 마이그레이션 적용 전(테이블 부재)에는 빈 목록으로 graceful degrade — 그 외 에러는 throw.
-    if (/schema cache|does not exist|could not find the table/i.test(error.message)) return [];
+    if (/schema cache|does not exist|could not find the table/i.test(error.message)) {
+      setResponseHeader("cache-control", "no-store");
+      return [];
+    }
     throw new Error(error.message);
   }
-  return (data ?? []).map((r) => ({
+  const rows = (data ?? []).map((r) => ({
     id: r.id,
     name: r.name,
     operator: r.operator,
@@ -55,4 +57,10 @@ export const getEuRailTerminals = createServerFn({ method: "GET" }).handler(asyn
     homePage: r.home_page,
     infoUrl: r.info_url,
   }));
+  // 데이터가 있을 때만 CDN 캐시 — 빈 결과(테이블 미적재 시점)가 stale로 굳는 것을 방지.
+  setResponseHeader(
+    "cache-control",
+    rows.length ? "public, max-age=0, s-maxage=86400, stale-while-revalidate=604800" : "no-store",
+  );
+  return rows;
 });
