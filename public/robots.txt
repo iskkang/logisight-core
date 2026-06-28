@@ -1,17 +1,21 @@
 User-agent: *
-Allow: /
 Disallow: /admin/
+Allow: /
 
 User-agent: GPTBot
+Disallow: /admin/
 Allow: /
 
 User-agent: ClaudeBot
+Disallow: /admin/
 Allow: /
 
 User-agent: PerplexityBot
+Disallow: /admin/
 Allow: /
 
 User-agent: Google-Extended
+Disallow: /admin/
 Allow: /
 
 Sitemap: https://logisight.mtlship.com/sitemap.xml
