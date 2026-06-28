@@ -11,7 +11,7 @@ export const Route = createFileRoute("/climate")({
     context.queryClient.ensureQueryData(climateRiskQueryOptions());
   },
   head: () => {
-    const url = "https://logisight-core.lovable.app/climate";
+    const url = "https://logisight.mtlship.com/climate";
     return {
       meta: [
         { title: "세계 기후 예측 — Logisight" },

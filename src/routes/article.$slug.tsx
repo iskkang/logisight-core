@@ -41,7 +41,7 @@ export const Route = createFileRoute("/article/$slug")({
       (a?.summary && a.summary.trim().length > 0 ? a.summary : a?.title) ??
       "Logisight 큐레이션 시장 뉴스 상세 기사.";
     const slugParam = a?.slug && a.slug.length > 0 ? a.slug : a ? String(a.id) : params.slug;
-    const url = `https://logisight-core.lovable.app/article/${slugParam}`;
+    const url = `https://logisight.mtlship.com/article/${slugParam}`;
     const meta: Array<Record<string, string>> = [
       { title },
       { name: "description", content: desc },
@@ -62,12 +62,24 @@ export const Route = createFileRoute("/article/$slug")({
         type: "application/ld+json",
         children: JSON.stringify({
           "@context": "https://schema.org",
-          "@type": "Article",
+          "@type": "NewsArticle",
           headline: a.title,
           description: desc,
-          image: a.image_url ?? undefined,
+          image: a.image_url ? [a.image_url] : undefined,
           datePublished: a.published_at ?? undefined,
-          author: a.source ? { "@type": "Organization", name: a.source } : undefined,
+          dateModified: a.published_at ?? undefined,
+          author: {
+            "@type": "Organization",
+            name: a.source ?? "MTL Shipping Agency",
+          },
+          publisher: {
+            "@type": "Organization",
+            name: "MTL Shipping Agency",
+            logo: {
+              "@type": "ImageObject",
+              url: "https://logisight.mtlship.com/logisight_logo.svg",
+            },
+          },
           mainEntityOfPage: url,
         }),
       });

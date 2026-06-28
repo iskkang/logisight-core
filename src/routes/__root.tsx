@@ -108,13 +108,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:image",
-        content:
-          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0eb7d306-970c-4458-ac80-4b0e08c4bec3",
+        content: "https://logisight.mtlship.com/og-default.png",
       },
       {
         name: "twitter:image",
-        content:
-          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0eb7d306-970c-4458-ac80-4b0e08c4bec3",
+        content: "https://logisight.mtlship.com/og-default.png",
       },
     ],
     links: [
@@ -150,9 +148,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@context": "https://schema.org",
           "@type": "Organization",
           name: "Logisight",
-          url: "https://logisight-core.lovable.app",
-          description:
-            "MTL Shipping Agency가 운영하는 한국 화주·포워더를 위한 물류 인텔리전스 플랫폼.",
+          url: "https://logisight.mtlship.com",
+          logo: "https://logisight.mtlship.com/logisight_logo.svg",
+          publisher: { "@type": "Organization", name: "MTL Shipping Agency" },
+          sameAs: ["https://mtlship.com"],
         }),
       },
       {
@@ -161,7 +160,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@context": "https://schema.org",
           "@type": "WebSite",
           name: "Logisight",
-          url: "https://logisight-core.lovable.app",
+          url: "https://logisight.mtlship.com",
         }),
       },
     ],

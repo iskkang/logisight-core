@@ -25,7 +25,7 @@ export const Route = createFileRoute("/briefing")({
   head: ({ loaderData }) => {
     const subtitle = loaderData?.subtitle;
     const desc = subtitle && subtitle.trim().length > 0 ? subtitle : DEFAULT_DESC;
-    const url = "https://logisight-core.lovable.app/briefing";
+    const url = "https://logisight.mtlship.com/briefing";
     return {
       meta: [
         { title: "주간 시장 브리핑 — Logisight" },

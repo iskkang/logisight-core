@@ -18,9 +18,9 @@ export const Route = createFileRoute("/industries")({
         property: "og:description",
         content: "HS 챕터 랭킹, 산업→물류 매핑, 수출 구조를 제공하는 한국 산업 교역 대시보드.",
       },
-      { property: "og:url", content: "https://logisight-core.lovable.app/industries" },
+      { property: "og:url", content: "https://logisight.mtlship.com/industries" },
     ],
-    links: [{ rel: "canonical", href: "https://logisight-core.lovable.app/industries" }],
+    links: [{ rel: "canonical", href: "https://logisight.mtlship.com/industries" }],
   }),
   component: LogisightIndustries,
   errorComponent: () => (

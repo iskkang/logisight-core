@@ -3,7 +3,7 @@ import type {} from "@tanstack/react-start";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 
-const BASE_URL = "https://logisight-core.lovable.app";
+const BASE_URL = "https://logisight.mtlship.com";
 
 interface SitemapEntry {
   path: string;

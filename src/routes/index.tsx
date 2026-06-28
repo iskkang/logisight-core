@@ -37,9 +37,9 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "운임 지수와 시장 뉴스, 정책 변화. 매주 한 편의 분석으로 정리합니다.",
       },
-      { property: "og:url", content: "https://logisight-core.lovable.app/" },
+      { property: "og:url", content: "https://logisight.mtlship.com/" },
     ],
-    links: [{ rel: "canonical", href: "https://logisight-core.lovable.app/" }],
+    links: [{ rel: "canonical", href: "https://logisight.mtlship.com/" }],
   }),
   component: LogisightHome,
 });

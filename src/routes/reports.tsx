@@ -21,9 +21,9 @@ export const Route = createFileRoute("/reports")({
         property: "og:description",
         content: "주간·월간 물류 시장 리포트 카탈로그 — 최신호와 아카이브를 PDF로 제공합니다.",
       },
-      { property: "og:url", content: "https://logisight-core.lovable.app/reports" },
+      { property: "og:url", content: "https://logisight.mtlship.com/reports" },
     ],
-    links: [{ rel: "canonical", href: "https://logisight-core.lovable.app/reports" }],
+    links: [{ rel: "canonical", href: "https://logisight.mtlship.com/reports" }],
   }),
   component: ReportsPage,
 });

@@ -1,12 +1,17 @@
 # Logisight
 
-> 한국 화주·포워더를 위한 물류 인텔리전스 플랫폼. 운임 지수, 시장 뉴스, 유라시아 코리도어, 정책·규제 변동을 매주 정리합니다.
+> 운임 지수, 교역 흐름, 정책 변화 동향을 매주 한 편의 분석으로 정리하는 물류 인텔리전스 플랫폼. (주)MTL Shipping Agency 운영. 한국–CIS/유라시아 회랑 특화.
 
-## Pages
+## 주요 페이지
+- [홈](https://logisight.mtlship.com/): 운임 지수·시장 핵심 요약·주간 브리핑
+- [뉴스](https://logisight.mtlship.com/news): 해상·항공·철도(CIS)·무역 뉴스
+- [운임](https://logisight.mtlship.com/rates): SCFI·KCCI·CCFI·FBX·WCI·BDI 대시보드
+- [전망](https://logisight.mtlship.com/forecasts): 시장 전망 분석
+- [철도](https://logisight.mtlship.com/rail): TCR/TSR 유라시아 철도 회랑
+- [기후예측](https://logisight.mtlship.com/climate): 태풍·해협 리스크 예측
+- [무역](https://logisight.mtlship.com/trade): HS 챕터별 수출입 동향
+- [산업](https://logisight.mtlship.com/industries): 산업별 물동량·운임
+- [리포트](https://logisight.mtlship.com/reports): 마켓 인텔리전스 리포트
 
-- [홈](/): 핵심 운임 지수와 주요 인사이트 요약.
-- [시장 뉴스](/news): 해상·항공·철도·물류·무역 뉴스 큐레이션.
-- [운임·지수](/rates): SCFI·KCCI·CCFI·NYFI 컨테이너 운임 지수와 부산발 해상 운임, 벙커유 가격.
-- [유라시아](/eurasia): 한·중–CIS·유럽 철도·복합운송 코리도어 운영 현황과 정시율.
-- [정책·규제](/policy): CBAM·EU ETS·대러 제재 등 무역·물류 정책 변동 추적.
-- [산업별](/industries): 관세청 HS 품목별·국가별 교역량과 무역수지 분석.
+## 데이터 출처
+PORT-MIS, 관세청, 해양수산부 공공데이터 기반.
