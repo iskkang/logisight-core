@@ -306,7 +306,7 @@ export function EurasiaStatisticsPanel() {
             </tbody>
           </table>
         </div>
-        <div className="mt-3 text-[11px] text-[#828d9d]">출처: index1520.com · 지도: Leaflet · 성 경계 DataV.GeoAtlas · 국가 경계 world-atlas · 코리도어: index1520 route</div>
+        <div className="mt-3 text-[11px] text-[#828d9d]">출처: ERAI (Eurasian Rail Alliance Index) · 지도: Leaflet · 성 경계 DataV.GeoAtlas · 국가 경계 world-atlas</div>
       </section>
     </div>
   );

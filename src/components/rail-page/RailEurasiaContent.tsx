@@ -112,7 +112,7 @@ export function RailEurasiaContent() {
           <h1>유라시아 코리도어</h1>
           <p>
             ERAI(Eurasian Rail Alliance Index) 기반 유라시아 철도 운임·운송기간·물동량 동향. 지수·마켓맵·지역
-            물동량을 한눈에. 출처: index1520.com.
+            물동량을 한눈에.
           </p>
           <div className="hpills">
             <span className="p"><span className="dot" style={{ background: "#2dd4bf" }} />ERAI 종합 <b className="mono">${fmtVal(sum.comp)}</b>/FEU</span>
@@ -153,7 +153,7 @@ export function RailEurasiaContent() {
             </div>
             {charts.aiInsight && (
               <div className="mt-1.5 text-[11px] text-[#828d9d]">
-                AI 요약 · index1520 격주 리포트 기반{charts.aiInsight.generatedAt ? ` · ${charts.aiInsight.generatedAt.slice(0, 10)}` : ""}
+                AI 요약 · 격주 시장 리포트 기반{charts.aiInsight.generatedAt ? ` · ${charts.aiInsight.generatedAt.slice(0, 10)}` : ""}
               </div>
             )}
             <div className="tiles">
@@ -182,7 +182,7 @@ export function RailEurasiaContent() {
           <EurasiaMarketMap quotes={charts.indexQuotes} />
           <EurasiaGeoRanking geo={charts.geo} />
 
-          <div className="src">데이터 출처: ERAI (Eurasian Rail Alliance Index) · <a href="https://index1520.com/en/index/" target="_blank" rel="noopener noreferrer">index1520.com</a> · 철도 뉴스는 <a href="/news?cat=철도">뉴스 › 철도</a></div>
+          <div className="src">데이터 출처: ERAI (Eurasian Rail Alliance Index) · 철도 뉴스는 <a href="/news?cat=철도">뉴스 › 철도</a></div>
           </>
           )}
         </div>

@@ -8,18 +8,8 @@ import type { IndexQuotes, ChartDataset, GeoPayload } from "@/lib/api/eurasia-ch
 const CARD = "rounded-[14px] border border-[#d8dfe9] bg-[#f4f7fb] shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
 const CHIP = "rounded-full border border-[#d8dfe9] bg-[#eef1f6] px-[9px] py-[3px] text-[11px] text-[#828d9d]";
 const LINE_COLORS = ["#0d9488", "#1864ab", "#d97706", "#7c3aed", "#dc2626", "#0891b2"];
-const INDEX_URL = "https://index1520.com/en/index/";
-const STATS_URL = "https://index1520.com/en/statistics/";
-
-function Attribution({ url }: { url: string }) {
-  return (
-    <div className="mt-2.5 text-[11px] text-[#828d9d]">
-      Source: ERAI (Eurasian Rail Alliance Index) ·{" "}
-      <a href={url} target="_blank" rel="noopener noreferrer" className="text-[#54606f] underline hover:text-[#0d9488]">
-        index1520.com
-      </a>
-    </div>
-  );
+function Attribution() {
+  return <div className="mt-2.5 text-[11px] text-[#828d9d]">Source: ERAI (Eurasian Rail Alliance Index)</div>;
 }
 function SectHead({ title, chip, right }: { title: string; chip?: string; right?: ReactNode }) {
   return (
@@ -119,9 +109,9 @@ function RangeScale({ scale, setScale, range, setRange }: { scale: "month" | "we
   );
 }
 
-function ChartSectionBlock({ title, section, defaultVisible, yFmt, sourceUrl }: {
+function ChartSectionBlock({ title, section, defaultVisible, yFmt }: {
   title: string; section: IndexQuotes["indexes"] | undefined;
-  defaultVisible: (label: string) => boolean; yFmt?: (v: number) => string; sourceUrl: string;
+  defaultVisible: (label: string) => boolean; yFmt?: (v: number) => string;
 }) {
   const [scale, setScale] = useState<"month" | "week">("month");
   const [range, setRange] = useState(24);
@@ -145,17 +135,17 @@ function ChartSectionBlock({ title, section, defaultVisible, yFmt, sourceUrl }: 
       <div className={`${CARD} p-4 min-[640px]:p-5`}>
         <Legend series={datasets} visible={visible} onToggle={onToggle} />
         <LineChartSVG labels={labels} series={series} yFmt={yFmt} />
-        <Attribution url={sourceUrl} />
+        <Attribution />
       </div>
     </section>
   );
 }
 
 export function EurasiaIndexChart({ quotes }: { quotes: IndexQuotes | null }) {
-  return <ChartSectionBlock title="ERAI 지수 추이" section={quotes?.indexes} defaultVisible={(l) => l.startsWith("ERAI")} sourceUrl={INDEX_URL} />;
+  return <ChartSectionBlock title="ERAI 지수 추이" section={quotes?.indexes} defaultVisible={(l) => l.startsWith("ERAI")} />;
 }
 export function EurasiaTransitChart({ quotes }: { quotes: IndexQuotes | null }) {
-  return <ChartSectionBlock title="평균 운송기간 (일)" section={quotes?.times} defaultVisible={() => true} yFmt={(v) => v.toFixed(1)} sourceUrl={INDEX_URL} />;
+  return <ChartSectionBlock title="평균 운송기간 (일)" section={quotes?.times} defaultVisible={() => true} yFmt={(v) => v.toFixed(1)} />;
 }
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
@@ -213,7 +203,7 @@ export function EurasiaMarketMap({ quotes }: { quotes: IndexQuotes | null }) {
             ))}
           </tbody>
         </table>
-        <Attribution url={INDEX_URL} />
+        <Attribution />
       </div>
     </section>
   );
@@ -258,7 +248,7 @@ export function EurasiaGeoRanking({ geo }: { geo: GeoPayload | null }) {
         <GeoColumn title="중국 (성별)" items={cn} />
         <GeoColumn title="유럽 (국가별)" items={eu} />
       </div>
-      <Attribution url={STATS_URL} />
+      <Attribution />
     </section>
   );
 }
