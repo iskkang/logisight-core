@@ -31,9 +31,17 @@ export type GeoPayload = {
   data: GeoItem[];
   interval: { minMaxInterval: string; minDate: string; maxDate: string };
 };
+export type AiInsight = {
+  headline: string;
+  analysis: string;
+  basedOn?: string[];
+  sourceUrl?: string;
+  generatedAt?: string;
+};
 export type EurasiaCharts = {
   indexQuotes: IndexQuotes | null;
   geo: GeoPayload | null;
+  aiInsight: AiInsight | null;
   updatedAt: string | null;
 };
 
@@ -51,14 +59,16 @@ export const getEurasiaCharts = createServerFn({ method: "GET" }).handler(
         };
       };
     };
-    const { data, error } = await sb.from("eurasia_charts").select("key,payload,updated_at").in("key", ["index_quotes", "geo"]);
+    const { data, error } = await sb.from("eurasia_charts").select("key,payload,updated_at").in("key", ["index_quotes", "geo", "ai_insight"]);
     if (error) throw new Error(error.message);
     const byKey = new Map((data ?? []).map((r) => [r.key, r]));
     const iq = byKey.get("index_quotes");
     const geo = byKey.get("geo");
+    const ins = byKey.get("ai_insight");
     return {
       indexQuotes: (iq?.payload as IndexQuotes) ?? null,
       geo: (geo?.payload as GeoPayload) ?? null,
+      aiInsight: (ins?.payload as AiInsight) ?? null,
       updatedAt: iq?.updated_at ?? geo?.updated_at ?? null,
     };
   },

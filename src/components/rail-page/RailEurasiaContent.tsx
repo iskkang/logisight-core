@@ -146,11 +146,16 @@ export function RailEurasiaContent() {
           <>
           {/* 종합 판단 */}
           <div className="judge">
-            <div className="verdict">ERAI 종합 ${fmtVal(sum.comp)}/FEU · MoM {fmtPct(sum.compMom)}</div>
+            <div className="verdict">{charts.aiInsight?.headline ?? `ERAI 종합 $${fmtVal(sum.comp)}/FEU · MoM ${fmtPct(sum.compMom)}`}</div>
             <div className="ai">
-              유라시아 철도 운임 컴포지트(ERAI)와 동·서행 지수, 평균 운송기간을 ERAI 공개 데이터로 제공합니다. 값은 월별
-              스냅샷이며, 상세 추이는 아래 차트에서 확인하세요.
+              {charts.aiInsight?.analysis ??
+                "유라시아 철도 운임 컴포지트(ERAI)와 동·서행 지수, 평균 운송기간을 ERAI 공개 데이터로 제공합니다. 값은 월별 스냅샷이며, 상세 추이는 아래 차트에서 확인하세요."}
             </div>
+            {charts.aiInsight && (
+              <div className="mt-1.5 text-[11px] text-[#828d9d]">
+                AI 요약 · index1520 격주 리포트 기반{charts.aiInsight.generatedAt ? ` · ${charts.aiInsight.generatedAt.slice(0, 10)}` : ""}
+              </div>
+            )}
             <div className="tiles">
               {[
                 { k: "ERAI 종합", v: sum.comp, m: sum.compMom },
