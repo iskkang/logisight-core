@@ -1,4 +1,4 @@
-// 철도 허브 지역 탭바 — 미주 · 유라시아 · 유럽. 현재 경로로 active 결정. 유럽은 "준비 중" 뱃지.
+// 철도 허브 지역 탭바 — 미주 · 유라시아. 현재 경로로 active 결정.
 import { Link, useRouterState } from "@tanstack/react-router";
 
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
@@ -6,7 +6,6 @@ const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
 const TABS = [
   { to: "/rail/americas", label: "미주", ready: true },
   { to: "/rail/eurasia", label: "유라시아", ready: true },
-  { to: "/rail/europe", label: "유럽", ready: false },
 ] as const;
 
 export function RailRegionTabs() {
