@@ -37,7 +37,7 @@ export function HomeFooter() {
             ))}
           </Col>
           <Col title="MTL">
-            <a href="https://mtlship.com" target="_blank" rel="noopener noreferrer" className={itemCls}>회사소개</a>
+            <a href="https://www.mtlship.com" target="_blank" rel="noopener noreferrer" className={itemCls}>회사소개</a>
             <a href="#newsletter" className={itemCls}>뉴스레터 구독</a>
             <a href="mailto:sales@mtlship.com" className={itemCls}>영업 문의</a>
           </Col>

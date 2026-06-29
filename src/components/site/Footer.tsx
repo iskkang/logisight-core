@@ -47,7 +47,7 @@ export function Footer() {
 
         <FooterCol title="MTL">
           <li>
-            <a href="https://mtlship.com" target="_blank" rel="noopener noreferrer" className={linkCls}>
+            <a href="https://www.mtlship.com" target="_blank" rel="noopener noreferrer" className={linkCls}>
               회사소개
             </a>
           </li>
