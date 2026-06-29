@@ -55,6 +55,7 @@ type Props = {
   article?: Article;
   related?: RelatedArticle[];
   renderRelatedLink?: (item: RelatedArticle, children: ReactNode, className: string) => ReactNode;
+  breadcrumb?: ReactNode; // 기본 "홈 › 뉴스 › {category}" 대신 커스텀 breadcrumb(예: 브리핑)
 };
 
 const FB_ARTICLE: Article = {
@@ -235,6 +236,7 @@ export default function LogisightArticle({
   article = FB_ARTICLE,
   related = FB_RELATED,
   renderRelatedLink,
+  breadcrumb,
 }: Props) {
   const a = article;
   const paras = toParagraphs(a.body);
@@ -279,16 +281,20 @@ export default function LogisightArticle({
         <article>
           <div className="read">
             <div className="bc">
-              <Link to="/">홈</Link> <b>›</b> <Link to="/news">뉴스</Link>
-              {a.category ? (
+              {breadcrumb ?? (
                 <>
-                  {" "}
-                  <b>›</b>{" "}
-                  <Link to="/news" search={{ cat: a.category }}>
-                    {a.category}
-                  </Link>
+                  <Link to="/">홈</Link> <b>›</b> <Link to="/news">뉴스</Link>
+                  {a.category ? (
+                    <>
+                      {" "}
+                      <b>›</b>{" "}
+                      <Link to="/news" search={{ cat: a.category }}>
+                        {a.category}
+                      </Link>
+                    </>
+                  ) : null}
                 </>
-              ) : null}
+              )}
             </div>
             {a.category ? <span className="cat">{a.category}</span> : null}
             <h1>{a.title}</h1>
