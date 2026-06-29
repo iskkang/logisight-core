@@ -17,6 +17,9 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
+import { GeoAnswerBlock } from "@/components/geo/GeoAnswerBlock";
+import type { FaqItem } from "@/lib/seo";
+
 export type ReportClass = "monthly" | "weekly" | "weekly_regional";
 export type Report = {
   id: string;
@@ -650,6 +653,54 @@ function Accordion({
   );
 }
 
+/* ===================== GEO: 답변 capsule + FAQ (실데이터 바인딩) ===================== */
+// 최신 주간·월간 리포트의 실제 제목·발행일만 사용한다(날조 금지 — 없으면 해당 절 생략).
+function fmtIsoDate(iso: string | null | undefined) {
+  if (!iso) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso));
+  return m ? `${m[1]}.${m[2]}.${m[3]}` : null;
+}
+function buildReportsGeo(weekly: Report | null | undefined, monthly: Report | null | undefined) {
+  const wDate = fmtIsoDate(weekly?.published_at);
+  const mDate = fmtIsoDate(monthly?.published_at);
+
+  const clauses: string[] = [];
+  if (weekly?.title)
+    clauses.push(`최신 주간호: ${weekly.title}${wDate ? ` (${wDate})` : ""}`);
+  if (monthly?.title)
+    clauses.push(`최신 월간호: ${monthly.title}${mDate ? ` (${mDate})` : ""}`);
+
+  const capsule =
+    "MTL이 발행하는 주간·월간 물류 시장 인텔리전스 리포트 — 운임·해상·항공·철도·무역 동향을 한 편에 정리합니다." +
+    (clauses.length ? ` ${clauses.join(", ")}.` : "");
+
+  // 참조일 = 가장 최근 리포트 발행일(ISO 비교용 원본 사용).
+  const isoDates = [weekly?.published_at, monthly?.published_at].filter(Boolean) as string[];
+  const latestIso = isoDates.sort().slice(-1)[0]?.slice(0, 10) ?? null;
+
+  const faq: FaqItem[] = [];
+  if (clauses.length)
+    faq.push({
+      q: "가장 최근 마켓 리포트는 무엇인가요?",
+      a: `${clauses.join(", ")} 입니다.`,
+    });
+  faq.push({
+    q: "리포트는 어떤 내용을 다루나요?",
+    a: "운임·해상·항공·철도·무역 시장 인텔리전스를 다룹니다. 글로벌 운임 지수, 해운·항공 동향, 유라시아 철도, 산업별 교역 흐름을 종합합니다.",
+  });
+  if (weekly?.title && monthly?.title)
+    faq.push({
+      q: "리포트는 얼마나 자주 발행되나요?",
+      a: "주간호와 월간호로 발행됩니다. 주간호는 매주 시황을, 월간호는 한 달간의 종합 분석을 담습니다.",
+    });
+  faq.push({
+    q: "리포트는 어떻게 받아볼 수 있나요?",
+    a: "각 리포트는 페이지에서 PDF로 제공되어 바로 다운로드할 수 있습니다.",
+  });
+
+  return { capsule, faq, latestIso };
+}
+
 export default function LogisightReports({
   showNav = true,
   latestWeekly = FB_WEEKLY,
@@ -718,6 +769,11 @@ export default function LogisightReports({
       });
     return out;
   }, [monthly, weekly, regional]);
+
+  const geo = useMemo(
+    () => buildReportsGeo(latestWeekly, latestMonthly),
+    [latestWeekly, latestMonthly],
+  );
 
   return (
     <div className="lsg-root">
@@ -788,6 +844,24 @@ export default function LogisightReports({
 
       <div className="sheet">
         <div className="wrap">
+          {/* GEO: 답변 capsule + FAQ + Article/FAQPage 스키마 (실데이터 바인딩) */}
+          <div className="mt-3.5 pt-2">
+            <GeoAnswerBlock
+              capsule={geo.capsule}
+              faq={geo.faq}
+              tone="dark"
+              sources="출처: MTL Shipping Agency 마켓 인텔리전스"
+              article={{
+                headline: "마켓 리포트 — 주간·월간 물류 시장 인텔리전스",
+                description:
+                  "MTL이 매주·매월 발행하는 물류 시장 인텔리전스 리포트 — 운임·해상·항공·철도·무역을 한 편에 정리합니다.",
+                path: "/reports",
+                datePublished: geo.latestIso,
+                dateModified: geo.latestIso,
+              }}
+            />
+          </div>
+
           {/* 최신: 그래프 표지 카드 */}
           <div className="sect-h">
             <h2>최신 리포트</h2>

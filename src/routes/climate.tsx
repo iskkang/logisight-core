@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { climateRiskQueryOptions } from "@/lib/api/climate";
+import { seoHead } from "@/lib/seo";
 import { LogisightClimate } from "@/components/climate-page/LogisightClimate";
 
 const SUBTITLE =
@@ -10,19 +11,11 @@ export const Route = createFileRoute("/climate")({
   loader: ({ context }) => {
     context.queryClient.ensureQueryData(climateRiskQueryOptions());
   },
-  head: () => {
-    const url = "https://logisight.mtlship.com/climate";
-    return {
-      meta: [
-        { title: "세계 기후 예측 — Logisight" },
-        { name: "description", content: SUBTITLE },
-        { property: "og:title", content: "세계 기후 예측 — Logisight" },
-        { property: "og:description", content: SUBTITLE },
-        { property: "og:type", content: "website" },
-        { property: "og:url", content: url },
-      ],
-      links: [{ rel: "canonical", href: url }],
-    };
-  },
+  head: () =>
+    seoHead({
+      title: "세계 기후 예측 — Logisight",
+      description: SUBTITLE,
+      path: "/climate",
+    }),
   component: LogisightClimate,
 });

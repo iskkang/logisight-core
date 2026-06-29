@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/briefing";
 import type { BriefingPoint } from "@/lib/api/briefing";
 import { RouteBreadcrumb } from "@/components/site/Breadcrumb";
+import { seoHead } from "@/lib/seo";
 
 const SLOTS = [
   { key: "shipping", label: "시황" },
@@ -25,18 +26,12 @@ export const Route = createFileRoute("/briefing")({
   head: ({ loaderData }) => {
     const subtitle = loaderData?.subtitle;
     const desc = subtitle && subtitle.trim().length > 0 ? subtitle : DEFAULT_DESC;
-    const url = "https://logisight.mtlship.com/briefing";
-    return {
-      meta: [
-        { title: "주간 시장 브리핑 — Logisight" },
-        { name: "description", content: desc },
-        { property: "og:title", content: "주간 시장 브리핑 — Logisight" },
-        { property: "og:description", content: desc },
-        { property: "og:type", content: "article" },
-        { property: "og:url", content: url },
-      ],
-      links: [{ rel: "canonical", href: url }],
-    };
+    return seoHead({
+      title: "주간 시장 브리핑 — Logisight",
+      description: desc,
+      path: "/briefing",
+      type: "article",
+    });
   },
   component: BriefingPage,
 });

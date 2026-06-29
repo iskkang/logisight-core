@@ -5,11 +5,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 
 import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
+import { GeoAnswerBlock } from "@/components/geo/GeoAnswerBlock";
 import LogisightLoader from "@/components/LogisightLoader";
 import {
   formatPeriod,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/api/trade";
 import { indexStatsQueryOptions, type IndexStats } from "@/lib/api/rates";
 import { flagEmoji } from "@/lib/iso-country-codes";
+import type { FaqItem } from "@/lib/seo";
 
 /* ============================ STYLE ============================ */
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
@@ -697,7 +699,93 @@ function TopAndSide({ model }: { model: TradeModel }) {
   );
 }
 
+/* ===================== GEO: 답변 capsule + FAQ (실데이터 바인딩) ===================== */
+// 모든 수치는 관세청 수출입무역통계 실데이터에서만 파생. 없으면 omit/"데이터 수집 중".
+// 인과 단정 금지(교역↔운임은 본문 다른 영역에서 상관 관점으로만 표시).
+function buildTradeGeo(bundle: TradeStatisticsBundle) {
+  const period = latestPeriod(bundle.country);
+  const periodLabel = period ? formatPeriod(period) : null;
+
+  // 최신 기준월 국가 행(ALL 제외) — export_usd 기준 최대 교역국
+  const countryRows = rowsForPeriod(bundle.country, period).filter(
+    (r) => r.country_code && r.country_code.toUpperCase() !== "ALL",
+  );
+  const topCountry = [...countryRows]
+    .filter((r) => r.export_usd != null)
+    .sort((a, b) => (b.export_usd ?? 0) - (a.export_usd ?? 0))[0] ?? null;
+
+  // 최신 기준월 전체 무역수지 = Σ수출 − Σ수입 (실데이터 집계)
+  const totalExport = sum(countryRows.map((r) => r.export_usd ?? 0));
+  const totalImport = sum(countryRows.map((r) => r.import_usd ?? 0));
+  const totalBalance = countryRows.length ? totalExport - totalImport : null;
+
+  // 최신 품목 기준월 수출 상위 HS 품목
+  const itemPeriod = latestPeriod(bundle.item);
+  const itemPeriodLabel = itemPeriod ? formatPeriod(itemPeriod) : null;
+  const topItem = rowsForPeriod(bundle.item, itemPeriod)
+    .filter((r) => r.hs_name && r.export_usd != null)
+    .sort((a, b) => (b.export_usd ?? 0) - (a.export_usd ?? 0))[0] ?? null;
+
+  const balanceWord =
+    totalBalance == null ? null : totalBalance >= 0 ? `흑자 ${moneyUsd(totalBalance)}` : `적자 ${moneyUsd(totalBalance)}`;
+
+  const capsule =
+    periodLabel && topCountry
+      ? `${periodLabel} 기준 한국 최대 수출 상대국은 ${topCountry.country_name ?? topCountry.country_code} (수출 ${moneyUsd(topCountry.export_usd)})${balanceWord ? `, 무역수지 ${balanceWord}` : ""}. 관세청 수출입무역통계를 운임 신호와 함께 분석합니다.`
+      : periodLabel
+        ? `${periodLabel} 기준 관세청 수출입무역통계를 국가·대륙·품목으로 분해하고 운임 신호와 함께 분석합니다. 세부 수치는 데이터 수집 중입니다.`
+        : "관세청 수출입무역통계를 국가·대륙·품목으로 분해하고 운임 신호와 함께 분석합니다. 최신 통계는 데이터 수집 중입니다.";
+
+  const faq: FaqItem[] = [];
+  if (periodLabel && topCountry)
+    faq.push({
+      q: "한국의 최대 수출 상대국은 어디인가요?",
+      a: `${periodLabel} 기준 수출액이 가장 큰 상대국은 ${topCountry.country_name ?? topCountry.country_code}로, 수출 ${moneyUsd(topCountry.export_usd)} 규모입니다.`,
+    });
+  if (periodLabel && balanceWord)
+    faq.push({
+      q: "최근 무역수지는 어떤가요?",
+      a: `${periodLabel} 기준 전체 무역수지는 ${balanceWord}입니다(수출 ${moneyUsd(totalExport)} − 수입 ${moneyUsd(totalImport)}).`,
+    });
+  if (itemPeriodLabel && topItem)
+    faq.push({
+      q: "어떤 품목이 수출 상위인가요?",
+      a: `${itemPeriodLabel} 기준 수출액 상위 품목은 ${topItem.hs_name}로, 수출 ${moneyUsd(topItem.export_usd)} 규모입니다.`,
+    });
+  faq.push({
+    q: "데이터 출처와 기준 시점은?",
+    a: `관세청 수출입무역통계를 기반으로 하며, 월 단위로 갱신됩니다.${periodLabel ? ` 최신 기준 시점은 ${periodLabel}입니다.` : ""}`,
+  });
+
+  // datePublished/dateModified: YYYYMM → YYYY-MM-01
+  const isoDate = period ? `${period.slice(0, 4)}-${period.slice(4, 6)}-01` : null;
+
+  return { capsule, faq, isoDate };
+}
+
 /* ============================ PAGE ============================ */
+function GeoBlock({ bundle }: { bundle: TradeStatisticsBundle }) {
+  const geo = useMemo(() => buildTradeGeo(bundle), [bundle]);
+  return (
+    <div className="mt-3.5">
+      <GeoAnswerBlock
+        capsule={geo.capsule}
+        faq={geo.faq}
+        tone="light"
+        sources="출처: 관세청 수출입무역통계"
+        article={{
+          headline: "무역 동향 — 한국 수출입무역통계 인사이트",
+          description:
+            "관세청 수출입무역통계 기반 교역액·국가·품목 랭킹과 월별 추이를 교역 ↔ 운임 신호와 함께 분석합니다.",
+          path: "/trade",
+          datePublished: geo.isoDate,
+          dateModified: geo.isoDate,
+        }}
+      />
+    </div>
+  );
+}
+
 function TradeBody({ bundle, indexStats }: { bundle: TradeStatisticsBundle; indexStats: IndexStats[] }) {
   const [region, setRegion] = useState<RegionKey>("전체");
   const [metricKo, setMetricKo] = useState<MetricKo>("교역액");
@@ -716,6 +804,9 @@ function TradeBody({ bundle, indexStats }: { bundle: TradeStatisticsBundle; inde
           <div className="pt-[26px] text-[12.5px] text-[#828d9d]">
             <Link to="/" className="hover:text-[#0d9488]">홈</Link> <b className="font-medium text-[#54606f]">›</b> 인사이트 <b className="font-medium text-[#54606f]">›</b> 무역
           </div>
+
+          {/* GEO: 답변 capsule + FAQ + Article/FAQPage 스키마 (실데이터 바인딩, SSR) */}
+          <GeoBlock bundle={bundle} />
 
           <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-[12px] border border-[#d8dfe9] bg-[#f4f7fb] px-3.5 py-3 text-[12.5px]">
             <div className="flex items-center gap-1.5"><span className="text-[11.5px] text-[#828d9d]">목적 권역</span><Seg items={REGIONS} value={region} onChange={setRegion} /></div>
@@ -740,7 +831,7 @@ function TradeBody({ bundle, indexStats }: { bundle: TradeStatisticsBundle; inde
 /* 데이터 도착 전 즉시 그려지는 스켈레톤. SSR 이 이 화면을 곧바로 내보내(빠른 TTFB),
    사용자는 빈 화면 대신 로딩 상태를 본다. 실제 데이터는 클라이언트 useQuery 가 받아
    TradeBody 로 교체한다. */
-function TradeSkeleton() {
+function TradeSkeleton({ bundle }: { bundle: TradeStatisticsBundle }) {
   return (
     <div className="lsgt-root min-h-screen bg-[#070b16] text-[#1a2433]">
       <style>{STYLE}</style>
@@ -756,6 +847,10 @@ function TradeSkeleton() {
 
       <div className="relative z-[2] -mt-7 rounded-t-[28px] bg-[#e6eaf1] pb-2.5" style={{ boxShadow: "0 -24px 60px -34px rgba(0,0,0,.7)" }}>
         <div className={WRAP}>
+          {/* GEO 블록은 스켈레톤(=indexStats 로딩 중·SSR) 단계에서도 SSR HTML 에 포함된다. */}
+          <div className="pt-[26px]">
+            <GeoBlock bundle={bundle} />
+          </div>
           <div className="mt-3.5 rounded-[16px] border border-[#d8dfe9] p-[18px_20px]" style={{ background: "linear-gradient(180deg,#fbfcfe,#f4f7fb)" }}>
             <span className="sk h-5 w-full max-w-[520px]" />
             <span className="sk mt-2 h-4 w-full max-w-[680px]" />
@@ -787,17 +882,18 @@ function TradeSkeleton() {
 }
 
 export function LogisightTrade() {
-  // useSuspenseQuery → useQuery: SSR 을 막지 않는다. 데이터가 없는 동안 스켈레톤을 즉시
-  // 렌더하고, 클라이언트에서 데이터가 도착하면 TradeBody 로 교체한다.
-  const { data: bundle } = useQuery(tradeStatisticsBundleQueryOptions());
+  // 번들은 useSuspenseQuery 로 읽는다 — 라우트 loader 가 미리 적재한 캐시에서 SSR 시점에
+  // 즉시 해소되므로, GEO 답변 블록(capsule·FAQ·JSON-LD)이 SSR HTML 에 포함된다(GEO 준수).
+  // indexStats 는 본문 시그널·브리지 전용이라 기존대로 useQuery 로 클라이언트 하이드레이트.
+  const { data: bundle } = useSuspenseQuery(tradeStatisticsBundleQueryOptions());
   const { data: indexStats } = useQuery(indexStatsQueryOptions());
-  const loading = !bundle || !indexStats;
+  const loading = !indexStats;
 
   // 데이터 로드가 끝날 때까지 브랜드 로딩 오버레이를 띄우고, 도착하면 페이드아웃.
   return (
     <>
       <LogisightLoader show={loading} />
-      {loading ? <TradeSkeleton /> : <TradeBody bundle={bundle} indexStats={indexStats} />}
+      {loading ? <TradeSkeleton bundle={bundle} /> : <TradeBody bundle={bundle} indexStats={indexStats} />}
     </>
   );
 }

@@ -8,11 +8,14 @@ import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
 import { CargoImpactPanel } from "@/components/port/CargoImpactPanel";
-import { policiesQueryOptions } from "@/lib/api/policies";
+import { GeoAnswerBlock } from "@/components/geo/GeoAnswerBlock";
+import type { FaqItem } from "@/lib/seo";
+import { policiesQueryOptions, type PolicyRow } from "@/lib/api/policies";
 import {
   riskSnapshotQueryOptions,
   type ChokepointRiskRow,
   type PortRiskRow,
+  type RiskSnapshot,
 } from "@/lib/api/risk";
 
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
@@ -160,10 +163,72 @@ function DelayChip({ p }: { p: number | null }) {
   return <span className={`inline-block rounded-[6px] border px-[9px] py-[3px] lsg-mono text-[11.5px] font-semibold ${c}`}>{(p > 0 ? "+" : "") + p.toFixed(1) + "%"}</span>;
 }
 
+/* ===================== GEO: 답변 capsule + FAQ (실데이터 바인딩) ===================== */
+// 수치·이름·날짜는 전부 스냅샷/정책 실데이터에서만. null·빈배열이면 해당 FAQ 생략.
+// 인과 단정 금지 — 초크포인트 변동은 "~와 정합/추정" 표현만.
+function buildPolicyGeo(risk: RiskSnapshot, policies: PolicyRow[]) {
+  const refDate = risk.fetchedAt ? String(risk.fetchedAt).slice(0, 10) : null;
+  const activePolicies = policies.filter((p) => p.status === "active");
+  const sortedPorts = [...risk.ports]
+    .filter((p) => p.delayPercent != null && Number.isFinite(p.delayPercent))
+    .sort((a, b) => (b.delayPercent ?? -1) - (a.delayPercent ?? -1));
+  const topPort = sortedPorts[0] ?? null;
+  const topChoke = strongestChokepointMove(risk.chokepoints);
+
+  const dateLead = refDate ? `${refDate} 기준 ` : "";
+  let capsule =
+    `${dateLead}주요 항만 ${risk.ports.length}곳과 초크포인트 ${risk.chokepoints.length}곳의 혼잡·지연 리스크, ` +
+    `활성 규제 이벤트 ${activePolicies.length}건을 모니터링합니다.`;
+  if (topPort && topPort.delayPercent != null) {
+    capsule += ` 현재 지연율이 가장 높은 항만은 ${topPort.name}(${fmtPct(topPort.delayPercent)})입니다.`;
+  }
+
+  const faq: FaqItem[] = [];
+
+  if (sortedPorts.length > 0) {
+    const named = sortedPorts
+      .slice(0, 2)
+      .map((p) => `${p.name}(${fmtPct(p.delayPercent)})`)
+      .join(", ");
+    faq.push({
+      q: "지금 항만 혼잡·지연 리스크가 큰 곳은 어디인가요?",
+      a: `${dateLead}지연율 기준 상위 항만은 ${named}입니다. 지연율이 높을수록 입출항·하역 대기가 길어질 수 있습니다.`,
+    });
+  }
+
+  if (activePolicies.length > 0) {
+    const latest = [...activePolicies].sort((a, b) =>
+      String(b.updated_at ?? "").localeCompare(String(a.updated_at ?? "")),
+    )[0];
+    const latestPart = latest?.title_ko ? ` 최근 항목은 "${latest.title_ko}"입니다.` : "";
+    faq.push({
+      q: "현재 추적 중인 규제·정책 이벤트는 몇 건인가요?",
+      a: `현재 활성 상태로 추적 중인 규제·정책 이벤트는 ${activePolicies.length}건입니다.${latestPart}`,
+    });
+  }
+
+  if (topChoke && topChoke.wowPct != null) {
+    const dir = topChoke.wowPct >= 0 ? "증가" : "감소";
+    faq.push({
+      q: "초크포인트(주요 해협) 리스크는 어떻게 보나요?",
+      a: `${topChoke.name}의 통과 물동량이 전주 대비 ${fmtPct(topChoke.wowPct)} ${dir}한 흐름과 정합합니다. 단정이 아닌 추정·정합 관점에서 모니터링합니다.`,
+    });
+  }
+
+  faq.push({
+    q: "데이터 출처와 갱신은 어떻게 되나요?",
+    a: `${dateLead}항만·초크포인트 리스크 스냅샷의 공개 집계를 표시합니다. 스냅샷 갱신 시점에 맞춰 값이 함께 갱신됩니다.`,
+  });
+
+  return { capsule, faq, refDate };
+}
+
 export function LogisightPort() {
   const { data: risk } = useSuspenseQuery(riskSnapshotQueryOptions());
   const { data: policies } = useSuspenseQuery(policiesQueryOptions());
   const [impactOpen, setImpactOpen] = useState(false);
+
+  const geo = buildPolicyGeo(risk, policies);
 
   const topPort = highestPortDelay(risk.ports);
   const topChoke = strongestChokepointMove(risk.chokepoints);
@@ -186,6 +251,24 @@ export function LogisightPort() {
         <div className={WRAP}>
           <div className="pt-[26px] lsg-mono text-[12.5px] text-[#828d9d]">
             홈 <b className="font-medium text-[#54606f]">›</b> 인사이트 <b className="font-medium text-[#54606f]">›</b> 포트
+          </div>
+
+          {/* GEO: 답변 capsule + FAQ + Article/FAQPage 스키마 (실데이터 바인딩) */}
+          <div className="mt-3.5">
+            <GeoAnswerBlock
+              capsule={geo.capsule}
+              faq={geo.faq}
+              tone="light"
+              sources="출처: 항만·초크포인트 리스크 스냅샷"
+              article={{
+                headline: "포트 리스크 인텔리전스 — 항만·초크포인트·규제 모니터",
+                description:
+                  "항만 혼잡·해상 병목·주요 해협·규제 이벤트 리스크를 한 화면에서 모니터링하는 대시보드.",
+                path: "/policy",
+                datePublished: geo.refDate,
+                dateModified: geo.refDate,
+              }}
+            />
           </div>
 
           {/* pills */}
