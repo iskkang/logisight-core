@@ -16,6 +16,15 @@ function classify(
   return SEVERITY_RANK[severity] > (SEVERITY_RANK[prev] ?? 0) ? "escalated" : "unchanged";
 }
 
+// 유라시아 장애 제목에 segment(어느 구간인지)를 합쳐 명확하게. 이미 포함돼 있으면 그대로(중복 방지).
+function disruptionTitle(title: string | null, segment: string | null): string {
+  const t = (title ?? "").trim();
+  const seg = (segment ?? "").trim();
+  if (!seg) return t || "구간 체류";
+  if (t && t.toLowerCase().includes(seg.toLowerCase())) return t;
+  return t ? `${seg} · ${t}` : `${seg} 구간 체류`;
+}
+
 export const getAlertCandidates = createServerFn({ method: "GET" }).handler(
   async (): Promise<AlertCandidate[]> => {
     const today = new Date().toISOString().slice(0, 10);
@@ -36,7 +45,7 @@ export const getAlertCandidates = createServerFn({ method: "GET" }).handler(
     // 2. Active eurasia disruptions
     const { data: disruptions } = await supabasePublicServer
       .from("eurasia_disruptions")
-      .select("id,lane_id,title,severity,delay_contribution_days,created_at")
+      .select("id,lane_id,segment,title,severity,delay_contribution_days,created_at")
       .eq("status", "active")
       .order("created_at", { ascending: false })
       .limit(20);
@@ -89,7 +98,7 @@ export const getAlertCandidates = createServerFn({ method: "GET" }).handler(
         key,
         severity: sev,
         status: classify(key, sev, prevMap),
-        title: d.title,
+        title: disruptionTitle(d.title, d.segment),
         sub: d.delay_contribution_days !== null ? `${d.delay_contribution_days}일 기여 추정` : "지연 기여 미산출",
         source: "eurasia",
         deepLink: "/eurasia",
