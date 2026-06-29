@@ -95,7 +95,7 @@ export function NewsletterForm({ compact = false }: { compact?: boolean }) {
       )}
       {status.kind === "idle" && (
         <p className="mt-2 text-xs text-white/50">
-          주 1회 발송되며, 언제든 구독을 해지할 수 있습니다.
+          주 2~3회 발송되며, 언제든 구독을 해지할 수 있습니다.
         </p>
       )}
     </form>
