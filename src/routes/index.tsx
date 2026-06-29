@@ -29,7 +29,7 @@ export const Route = createFileRoute("/")({
     seoHead({
       title: "Logisight — 물류를 읽는 새로운 시선",
       description:
-        "운임 지수와 시장 뉴스, 정책 변화. 흩어진 정보를 매주 한 편의 분석으로 정리합니다.",
+        "운임 지수와 물류 뉴스, 정책 변화. 흩어진 정보를 매주 한 편의 분석으로 정리합니다.",
       path: "/",
     }),
   component: LogisightHome,

@@ -36,7 +36,7 @@ export const Route = createFileRoute("/news")({
     ),
   head: () =>
     seoHead({
-      title: "시장 뉴스 — Logisight",
+      title: "물류 뉴스 — Logisight",
       description:
         "해상·항공·철도·물류·무역. 글로벌 운임과 공급망을 흔드는 핵심 뉴스를 한국어 요약과 함께 매주 정리합니다.",
       path: "/news",

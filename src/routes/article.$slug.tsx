@@ -39,7 +39,7 @@ export const Route = createFileRoute("/article/$slug")({
     const title = a ? `${a.title} — Logisight` : "기사 — Logisight";
     const desc =
       (a?.summary && a.summary.trim().length > 0 ? a.summary : a?.title) ??
-      "Logisight 큐레이션 시장 뉴스 상세 기사.";
+      "Logisight 큐레이션 물류 뉴스 상세 기사.";
     const slugParam = a?.slug && a.slug.length > 0 ? a.slug : a ? String(a.id) : params.slug;
     const url = `https://logisight.mtlship.com/article/${slugParam}`;
     const meta: Array<Record<string, string>> = [
@@ -98,7 +98,7 @@ export const Route = createFileRoute("/article/$slug")({
         to="/news"
         className="mt-6 inline-block text-sm font-semibold text-[var(--color-navy-600)] underline"
       >
-        시장 뉴스로 돌아가기
+        물류 뉴스로 돌아가기
       </Link>
     </div>
   ),

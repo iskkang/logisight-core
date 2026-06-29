@@ -90,13 +90,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "MTL Shipping Agency가 운영하는 한국 화주·포워더를 위한 물류 인텔리전스 플랫폼. 운임 지수, 시장 뉴스, 유라시아 코리도어, 정책 변화를 매주 한 편의 분석으로.",
+          "MTL Shipping Agency가 운영하는 한국 화주·포워더를 위한 물류 인텔리전스 플랫폼. 운임 지수, 물류 뉴스, 유라시아 코리도어, 정책 변화를 매주 한 편의 분석으로.",
       },
       { name: "author", content: "MTL Shipping Agency" },
       { property: "og:title", content: "Logisight — 물류를 읽는 새로운 시선" },
       {
         property: "og:description",
-        content: "운임 지수와 시장 뉴스, 정책 변화. 매주 한 편의 분석으로 정리합니다.",
+        content: "운임 지수와 물류 뉴스, 정책 변화. 매주 한 편의 분석으로 정리합니다.",
       },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "Logisight" },
@@ -104,7 +104,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: "Logisight — 물류를 읽는 새로운 시선" },
       {
         name: "twitter:description",
-        content: "운임 지수와 시장 뉴스, 정책 변화. 매주 한 편의 분석으로 정리합니다.",
+        content: "운임 지수와 물류 뉴스, 정책 변화. 매주 한 편의 분석으로 정리합니다.",
       },
       {
         property: "og:image",

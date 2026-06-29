@@ -72,7 +72,7 @@ function BriefingPage() {
         <p className="mt-3 text-sm text-[var(--color-ink-muted)]">이번 주 브리핑을 준비 중입니다.</p>
         <p className="mt-1 text-xs text-[var(--color-ink-muted)]/80">매주 월요일 발행</p>
         <Link to="/news" className="mt-6 inline-block text-sm font-semibold text-[var(--color-navy-600)] underline">
-          시장 뉴스로 돌아가기
+          물류 뉴스로 돌아가기
         </Link>
       </div>
     );
@@ -135,7 +135,7 @@ function BriefingPage() {
 
       <footer className="mt-12 border-t border-[var(--color-line)] pt-6">
         <Link to="/news" className="text-sm font-semibold text-[var(--color-navy-600)] underline">
-          시장 뉴스 전체 보기 →
+          물류 뉴스 전체 보기 →
         </Link>
       </footer>
     </article>
