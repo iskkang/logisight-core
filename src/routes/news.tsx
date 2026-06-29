@@ -12,6 +12,7 @@ import {
 } from "@/lib/api/news";
 import type { NewsItem } from "@/lib/api/news";
 import { articleParam } from "@/lib/api/article";
+import { seoHead } from "@/lib/seo";
 import { NewsletterForm } from "@/components/site/NewsletterForm";
 import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
@@ -33,23 +34,13 @@ export const Route = createFileRoute("/news")({
     context.queryClient.ensureQueryData(
       latestNewsQueryOptions({ lang: "ko", limit: 40, category: deps.cat, date: deps.date }),
     ),
-  head: () => ({
-    meta: [
-      { title: "시장 뉴스 — Logisight" },
-      {
-        name: "description",
-        content:
-          "해상·항공·철도·물류·무역. 글로벌 운임과 공급망을 흔드는 핵심 뉴스를 한국어 요약과 함께 매주 정리합니다.",
-      },
-      { property: "og:title", content: "시장 뉴스 — Logisight" },
-      {
-        property: "og:description",
-        content: "해상·항공·철도·물류·무역 분야의 글로벌 시장 뉴스를 한국어로 큐레이션.",
-      },
-      { property: "og:url", content: "https://logisight.mtlship.com/news" },
-    ],
-    links: [{ rel: "canonical", href: "https://logisight.mtlship.com/news" }],
-  }),
+  head: () =>
+    seoHead({
+      title: "시장 뉴스 — Logisight",
+      description:
+        "해상·항공·철도·물류·무역. 글로벌 운임과 공급망을 흔드는 핵심 뉴스를 한국어 요약과 함께 매주 정리합니다.",
+      path: "/news",
+    }),
   component: NewsPage,
 });
 

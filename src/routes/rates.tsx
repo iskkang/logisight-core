@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { seoHead } from "@/lib/seo";
 import { LogisightRates } from "@/components/rates-page/LogisightRates";
 import {
   freightIndicesHistoryQueryOptions,
@@ -27,15 +28,12 @@ export const Route = createFileRoute("/rates")({
       context.queryClient.ensureQueryData(kcciRouteStatsQueryOptions()),
     ]);
   },
-  head: () => ({
-    meta: [
-      { title: "운임 Control Tower - Logisight" },
-      {
-        name: "description",
-        content:
-          "저장된 KITA 해상·항공 운임과 글로벌 스팟 지수를 결합해 권역별 운임의 수준·추세·이상치를 한눈에 판단합니다.",
-      },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "운임 Control Tower - Logisight",
+      description:
+        "저장된 KITA 해상·항공 운임과 글로벌 스팟 지수를 결합해 권역별 운임의 수준·추세·이상치를 한눈에 판단합니다.",
+      path: "/rates",
+    }),
   component: LogisightRates,
 });

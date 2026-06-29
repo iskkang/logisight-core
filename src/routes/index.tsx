@@ -11,6 +11,7 @@ import { latestRatesBriefQueryOptions } from "@/lib/api/rates-brief";
 import { latestNewsQueryOptions } from "@/lib/api/news";
 import { latestBriefingQueryOptions } from "@/lib/api/briefing";
 import { LogisightHome } from "@/components/home/LogisightHome";
+import { seoHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
   loader: ({ context }) => {
@@ -24,22 +25,12 @@ export const Route = createFileRoute("/")({
     qc.ensureQueryData(latestNewsQueryOptions({ lang: "ko", limit: 12 }));
     qc.ensureQueryData(latestBriefingQueryOptions());
   },
-  head: () => ({
-    meta: [
-      { title: "Logisight — 물류를 읽는 새로운 시선" },
-      {
-        name: "description",
-        content:
-          "운임 지수와 시장 뉴스, 정책 변화. 흩어진 정보를 매주 한 편의 분석으로 정리합니다.",
-      },
-      { property: "og:title", content: "Logisight — 물류를 읽는 새로운 시선" },
-      {
-        property: "og:description",
-        content: "운임 지수와 시장 뉴스, 정책 변화. 매주 한 편의 분석으로 정리합니다.",
-      },
-      { property: "og:url", content: "https://logisight.mtlship.com/" },
-    ],
-    links: [{ rel: "canonical", href: "https://logisight.mtlship.com/" }],
-  }),
+  head: () =>
+    seoHead({
+      title: "Logisight — 물류를 읽는 새로운 시선",
+      description:
+        "운임 지수와 시장 뉴스, 정책 변화. 흩어진 정보를 매주 한 편의 분석으로 정리합니다.",
+      path: "/",
+    }),
   component: LogisightHome,
 });

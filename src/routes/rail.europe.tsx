@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { latestNewsQueryOptions, type NewsItem } from "@/lib/api/news";
+import { seoHead } from "@/lib/seo";
 import { RailNewsFeed } from "@/components/rail-page/RailWidgets";
 
 // 유럽 — 전용 코리도 파이프라인은 준비 중. 현재는 index1520 메타피드의 유럽 관련 기사를 필터링해 노출.
@@ -17,12 +18,12 @@ export const Route = createFileRoute("/rail/europe")({
   loader: ({ context }) => {
     context.queryClient.ensureQueryData(latestNewsQueryOptions({ category: "철도", lang: "en", limit: 30 }));
   },
-  head: () => ({
-    meta: [
-      { title: "유럽 철도 — Logisight" },
-      { name: "description", content: "유럽 철도 코리도 뉴스(index1520 메타피드, 유럽 관련 기사 필터)." },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "유럽 철도 — Logisight",
+      description: "유럽 철도 코리도 뉴스(index1520 메타피드, 유럽 관련 기사 필터).",
+      path: "/rail/europe",
+    }),
   component: RailEuropePage,
 });
 

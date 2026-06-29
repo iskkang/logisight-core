@@ -7,6 +7,7 @@ import {
   kitaAirRatesQueryOptions,
   kitaSeaRatesQueryOptions,
 } from "@/lib/api/rates";
+import { seoHead } from "@/lib/seo";
 import { eurasiaDisruptionsActiveQueryOptions } from "@/lib/api/eurasia-disruptions";
 import { eurasiaRailBriefQueryOptions } from "@/lib/api/eurasia-rail-brief";
 import { eurasiaDelaysQueryOptions } from "@/lib/api/eurasia";
@@ -47,14 +48,11 @@ export const Route = createFileRoute("/dashboard")({
     qc.ensureQueryData(forecastSeriesQueryOptions());
     qc.ensureQueryData(dataUpdatesQueryOptions());
   },
-  head: () => ({
-    meta: [
-      { title: "종합 Control Tower — Logisight" },
-      {
-        name: "description",
-        content: "오늘의 핵심 변화, 주요 노선 현황, 운임 상승 현황, 정책·장애 요약.",
-      },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: "종합 Control Tower — Logisight",
+      description: "오늘의 핵심 변화, 주요 노선 현황, 운임 상승 현황, 정책·장애 요약.",
+      path: "/dashboard",
+    }),
   component: LogisightControlTower,
 });
