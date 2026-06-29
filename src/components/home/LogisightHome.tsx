@@ -296,7 +296,7 @@ function Brief() {
 }
 
 /* ============================ NEWS ============================ */
-const NEWS_TABS = ["전체", "해상", "항공", "철도·CIS", "물류", "무역"] as const;
+const NEWS_TABS = ["전체", "해상", "항공", "철도", "물류", "무역"] as const;
 type NewsTab = (typeof NEWS_TABS)[number];
 
 function FeaturedCard({ item }: { item: NewsItem }) {
