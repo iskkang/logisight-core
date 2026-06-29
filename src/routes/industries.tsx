@@ -1,11 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { LogisightIndustries } from "@/components/industries-page/LogisightIndustries";
+import { tradeStatisticsQueryOptions } from "@/lib/api/industries";
 import { seoHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/industries")({
-  // 데이터는 클라이언트에서 useQuery 로 로드한다(로딩 오버레이 즉시 표시). SSR 블로킹 loader 를
-  // 제거해 첫 바이트(TTFB)를 단축한다. /trade 와 동일 패턴.
+  // SSR GEO 준수를 위해 loader 추가 — GEO capsule·FAQ·JSON-LD 가 useSuspenseQuery 로
+  // SSR 렌더되려면 교역통계 쿼리를 사전 프리페치해야 한다. 본문 카드는 기존대로 useQuery
+  // 로딩 오버레이를 사용한다(loader 가 캐시를 데워 깜빡임 없음).
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(tradeStatisticsQueryOptions());
+  },
   head: () =>
     seoHead({
       title: "산업별 교역 동향 — Logisight",
