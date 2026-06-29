@@ -24,7 +24,7 @@ function AdminLoginPage() {
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
       if (mounted && data.session) {
-        navigate({ to: "/admin/routes", replace: true });
+        navigate({ to: "/admin", replace: true });
       }
     });
     return () => {
