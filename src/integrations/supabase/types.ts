@@ -586,8 +586,11 @@ export type Database = {
       newsletter_subscribers: {
         Row: {
           company: string | null
+          consent_at: string | null
           email: string
           id: string
+          interests: string[]
+          marketing_consent: boolean
           name: string | null
           preferences: Json | null
           source: string | null
@@ -597,8 +600,11 @@ export type Database = {
         }
         Insert: {
           company?: string | null
+          consent_at?: string | null
           email: string
           id?: string
+          interests?: string[]
+          marketing_consent?: boolean
           name?: string | null
           preferences?: Json | null
           source?: string | null
@@ -608,8 +614,11 @@ export type Database = {
         }
         Update: {
           company?: string | null
+          consent_at?: string | null
           email?: string
           id?: string
+          interests?: string[]
+          marketing_consent?: boolean
           name?: string | null
           preferences?: Json | null
           source?: string | null

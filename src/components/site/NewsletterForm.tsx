@@ -25,13 +25,21 @@ type Status =
   | { kind: "success"; message: string }
   | { kind: "error"; message: string };
 
+const INTERESTS = ["해상", "항공", "철도", "무역", "물류"] as const;
+
 export function NewsletterForm({ compact = false }: { compact?: boolean }) {
   const [email, setEmail] = useState("");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
   const [modalEmail, setModalEmail] = useState("");
+  const [interests, setInterests] = useState<string[]>([...INTERESTS]);
+  const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+
+  function toggleInterest(v: string) {
+    setInterests((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
+  }
 
   // 인라인 이메일 입력 → "구독하기"는 곧바로 저장하지 않고, 입력값을 들고 팝업을 연다.
   function openModal(e: React.FormEvent<HTMLFormElement>) {
@@ -39,6 +47,8 @@ export function NewsletterForm({ compact = false }: { compact?: boolean }) {
     setModalEmail(email);
     setName("");
     setCompany("");
+    setInterests([...INTERESTS]);
+    setConsent(false);
     setStatus({ kind: "idle" });
     setOpen(true);
   }
@@ -54,11 +64,18 @@ export function NewsletterForm({ compact = false }: { compact?: boolean }) {
       setStatus({ kind: "error", message: "이름을 입력해 주세요." });
       return;
     }
+    if (!consent) {
+      setStatus({ kind: "error", message: "개인정보 수집·이용 및 마케팅 수신에 동의해 주세요." });
+      return;
+    }
     setStatus({ kind: "loading" });
     const { error } = await supabase.from("newsletter_subscribers").insert({
       email: parsed.data,
       name: name.trim(),
       company: company.trim() || null,
+      interests,
+      marketing_consent: true,
+      consent_at: new Date().toISOString(),
       status: "active",
       source: "popup",
     });
@@ -161,10 +178,54 @@ export function NewsletterForm({ compact = false }: { compact?: boolean }) {
                   className={field}
                 />
               </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-ink)]">관심 분야</label>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {INTERESTS.map((v) => {
+                    const on = interests.includes(v);
+                    return (
+                      <button
+                        type="button"
+                        key={v}
+                        onClick={() => toggleInterest(v)}
+                        aria-pressed={on}
+                        className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                          on
+                            ? "border-[var(--color-cyan)] bg-[var(--color-cyan)]/10 text-[var(--color-navy-900)]"
+                            : "border-[var(--color-line)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface)]"
+                        }`}
+                      >
+                        {v}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <label className="flex items-start gap-2 text-xs leading-relaxed text-[var(--color-ink)]">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  className="mt-0.5 flex-none"
+                />
+                <span>
+                  (필수) 개인정보 수집·이용 및 마케팅 정보 수신에 동의합니다.{" "}
+                  <a
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-[var(--color-navy-900)]"
+                  >
+                    개인정보처리방침
+                  </a>
+                </span>
+              </label>
+
               {status.kind === "error" && <p className="text-xs text-rose-600">{status.message}</p>}
               <button
                 type="submit"
-                disabled={status.kind === "loading"}
+                disabled={status.kind === "loading" || !consent}
                 className="w-full rounded-md px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ background: "var(--color-navy-900)" }}
               >

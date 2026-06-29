@@ -10,6 +10,9 @@ export type Subscriber = {
   email: string;
   name: string | null;
   company: string | null;
+  interests: string[];
+  marketing_consent: boolean;
+  consent_at: string | null;
   status: string;
   source: string | null;
   subscribed_at: string | null;
@@ -30,7 +33,7 @@ export const listSubscribers = createServerFn({ method: "POST" })
     await requireUser(data.token);
     const { data: rows, error } = await supabaseAdmin
       .from("newsletter_subscribers")
-      .select("id,email,name,company,status,source,subscribed_at,unsubscribed_at")
+      .select("id,email,name,company,interests,marketing_consent,consent_at,status,source,subscribed_at,unsubscribed_at")
       .order("subscribed_at", { ascending: false });
     if (error) throw new Error(error.message);
     return (rows ?? []) as Subscriber[];

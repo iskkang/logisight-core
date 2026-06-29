@@ -31,9 +31,9 @@ function fmtDate(s: string | null) {
 }
 
 function exportCsv(rows: Subscriber[]) {
-  const header = ["email", "name", "company", "status", "source", "subscribed_at", "unsubscribed_at"] as const;
+  const header = ["email", "name", "company", "interests", "marketing_consent", "consent_at", "status", "source", "subscribed_at", "unsubscribed_at"] as const;
   const esc = (v: unknown) => {
-    const s = v == null ? "" : String(v);
+    const s = Array.isArray(v) ? v.join(" | ") : v == null ? "" : String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const csv = [
@@ -238,6 +238,7 @@ function AdminSubscribersPage() {
                 <th className="px-3 py-2">이메일</th>
                 <th className="px-3 py-2">이름</th>
                 <th className="px-3 py-2">회사</th>
+                <th className="px-3 py-2">관심분야</th>
                 <th className="px-3 py-2">상태</th>
                 <th className="px-3 py-2">유입경로</th>
                 <th className="px-3 py-2">가입일</th>
@@ -250,6 +251,9 @@ function AdminSubscribersPage() {
                   <td className="px-3 py-2 text-[var(--color-ink)]">{r.email}</td>
                   <td className="px-3 py-2 text-[var(--color-ink)]">{r.name ?? "—"}</td>
                   <td className="px-3 py-2 text-xs text-[var(--color-ink-muted)]">{r.company ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs text-[var(--color-ink-muted)]">
+                    {r.interests?.length ? r.interests.join(", ") : "—"}
+                  </td>
                   <td className="px-3 py-2">
                     <span
                       className={`rounded-[5px] border px-[7px] py-0.5 text-[10px] font-bold ${
@@ -285,7 +289,7 @@ function AdminSubscribersPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-sm text-[var(--color-ink-muted)]">
+                  <td colSpan={8} className="px-3 py-6 text-center text-sm text-[var(--color-ink-muted)]">
                     구독자가 없습니다.
                   </td>
                 </tr>
