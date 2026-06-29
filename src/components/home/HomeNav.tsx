@@ -54,9 +54,6 @@ export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insig
             리포트{active === "reports" && underline}
           </Link>
         </nav>
-        <div className="ml-auto hidden text-[13px] text-[#5d6b80] min-[620px]:block">
-          <b className="text-white">KOR</b> · ENG
-        </div>
         <button
           type="button"
           aria-label="메뉴 열기"

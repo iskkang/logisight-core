@@ -220,7 +220,6 @@ const STYLE = `
 .lsg-root .nav nav{display:flex;gap:24px;font-size:14px;font-weight:500;color:var(--dmut)}
 .lsg-root .nav nav a{padding:4px 0;position:relative}.lsg-root .nav nav a:hover{color:#fff}.lsg-root .nav nav a.on{color:#fff}
 .lsg-root .nav nav a.on::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;border-radius:2px;background:var(--teal)}
-.lsg-root .nav .lang{margin-left:auto;font-size:12.5px;color:var(--dfaint)}.lsg-root .nav .lang b{color:#fff}
 
 .lsg-root .hero{position:relative;overflow:hidden;background:var(--bg)}
 .lsg-root .hero .glow{position:absolute;left:50%;top:-120px;width:900px;height:460px;transform:translateX(-50%);background:radial-gradient(50% 60% at 50% 40%,rgba(45,212,191,.10),transparent 70%)}
@@ -750,9 +749,6 @@ export default function LogisightReports({
                 </a>
               ))}
             </nav>
-            <span className="lang">
-              <b>KOR</b> · ENG
-            </span>
           </div>
         </header>
       )}
