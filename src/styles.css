@@ -456,10 +456,22 @@
     animation-play-state: paused;
   }
 
-  /* Editorial serif headlines (WSJ-style) */
+  /* Editorial serif headlines → Pretendard로 통일(전체 폰트 강제). */
   .font-serif-display {
-    font-family: "Playfair Display", "Noto Serif KR", "Pretendard Variable",
-      Georgia, "Times New Roman", serif;
+    font-family: "Pretendard Variable", Pretendard, -apple-system,
+      BlinkMacSystemFont, system-ui, sans-serif;
     letter-spacing: -0.015em;
   }
+}
+
+/* 사용자 요청: 전 페이지 폰트 Pretendard 강제.
+   에디토리얼 serif(Playfair/Noto Serif)·Inter·컴포넌트 인라인 폰트까지 모두 통일한다.
+   아이콘은 전부 SVG(lucide)라 폰트 강제 영향 없음. */
+*,
+::before,
+::after {
+  font-family:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", Roboto,
+    sans-serif !important;
 }
