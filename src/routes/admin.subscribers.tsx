@@ -31,7 +31,7 @@ function fmtDate(s: string | null) {
 }
 
 function exportCsv(rows: Subscriber[]) {
-  const header = ["email", "status", "source", "subscribed_at", "unsubscribed_at"] as const;
+  const header = ["email", "name", "company", "status", "source", "subscribed_at", "unsubscribed_at"] as const;
   const esc = (v: unknown) => {
     const s = v == null ? "" : String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -105,6 +105,8 @@ function AdminSubscribersPage() {
     return rows.filter(
       (r) =>
         r.email.toLowerCase().includes(n) ||
+        (r.name ?? "").toLowerCase().includes(n) ||
+        (r.company ?? "").toLowerCase().includes(n) ||
         (r.source ?? "").toLowerCase().includes(n) ||
         r.status.includes(n),
     );
@@ -234,6 +236,8 @@ function AdminSubscribersPage() {
             <thead className="bg-[var(--color-surface)] text-left text-[11px] uppercase tracking-wide text-[var(--color-ink-muted)]">
               <tr>
                 <th className="px-3 py-2">이메일</th>
+                <th className="px-3 py-2">이름</th>
+                <th className="px-3 py-2">회사</th>
                 <th className="px-3 py-2">상태</th>
                 <th className="px-3 py-2">유입경로</th>
                 <th className="px-3 py-2">가입일</th>
@@ -244,6 +248,8 @@ function AdminSubscribersPage() {
               {filtered.map((r) => (
                 <tr key={r.id} className="align-middle">
                   <td className="px-3 py-2 text-[var(--color-ink)]">{r.email}</td>
+                  <td className="px-3 py-2 text-[var(--color-ink)]">{r.name ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs text-[var(--color-ink-muted)]">{r.company ?? "—"}</td>
                   <td className="px-3 py-2">
                     <span
                       className={`rounded-[5px] border px-[7px] py-0.5 text-[10px] font-bold ${
@@ -279,7 +285,7 @@ function AdminSubscribersPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-sm text-[var(--color-ink-muted)]">
+                  <td colSpan={7} className="px-3 py-6 text-center text-sm text-[var(--color-ink-muted)]">
                     구독자가 없습니다.
                   </td>
                 </tr>

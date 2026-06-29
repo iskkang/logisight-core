@@ -585,8 +585,10 @@ export type Database = {
       }
       newsletter_subscribers: {
         Row: {
+          company: string | null
           email: string
           id: string
+          name: string | null
           preferences: Json | null
           source: string | null
           status: string | null
@@ -594,8 +596,10 @@ export type Database = {
           unsubscribed_at: string | null
         }
         Insert: {
+          company?: string | null
           email: string
           id?: string
+          name?: string | null
           preferences?: Json | null
           source?: string | null
           status?: string | null
@@ -603,8 +607,10 @@ export type Database = {
           unsubscribed_at?: string | null
         }
         Update: {
+          company?: string | null
           email?: string
           id?: string
+          name?: string | null
           preferences?: Json | null
           source?: string | null
           status?: string | null

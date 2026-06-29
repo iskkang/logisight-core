@@ -8,6 +8,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 export type Subscriber = {
   id: string;
   email: string;
+  name: string | null;
+  company: string | null;
   status: string;
   source: string | null;
   subscribed_at: string | null;
@@ -28,7 +30,7 @@ export const listSubscribers = createServerFn({ method: "POST" })
     await requireUser(data.token);
     const { data: rows, error } = await supabaseAdmin
       .from("newsletter_subscribers")
-      .select("id,email,status,source,subscribed_at,unsubscribed_at")
+      .select("id,email,name,company,status,source,subscribed_at,unsubscribed_at")
       .order("subscribed_at", { ascending: false });
     if (error) throw new Error(error.message);
     return (rows ?? []) as Subscriber[];
