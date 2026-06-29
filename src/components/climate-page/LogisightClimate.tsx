@@ -16,7 +16,6 @@ import {
   HDAYS,
   HCONF,
   type AssetRow,
-  type AssetType,
   type ClimateForecastRow,
   type EventRow,
   type RiskRow,
@@ -29,8 +28,7 @@ import {
   formatForecastAge,
   type ClimateForecastQuality,
 } from "@/lib/climate-quality";
-import { GeoAnswerBlock } from "@/components/geo/GeoAnswerBlock";
-import type { FaqItem } from "@/lib/seo";
+import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
 
 /* ============================ STYLE ============================ */
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
@@ -51,8 +49,6 @@ const STYLE = `
 @keyframes lsgcpulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.7)}70%{box-shadow:0 0 0 7px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
 @media (prefers-reduced-motion:reduce){.lsgc-crit .lsgc-pulse{animation:none}}
 `;
-
-const TYPE_KO: Record<AssetType, string> = { port: "항만", choke: "주요 해협", rail: "철도" };
 
 /* ============================ RISK HELPERS (실데이터) ============================ */
 type Lv = "r" | "a" | "g";
@@ -568,71 +564,6 @@ function Timeline({ events }: { events: EventRow[] }) {
   );
 }
 
-/* ===================== GEO: 답변 capsule + FAQ (실데이터 바인딩) ===================== */
-// 수치·등급은 전부 실 climate 데이터에서만 산출(날조 금지). 답 불가 항목은 omit.
-function fmtRefTime(iso: string | null | undefined): string {
-  if (!iso) return "데이터 수집 중";
-  return String(iso).replace("T", " ").slice(0, 16);
-}
-function buildClimateGeo(args: {
-  rm: RiskMap;
-  assets: AssetRow[];
-  routesG: RouteG[];
-  cautionCount: number;
-  alertCount: number;
-  refTime: string | null;
-}) {
-  const { rm, assets, routesG, cautionCount, alertCount, refTime } = args;
-  const monitored = assets.length;
-  const concern = cautionCount + alertCount; // 주의 이상(주의+경보)
-  const ref = fmtRefTime(refTime);
-
-  // 리스크 상위 자산(지금 시점, 주의 이상) — 실 asset_risk 점수 기준.
-  const ranked = [...assets]
-    .map((a) => ({ a, score: riskAt(rm, a.id, 0) }))
-    .filter((x) => x.score >= 30)
-    .sort((x, y) => y.score - x.score);
-  const top = ranked[0] ?? null;
-  const topLevelKo = top ? levelKo(level(top.score)) : null;
-  // 영향 노선(지금 시점, 주의 이상) — 경유 자산 리스크 기준.
-  const affectedRoutes = routesG.filter((r) => routeRisk(rm, r, 0) >= 30);
-
-  const capsule =
-    monitored > 0
-      ? `${ref} 기준 전 세계 항만·해협·철도 거점 ${monitored}곳의 기상 리스크를 모니터링하며, 현재 주의 이상 ${concern}곳입니다.` +
-        (top ? ` 가장 높은 곳은 ${top.a.name}(${TYPE_KO[top.a.type]}) · ${topLevelKo}입니다.` : "") +
-        (affectedRoutes.length > 0 ? ` 영향이 감지된 주요 노선은 ${affectedRoutes.length}개입니다.` : "")
-      : "전 세계 항만·해협·철도 거점의 기상 리스크를 AI 예보 기반으로 모니터링합니다. 현재 리스크 데이터는 수집 중입니다.";
-
-  const faq: FaqItem[] = [];
-  if (ranked.length > 0) {
-    const list = ranked
-      .slice(0, 3)
-      .map((x) => `${x.a.name}(${TYPE_KO[x.a.type]}) · ${levelKo(level(x.score))}`)
-      .join(", ");
-    faq.push({
-      q: "지금 기상 리스크가 높은 항만/해협은 어디인가요?",
-      a: `${ref} 기준 주의 이상 거점은 ${list}입니다. 등급은 AI 예보 점수로 산출하며 시점에 따라 달라질 수 있습니다.`,
-    });
-  }
-  faq.push({
-    q: "기후 리스크는 어떻게 감지하나요?",
-    a: "전 세계 항만·주요 해협·내륙 철도 거점의 기상 예보를 기반으로 자산별 리스크 등급(정상·주의·경보)을 산출합니다. 예측값이므로 확정이 아닌 가능성으로 보아야 합니다.",
-  });
-  if (affectedRoutes.length > 0) {
-    faq.push({
-      q: "영향을 받는 노선은 어떻게 확인하나요?",
-      a: "노선이 경유하는 항만·해협 거점 중 가장 높은 기상 리스크를 노선별 영향 등급으로 표시합니다. 현재 주의 이상으로 감지된 주요 노선은 페이지의 영향 노선 카드에서 확인할 수 있습니다.",
-    });
-  }
-  faq.push({
-    q: "데이터 출처와 갱신은 어떻게 되나요?",
-    a: `AI 기상 예보를 기반으로 하며, 현재 표시 기준 시각은 ${ref}입니다.`,
-  });
-
-  return { capsule, faq, refTime: refTime ?? null };
-}
-
 /* ============================ PAGE ============================ */
 export function LogisightClimate() {
   const { data } = useSuspenseQuery(climateRiskQueryOptions());
@@ -678,14 +609,7 @@ export function LogisightClimate() {
     { c: "bg-[#d97706]", t: <>주의·경보 자산 <b className="lsg-mono text-[#e9eef7]">{cautionAssets + alertAssets}건</b></> },
   ];
 
-  const geo = buildClimateGeo({
-    rm,
-    assets: data.assets,
-    routesG,
-    cautionCount: cautionAssets,
-    alertCount: alertAssets,
-    refTime: forecastQuality.latestUpdatedAt,
-  });
+  const refTime = forecastQuality.latestUpdatedAt ?? null;
 
   return (
     <div className="lsgc-root min-h-screen bg-[#070b16] text-[#1a2433]">
@@ -701,23 +625,17 @@ export function LogisightClimate() {
             <Link to="/" className="hover:text-[#0d9488]">홈</Link> <b className="font-medium text-[#54606f]">›</b> 인사이트 <b className="font-medium text-[#54606f]">›</b> 기후예측
           </div>
 
-          {/* GEO: 답변 capsule + FAQ + Article/FAQPage 스키마 (실데이터 바인딩) */}
-          <div className="mt-3.5">
-            <GeoAnswerBlock
-              capsule={geo.capsule}
-              faq={geo.faq}
-              tone="light"
-              sources="출처: AI 기상 예보 기반 리스크 모니터"
-              article={{
-                headline: "세계 기후 예측 — 항만·해협·노선 기상 리스크",
-                description:
-                  "전 세계 항만·주요 해협·내륙 철도 거점의 기상 리스크와 영향 노선을 AI 예보 기반으로 모니터링하는 대시보드.",
-                path: "/climate",
-                datePublished: geo.refTime,
-                dateModified: geo.refTime,
-              }}
-            />
-          </div>
+          {/* GEO: 보이지 않는 Article JSON-LD만 유지(시각 요소 제거) */}
+          <GeoArticleSchema
+            article={{
+              headline: "세계 기후 예측 — 항만·해협·노선 기상 리스크",
+              description:
+                "전 세계 항만·주요 해협·내륙 철도 거점의 기상 리스크와 영향 노선을 AI 예보 기반으로 모니터링하는 대시보드.",
+              path: "/climate",
+              datePublished: refTime,
+              dateModified: refTime,
+            }}
+          />
 
           <Kpis items={kpis} />
           <ForecastQualityPanel quality={forecastQuality} />

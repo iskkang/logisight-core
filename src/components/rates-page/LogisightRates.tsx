@@ -37,8 +37,7 @@ import { publishedPartnerRatesQueryOptions } from "@/lib/api/partner-rates";
 import { regionOf } from "@/lib/api/partner-rates.normalize";
 import { publishedForecastsQueryOptions } from "@/lib/api/forecasts";
 import { recentRateReports, SERIES_LABEL, type RateReport } from "@/components/forecasts/forecastUtils";
-import { GeoAnswerBlock } from "@/components/geo/GeoAnswerBlock";
-import type { FaqItem } from "@/lib/seo";
+import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
 
 /* ============================ STYLE ============================ */
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
@@ -301,62 +300,14 @@ function Hero({ baseMonth, regionCount, signalCount }: { baseMonth: string; regi
 }
 
 /* ============================ PAGE ============================ */
-/* ===================== GEO: 답변 capsule + FAQ (실데이터 바인딩) ===================== */
+/* ===================== GEO: Article 스키마용 최신일자 산출 (실데이터 바인딩) ===================== */
 type GeoIdxRow = {
-  index_code: string;
-  latest_value: number | null;
   latest_date: string | null;
-  change_pct: number | null;
 };
-function fmtIsoDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return String(iso).slice(0, 10);
-}
 function buildRatesGeo(indexStats: GeoIdxRow[]) {
-  const find = (c: string) => indexStats.find((s) => s.index_code === c);
-  const fmtVal = (v: number | null | undefined, dec: number) =>
-    v == null ? null : v.toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
-  const wowText = (v: number | null | undefined) =>
-    v == null ? "변동 데이터 수집 중" : `전주 대비 ${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
-  const wowParen = (v: number | null | undefined) => (v == null ? "" : ` (전주 대비 ${v > 0 ? "+" : ""}${v.toFixed(1)}%)`);
-
-  const kcci = find("KCCI");
-  const scfi = find("SCFI");
-  const bdi = find("BDI");
   const dates = indexStats.map((s) => s.latest_date).filter(Boolean) as string[];
   const latestDate = dates.sort().slice(-1)[0] ?? null;
-
-  const parts: string[] = [];
-  if (kcci?.latest_value != null) parts.push(`KCCI ${fmtVal(kcci.latest_value, 0)}${wowParen(kcci.change_pct)}`);
-  if (scfi?.latest_value != null) parts.push(`SCFI ${fmtVal(scfi.latest_value, 2)}${wowParen(scfi.change_pct)}`);
-  if (bdi?.latest_value != null) parts.push(`BDI ${fmtVal(bdi.latest_value, 0)}${wowParen(bdi.change_pct)}`);
-
-  const capsule =
-    parts.length > 0
-      ? `${fmtIsoDate(latestDate)} 기준 ${parts.join(", ")}. 부산발 KITA 해상·항공 운임과 글로벌 스팟 지수(SCFI·KCCI·CCFI·FBX·WCI·BDI)를 한 화면에서 비교·판단합니다.`
-      : "부산발 KITA 해상·항공 운임과 글로벌 스팟 지수(SCFI·KCCI·CCFI·FBX·WCI·BDI)를 한 화면에서 비교·판단합니다. 최신 지수는 데이터 수집 중입니다.";
-
-  const faq: FaqItem[] = [];
-  if (kcci?.latest_value != null)
-    faq.push({
-      q: "지금 KCCI 컨테이너 운임 지수는 얼마인가요?",
-      a: `${fmtIsoDate(latestDate)} 기준 KCCI 종합지수는 ${fmtVal(kcci.latest_value, 0)}이며, ${wowText(kcci.change_pct)}입니다.`,
-    });
-  if (scfi?.latest_value != null)
-    faq.push({
-      q: "SCFI 지수는 현재 어느 수준인가요?",
-      a: `${fmtIsoDate(latestDate)} 기준 SCFI(상하이 컨테이너 운임 지수)는 ${fmtVal(scfi.latest_value, 2)}, ${wowText(scfi.change_pct)}입니다.`,
-    });
-  faq.push({
-    q: "KCCI와 SCFI는 무엇이 다른가요?",
-    a: "KCCI는 한국해양진흥공사가 발표하는 한국발 컨테이너 운임 지수이고, SCFI는 상하이항운교역소가 발표하는 상하이발 지수입니다. 출발지와 산정 노선이 달라 같은 시점이라도 수준과 등락이 다를 수 있습니다.",
-  });
-  faq.push({
-    q: "운임 데이터의 출처와 갱신 주기는 어떻게 되나요?",
-    a: "글로벌 스팟 지수(freight_indices)와 KITA 해상·항공 운임을 기반으로 하며 주 단위로 갱신됩니다. 항공 운임은 USD/kg 원본에 KRW 환산·적용환율·기준일을 함께 표기합니다.",
-  });
-
-  return { capsule, faq, latestDate };
+  return { latestDate };
 }
 
 export function LogisightRates() {
@@ -555,23 +506,17 @@ export function LogisightRates() {
             <Link to="/" className="hover:text-[#0d9488]">홈</Link> <b className="font-medium text-[#54606f]">›</b> 인사이트 <b className="font-medium text-[#54606f]">›</b> 운임
           </div>
 
-          {/* GEO: 답변 capsule + FAQ + Article/FAQPage 스키마 (실데이터 바인딩) */}
-          <div className="mt-3.5">
-            <GeoAnswerBlock
-              capsule={geo.capsule}
-              faq={geo.faq}
-              tone="light"
-              sources="출처: freight_indices(글로벌 스팟 지수) · KITA 해상·항공 운임"
-              article={{
-                headline: "운임 Control Tower — 컨테이너·항공 운임 지수",
-                description:
-                  "부산발 KITA 해상·항공 운임과 글로벌 스팟 지수(SCFI·KCCI·CCFI·FBX·WCI·BDI)를 비교·판단하는 대시보드.",
-                path: "/rates",
-                datePublished: geo.latestDate,
-                dateModified: geo.latestDate,
-              }}
-            />
-          </div>
+          {/* GEO: 보이지 않는 Article JSON-LD만 유지 (시각 요소 없음) */}
+          <GeoArticleSchema
+            article={{
+              headline: "운임 Control Tower — 컨테이너·항공 운임 지수",
+              description:
+                "부산발 KITA 해상·항공 운임과 글로벌 스팟 지수(SCFI·KCCI·CCFI·FBX·WCI·BDI)를 비교·판단하는 대시보드.",
+              path: "/rates",
+              datePublished: geo.latestDate,
+              dateModified: geo.latestDate,
+            }}
+          />
 
           {/* Filters */}
           <div className={`mt-[22px] flex flex-wrap items-center gap-x-4 gap-y-3.5 px-[18px] py-3.5 ${CARD}`}>

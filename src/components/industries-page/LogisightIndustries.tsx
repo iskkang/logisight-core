@@ -4,14 +4,12 @@
 // 파이프라인 미연동이라 규칙 기반 요약(실데이터 파생)으로 대체 — 미검수 AI 문구 생성 금지(Phase-6).
 import { useId, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
 import LogisightLoader from "@/components/LogisightLoader";
-import { GeoAnswerBlock } from "@/components/geo/GeoAnswerBlock";
-import type { FaqItem } from "@/lib/seo";
 import {
   tradeStatisticsQueryOptions,
   hsChapter,
@@ -177,54 +175,6 @@ function aggregateByChapter(rows: TradeStatRow[]): ChapterAgg[] {
   return [...map.values()].map((a) => ({ ...a, balance: a.exp - a.imp })).sort((a, b) => b.exp - a.exp);
 }
 
-/* ===================== GEO: 답변 capsule + FAQ (실데이터 바인딩) ===================== */
-// 최신 period 의 HS 챕터 집계에서 답변우선 capsule·FAQ 를 만든다. 수치는 전부 실데이터,
-// 없으면 omit. 인과 단정 금지(연결/정합/상관 표현). period(YYYYMM) → datePublished(YYYY-MM-01).
-function buildIndustriesGeo(allRows: TradeStatRow[]) {
-  const periods = [...new Set(allRows.map((r) => pk(r.period)).filter((x) => x.length === 6))].sort();
-  const latest = periods.at(-1) ?? null;
-  const periodLabel = latest ? formatPeriod(latest) : null;
-  const datePublished = latest ? `${latest.slice(0, 4)}-${latest.slice(4, 6)}-01` : null;
-  const aggs = latest ? aggregateByChapter(allRows.filter((r) => pk(r.period) === latest)) : [];
-
-  const topExp = aggs[0] ?? null; // aggregateByChapter 는 수출 내림차순 정렬
-  const topBal = aggs.length ? [...aggs].sort((a, b) => b.balance - a.balance)[0] : null;
-
-  const capsule =
-    topExp && periodLabel
-      ? `${periodLabel} 기준 수출 1위 산업은 ${topExp.name}(HS${topExp.chapter}) ${formatUSD(topExp.exp)}. 관세청 HS 품목별 교역액·무역수지를 운송수단·레인 수요와 연결해 분석합니다.`
-      : periodLabel
-        ? `${periodLabel} 기준 관세청 HS 품목별 교역액·무역수지를 운송수단·레인 수요와 연결해 분석합니다.`
-        : "관세청 HS 품목별 교역액·무역수지를 운송수단·레인 수요와 연결해 분석합니다. 최신 통계는 데이터 수집 중입니다.";
-
-  const faq: FaqItem[] = [];
-  if (aggs.length && periodLabel) {
-    const top3 = aggs.slice(0, 3).map((a) => `${a.name}(HS${a.chapter}) ${formatUSD(a.exp)}`).join(", ");
-    faq.push({
-      q: "수출 상위 산업(HS 챕터)은 무엇인가요?",
-      a: `${periodLabel} 기준 수출 상위 산업은 ${top3} 순입니다.`,
-    });
-  }
-  if (topBal && periodLabel && topBal.balance > 0) {
-    faq.push({
-      q: "무역수지가 가장 큰 산업은?",
-      a: `${periodLabel} 기준 무역수지 흑자가 가장 큰 산업은 ${topBal.name}(HS${topBal.chapter})로 ${formatUSD(topBal.balance)}입니다.`,
-    });
-  }
-  if (periodLabel) {
-    faq.push({
-      q: "이 데이터의 출처와 기준은?",
-      a: `관세청 수출입무역통계의 HS 챕터(2단위) 집계이며, ${periodLabel} 확정 통계를 기준으로 합니다.`,
-    });
-  }
-  faq.push({
-    q: "산업 데이터가 물류와 어떻게 연결되나요?",
-    a: "각 HS 챕터를 대표 운송수단·장비·레인 수요와 매핑해 표시합니다. 매핑은 산업 일반화로 운임지수와의 상관·정합 관점이며, 인과를 단정하지 않습니다.",
-  });
-
-  return { capsule, faq, datePublished };
-}
-
 /* 산업 → 운송수단·장비 일반화 매핑(편집 상수, 수치 아님) + 연동 운임지수 코드 */
 const HS_MODE: Record<string, { cls: string; t: string }[]> = {
   "85": [{ cls: "m-fcl", t: "해상 FCL" }, { cls: "m-air", t: "항공" }],
@@ -278,53 +228,18 @@ const DONUT_COLORS = ["#1864ab", "#38bdf8", "#3b82f6", "#f59e0b", "#8b9dc9", "#c
 /* ============================ PAGE ============================ */
 // 데이터 로드가 끝날 때까지 브랜드 로딩 오버레이를 띄우고, 도착하면 페이드아웃(/trade 와 동일).
 export function LogisightIndustries() {
-  // GEO 블록은 loader 가 프리페치한 교역통계 캐시에서 useSuspenseQuery 로 읽어 SSR 렌더한다.
-  // 본문 카드용 useQuery 들은 그대로 둔다(클라이언트 로딩 오버레이 유지).
-  const { data: geoRows } = useSuspenseQuery(tradeStatisticsQueryOptions());
-  const geo = useMemo(() => buildIndustriesGeo(geoRows), [geoRows]);
   const { data: allRows } = useQuery(tradeStatisticsQueryOptions());
   const { data: indexStats } = useQuery(indexStatsQueryOptions());
   const loading = !allRows || !indexStats;
   return (
     <>
       <LogisightLoader show={loading} />
-      {loading ? (
-        // 본문 카드가 로딩 중이어도 GEO capsule·FAQ·JSON-LD 는 SSR 로 노출(검색·LLM 인덱싱).
-        // 오버레이(LogisightLoader)가 화면을 덮으므로 사용자에겐 영향 없음.
-        <div className="lsgi-root">
-          <style>{STYLE}</style>
-          <div className="iwrap" style={{ padding: "26px 28px" }}>
-            <GeoIndustries geo={geo} />
-          </div>
-        </div>
-      ) : (
-        <IndustriesBody allRows={allRows} indexStats={indexStats} geo={geo} />
-      )}
+      {loading ? null : <IndustriesBody allRows={allRows} indexStats={indexStats} />}
     </>
   );
 }
 
-// GEO 답변 블록(실데이터 바인딩) — capsule + 가시 FAQ + Article/FAQPage JSON-LD.
-function GeoIndustries({ geo }: { geo: ReturnType<typeof buildIndustriesGeo> }) {
-  return (
-    <GeoAnswerBlock
-      capsule={geo.capsule}
-      faq={geo.faq}
-      tone="light"
-      sources="출처: 관세청 수출입무역통계 (HS 챕터)"
-      article={{
-        headline: "산업 교역 동향 — HS 챕터별 교역액·무역수지",
-        description:
-          "관세청 수출입무역통계 기준 HS 챕터별 교역액·무역수지를 운송수단·장비·레인 수요와 연결해 분석합니다.",
-        path: "/industries",
-        datePublished: geo.datePublished,
-        dateModified: geo.datePublished,
-      }}
-    />
-  );
-}
-
-function IndustriesBody({ allRows, indexStats, geo }: { allRows: TradeStatRow[]; indexStats: IndexStats[]; geo: ReturnType<typeof buildIndustriesGeo> }) {
+function IndustriesBody({ allRows, indexStats }: { allRows: TradeStatRow[]; indexStats: IndexStats[] }) {
   const [metric, setMetric] = useState<"exp" | "imp" | "bal">("exp");
 
   const model = useMemo(() => {
@@ -434,9 +349,6 @@ function IndustriesBody({ allRows, indexStats, geo }: { allRows: TradeStatRow[];
       {/* SHEET */}
       <div className="sheet"><div className="iwrap">
         <div className="bc"><Link to="/">홈</Link> <b>›</b> 인사이트 <b>›</b> 산업</div>
-
-        {/* GEO: 답변 capsule + FAQ + Article/FAQPage 스키마 (실데이터 바인딩) */}
-        <div style={{ marginTop: 14 }}><GeoIndustries geo={geo} /></div>
 
         {/* FILTERS */}
         <div className="filters">

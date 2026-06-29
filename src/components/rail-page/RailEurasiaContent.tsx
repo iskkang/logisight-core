@@ -6,9 +6,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { eurasiaChartsQueryOptions } from "@/lib/api/eurasia-charts";
 import type { ChartDataset } from "@/lib/api/eurasia-charts";
 import { eurasiaRailBriefQueryOptions } from "@/lib/api/eurasia-rail-brief";
-import type { EurasiaCharts } from "@/lib/api/eurasia-charts";
-import { GeoAnswerBlock } from "@/components/geo/GeoAnswerBlock";
-import type { FaqItem } from "@/lib/seo";
+import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
 import { EurasiaStatisticsPanel } from "@/components/index1520/EurasiaStatisticsPanel";
 import { EuRailTerminals } from "./EuRailTerminals";
 import {
@@ -67,62 +65,12 @@ function pct(c: number | null | undefined, b: number | null | undefined) {
   return c == null || b == null || !b ? null : ((c - b) / b) * 100;
 }
 
-/* ===================== GEO: 답변 capsule + FAQ (실데이터 바인딩) ===================== */
-// 수치는 전부 실데이터에서만 바인딩(날조 금지) — null이면 "데이터 수집 중" 또는 항목 생략.
-// 인과 단정 금지(~와 정합/추정 표현). SCFI 선행·후행 표현 금지.
-function buildEurasiaGeo(args: {
-  comp: number | null; // ERAI 종합 최신값 (USD/FEU)
-  month: string | null; // ERAI 기준월 라벨 (예: 2026.05)
-  geo: EurasiaCharts["geo"];
-  updatedAt: string | null;
-}) {
-  const { comp, month, geo, updatedAt } = args;
-  const compStr = comp == null ? null : `$${Math.round(comp).toLocaleString()}/FEU`;
-  const refStr = month ?? null;
+/* ===================== GEO: Article 스키마용 날짜 산출 ===================== */
+// Article JSON-LD(datePublished/dateModified)에 쓸 최신 갱신일만 산출.
+function buildEurasiaGeo(args: { updatedAt: string | null }) {
+  const { updatedAt } = args;
   const updated = updatedAt ? String(updatedAt).slice(0, 10) : null;
-
-  const capsule =
-    compStr != null
-      ? `${refStr ? `${refStr} 기준 ` : ""}ERAI 종합 ${compStr}. 유라시아 철도 운임·운송기간·지역 물동량을 ERAI(index1520) 기반으로 한눈에 비교·판단합니다.`
-      : "유라시아 철도 운임·운송기간·지역 물동량을 ERAI(index1520) 기반으로 한눈에 비교·판단합니다. (최신 지수는 데이터 수집 중)";
-
-  // 지역 물동량 추세 — 최신 TEU와 직전 TEU 합을 비교(실데이터 있을 때만).
-  const teuTrend = (() => {
-    const items = geo?.data ?? [];
-    if (items.length === 0) return null;
-    const cur = items.reduce((s, it) => s + (Number(String(it.TEU).replace(/[^\d.-]/g, "")) || 0), 0);
-    const prev = items.reduce((s, it) => s + (Number(String(it.previousTEU).replace(/[^\d.-]/g, "")) || 0), 0);
-    if (!cur || !prev) return null;
-    const dir = cur > prev ? "증가" : cur < prev ? "감소" : "보합";
-    return { dir, min: geo?.interval?.minDate ?? null, max: geo?.interval?.maxDate ?? null };
-  })();
-
-  const faq: FaqItem[] = [];
-  if (compStr != null)
-    faq.push({
-      q: "중국-유럽 철도 운임은 지금 어느 수준인가요?",
-      a: `${refStr ? `${refStr} 기준 ` : ""}ERAI 종합지수는 ${compStr} 수준입니다. 동·서행 지수와 추이는 본문 차트에서 확인할 수 있습니다.`,
-    });
-  faq.push({
-    q: "ERAI 지수란 무엇인가요?",
-    a: "ERAI(Eurasian Rail Alliance Index)는 유라시아 철도 운임을 나타내는 벤치마크 지수입니다. index1520(ERAI)이 발표하며, 컨테이너(FEU) 기준 운임 수준을 제공합니다.",
-  });
-  if (teuTrend) {
-    const range =
-      teuTrend.min && teuTrend.max
-        ? `${String(teuTrend.min).slice(0, 10)}~${String(teuTrend.max).slice(0, 10)} 구간 `
-        : "";
-    faq.push({
-      q: "최근 유라시아 철도 물동량 추세는?",
-      a: `${range}지역 물동량(TEU)은 직전 대비 ${teuTrend.dir} 흐름과 정합적인 것으로 추정됩니다. 국가별 순위·물동량은 본문 지역 랭킹에서 확인할 수 있습니다.`,
-    });
-  }
-  faq.push({
-    q: "데이터 출처와 갱신 주기는?",
-    a: `ERAI(index1520) 기반 공개 지수를 사용합니다.${updated ? ` 최근 갱신: ${updated}.` : ""}`,
-  });
-
-  return { capsule, faq, latestDate: updated };
+  return { latestDate: updated };
 }
 
 export function RailEurasiaContent() {
@@ -149,8 +97,8 @@ export function RailEurasiaContent() {
   }, [charts]);
 
   const geo = useMemo(
-    () => buildEurasiaGeo({ comp: sum.comp, month: sum.month, geo: charts.geo, updatedAt: charts.updatedAt }),
-    [sum.comp, sum.month, charts.geo, charts.updatedAt],
+    () => buildEurasiaGeo({ updatedAt: charts.updatedAt }),
+    [charts.updatedAt],
   );
 
   const dColor = (v: number | null) => (v == null ? "var(--mute)" : v >= 0 ? "var(--up)" : "var(--down)");
@@ -195,23 +143,17 @@ export function RailEurasiaContent() {
         <div className="wrap">
           <div className="bc">홈 <b>›</b> 인사이트 <b>›</b> 철도 <b>›</b> 유라시아</div>
 
-          {/* GEO: 답변 capsule + FAQ + Article/FAQPage 스키마 (실데이터 바인딩) */}
-          <div className="mt-3.5">
-            <GeoAnswerBlock
-              capsule={geo.capsule}
-              faq={geo.faq}
-              tone="dark"
-              sources="출처: ERAI(index1520)"
-              article={{
-                headline: "유라시아 코리도어 — ERAI 철도 운임·운송기간·물동량",
-                description:
-                  "ERAI(Eurasian Rail Alliance Index) 기반 유라시아 철도 운임·운송기간·지역 물동량 동향.",
-                path: "/rail/eurasia",
-                datePublished: geo.latestDate,
-                dateModified: geo.latestDate,
-              }}
-            />
-          </div>
+          {/* GEO: 보이지 않는 Article JSON-LD만 유지 (시각 블록 제거) */}
+          <GeoArticleSchema
+            article={{
+              headline: "유라시아 코리도어 — ERAI 철도 운임·운송기간·물동량",
+              description:
+                "ERAI(Eurasian Rail Alliance Index) 기반 유라시아 철도 운임·운송기간·지역 물동량 동향.",
+              path: "/rail/eurasia",
+              datePublished: geo.latestDate,
+              dateModified: geo.latestDate,
+            }}
+          />
 
           {/* Index | Statistics 탭 */}
           <div className="mt-3.5 inline-flex rounded-[10px] border border-[#d8dfe9] bg-[#eef1f6] p-1">

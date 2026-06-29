@@ -19,6 +19,7 @@ import { Route as PolicyRouteImport } from './routes/policy'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as IndustriesRouteImport } from './routes/industries'
 import { Route as ForecastsRouteImport } from './routes/forecasts'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as EurasiaRouteImport } from './routes/eurasia'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClimateRouteImport } from './routes/climate'
@@ -36,6 +37,7 @@ import { Route as AdminPartnerRatesRouteImport } from './routes/admin.partner-ra
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminForecastsRouteImport } from './routes/admin.forecasts'
 import { Route as ApiTradeBriefRouteImport } from './routes/api/trade/brief'
+import { Route as ApiCronIndexnowRouteImport } from './routes/api/cron/indexnow'
 
 const TradeRoute = TradeRouteImport.update({
   id: '/trade',
@@ -85,6 +87,11 @@ const IndustriesRoute = IndustriesRouteImport.update({
 const ForecastsRoute = ForecastsRouteImport.update({
   id: '/forecasts',
   path: '/forecasts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EurasiaRoute = EurasiaRouteImport.update({
@@ -172,6 +179,11 @@ const ApiTradeBriefRoute = ApiTradeBriefRouteImport.update({
   path: '/api/trade/brief',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronIndexnowRoute = ApiCronIndexnowRouteImport.update({
+  id: '/api/cron/indexnow',
+  path: '/api/cron/indexnow',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -179,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/climate': typeof ClimateRoute
   '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
+  '/faq': typeof FaqRoute
   '/forecasts': typeof ForecastsRoute
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
@@ -200,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/rail/eurasia': typeof RailEurasiaRoute
   '/rail/europe': typeof RailEuropeRoute
   '/rail/': typeof RailIndexRoute
+  '/api/cron/indexnow': typeof ApiCronIndexnowRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
 }
 export interface FileRoutesByTo {
@@ -208,6 +222,7 @@ export interface FileRoutesByTo {
   '/climate': typeof ClimateRoute
   '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
+  '/faq': typeof FaqRoute
   '/forecasts': typeof ForecastsRoute
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
@@ -228,6 +243,7 @@ export interface FileRoutesByTo {
   '/rail/eurasia': typeof RailEurasiaRoute
   '/rail/europe': typeof RailEuropeRoute
   '/rail': typeof RailIndexRoute
+  '/api/cron/indexnow': typeof ApiCronIndexnowRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
 }
 export interface FileRoutesById {
@@ -237,6 +253,7 @@ export interface FileRoutesById {
   '/climate': typeof ClimateRoute
   '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
+  '/faq': typeof FaqRoute
   '/forecasts': typeof ForecastsRoute
   '/industries': typeof IndustriesRoute
   '/news': typeof NewsRoute
@@ -258,6 +275,7 @@ export interface FileRoutesById {
   '/rail/eurasia': typeof RailEurasiaRoute
   '/rail/europe': typeof RailEuropeRoute
   '/rail/': typeof RailIndexRoute
+  '/api/cron/indexnow': typeof ApiCronIndexnowRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
 }
 export interface FileRouteTypes {
@@ -268,6 +286,7 @@ export interface FileRouteTypes {
     | '/climate'
     | '/dashboard'
     | '/eurasia'
+    | '/faq'
     | '/forecasts'
     | '/industries'
     | '/news'
@@ -289,6 +308,7 @@ export interface FileRouteTypes {
     | '/rail/eurasia'
     | '/rail/europe'
     | '/rail/'
+    | '/api/cron/indexnow'
     | '/api/trade/brief'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -297,6 +317,7 @@ export interface FileRouteTypes {
     | '/climate'
     | '/dashboard'
     | '/eurasia'
+    | '/faq'
     | '/forecasts'
     | '/industries'
     | '/news'
@@ -317,6 +338,7 @@ export interface FileRouteTypes {
     | '/rail/eurasia'
     | '/rail/europe'
     | '/rail'
+    | '/api/cron/indexnow'
     | '/api/trade/brief'
   id:
     | '__root__'
@@ -325,6 +347,7 @@ export interface FileRouteTypes {
     | '/climate'
     | '/dashboard'
     | '/eurasia'
+    | '/faq'
     | '/forecasts'
     | '/industries'
     | '/news'
@@ -346,6 +369,7 @@ export interface FileRouteTypes {
     | '/rail/eurasia'
     | '/rail/europe'
     | '/rail/'
+    | '/api/cron/indexnow'
     | '/api/trade/brief'
   fileRoutesById: FileRoutesById
 }
@@ -355,6 +379,7 @@ export interface RootRouteChildren {
   ClimateRoute: typeof ClimateRoute
   DashboardRoute: typeof DashboardRoute
   EurasiaRoute: typeof EurasiaRoute
+  FaqRoute: typeof FaqRoute
   ForecastsRoute: typeof ForecastsRoute
   IndustriesRoute: typeof IndustriesRoute
   NewsRoute: typeof NewsRoute
@@ -372,6 +397,7 @@ export interface RootRouteChildren {
   AdminRoutesRoute: typeof AdminRoutesRoute
   ArticleSlugRoute: typeof ArticleSlugRoute
   Index1520RoutesRoute: typeof Index1520RoutesRoute
+  ApiCronIndexnowRoute: typeof ApiCronIndexnowRoute
   ApiTradeBriefRoute: typeof ApiTradeBriefRoute
 }
 
@@ -445,6 +471,13 @@ declare module '@tanstack/react-router' {
       path: '/forecasts'
       fullPath: '/forecasts'
       preLoaderRoute: typeof ForecastsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/eurasia': {
@@ -566,6 +599,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTradeBriefRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/indexnow': {
+      id: '/api/cron/indexnow'
+      path: '/api/cron/indexnow'
+      fullPath: '/api/cron/indexnow'
+      preLoaderRoute: typeof ApiCronIndexnowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -591,6 +631,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClimateRoute: ClimateRoute,
   DashboardRoute: DashboardRoute,
   EurasiaRoute: EurasiaRoute,
+  FaqRoute: FaqRoute,
   ForecastsRoute: ForecastsRoute,
   IndustriesRoute: IndustriesRoute,
   NewsRoute: NewsRoute,
@@ -603,23 +644,4 @@ const rootRouteChildren: RootRouteChildren = {
   TradeRoute: TradeRoute,
   AdminForecastsRoute: AdminForecastsRoute,
   AdminLoginRoute: AdminLoginRoute,
-  AdminPartnerRatesRoute: AdminPartnerRatesRoute,
-  AdminPoliciesRoute: AdminPoliciesRoute,
-  AdminRoutesRoute: AdminRoutesRoute,
-  ArticleSlugRoute: ArticleSlugRoute,
-  Index1520RoutesRoute: Index1520RoutesRoute,
-  ApiTradeBriefRoute: ApiTradeBriefRoute,
-}
-export const routeTree = rootRouteImport
-  ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
+  Admi

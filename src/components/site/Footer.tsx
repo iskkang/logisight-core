@@ -32,6 +32,7 @@ export function Footer() {
           <li><Link to="/rates" className={linkCls}>운임 대시보드</Link></li>
           <li><Link to="/rail" className={linkCls}>철도 코리도어</Link></li>
           <li><Link to="/industries" className={linkCls}>산업별 교역</Link></li>
+          <li><Link to="/faq" className={linkCls}>자주 묻는 질문</Link></li>
         </FooterCol>
 
         <FooterCol title="뉴스">

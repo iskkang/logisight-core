@@ -8,78 +8,21 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { railMapQueryOptions } from "@/lib/api/rail-map";
 import type { RailCorridorsGeoJSON } from "@/lib/api/rail-map.functions";
 import { STATUS_COLORS } from "@/lib/railMap";
-import { GeoAnswerBlock } from "@/components/geo/GeoAnswerBlock";
-import type { FaqItem } from "@/lib/seo";
+import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
 
 function formatScore(score: number | null): string {
   return score == null ? "-" : String(score);
 }
 
-/* ===================== GEO: 답변 capsule + FAQ (실데이터 바인딩) ===================== */
+/* ===================== GEO: Article 스키마용 기준일 계산 ===================== */
 function buildAmericasGeo(geojson: RailCorridorsGeoJSON) {
-  const features = geojson.features;
-  const counts = { normal: 0, watch: 0, delayed: 0, severe: 0, unknown: 0 };
   let latest: string | null = null;
-  const sources = new Set<string>();
-  for (const f of features) {
-    counts[f.properties.status] += 1;
+  for (const f of geojson.features) {
     const updated = f.properties.updated_at;
     if (updated && (!latest || updated > latest)) latest = updated;
-    if (f.properties.source) sources.add(f.properties.source);
   }
   const refDate = latest ? latest.slice(0, 10) : null;
-  const total = features.length;
-
-  const countLine = `정상 ${counts.normal} · 주의 ${counts.watch} · 지연 ${counts.delayed}${
-    counts.severe > 0 ? ` · 심각 ${counts.severe}` : ""
-  }${counts.unknown > 0 ? ` · 미확인 ${counts.unknown}` : ""}`;
-
-  const capsule =
-    total > 0
-      ? `${refDate ? `${refDate} 기준 ` : ""}북미 인터모달 철도 코리도어 ${total}개 중 ${countLine}. 코리도어별 상태·노선·갱신 시각을 지도와 표로 확인합니다.`
-      : "북미 인터모달 철도 코리도어 상태를 지도와 표로 확인합니다. 코리도어 데이터는 데이터 수집 중입니다.";
-
-  // 주의/지연 코리도어 (있을 때만)
-  const flagged = features
-    .filter((f) => f.properties.status === "watch" || f.properties.status === "delayed" || f.properties.status === "severe")
-    .map((f) => {
-      const route = f.properties.origin && f.properties.destination ? ` (${f.properties.origin}→${f.properties.destination})` : "";
-      const label = f.properties.status === "delayed" ? "지연" : f.properties.status === "severe" ? "심각" : "주의";
-      return `${f.properties.name}${route} · ${label}`;
-    });
-
-  const faq: FaqItem[] = [];
-  if (total > 0)
-    faq.push({
-      q: "북미 철도 코리도어 상태는 지금 어떤가요?",
-      a: `${refDate ? `${refDate} 기준 ` : ""}모니터링 중인 코리도어 ${total}개의 상태는 ${countLine}입니다.`,
-    });
-
-  if (flagged.length > 0)
-    faq.push({
-      q: "현재 지연(또는 주의)인 코리도어는 어디인가요?",
-      a: `${flagged.slice(0, 5).join(", ")}${flagged.length > 5 ? ` 외 ${flagged.length - 5}개` : ""}입니다.`,
-    });
-  else if (total > 0 && counts.unknown < total)
-    faq.push({
-      q: "현재 지연(또는 주의)인 코리도어는 어디인가요?",
-      a: "현재 모니터링 창에서 주의·지연 코리도어 없음.",
-    });
-
-  faq.push({
-    q: "코리도어 상태는 어떻게 산정되나요?",
-    a: "각 코리도어의 상태(정상·주의·지연·심각)와 점수(score)를 기반으로 모니터링한 결과를 표시합니다. 정상은 출처 점검 후 보고된 차질이 없는 상태, 미확인은 공개 정보가 제한적인 상태입니다.",
-  });
-
-  const sourceText = sources.size > 0 ? Array.from(sources).join(", ") : null;
-  faq.push({
-    q: "데이터 출처와 갱신은 어떻게 되나요?",
-    a: `${sourceText ? `${sourceText} 기반으로 ` : ""}코리도어별 상태가 집계되며, ${refDate ? `최신 갱신은 ${refDate} 기준입니다.` : "갱신 시각은 데이터 수집 중입니다."}`,
-  });
-
-  const sourcesLine = sourceText ? `출처: ${sourceText}` : "출처: 철도 코리도어 상태 모니터";
-
-  return { capsule, faq, refDate, sourcesLine };
+  return { refDate };
 }
 
 function formatDate(value: string | null): string {
@@ -206,24 +149,16 @@ export function RailAmericasMap() {
 
   return (
     <main className="bg-[#f3f6fa] text-[#1a2433]">
-      {/* GEO: 답변 capsule + FAQ + Article/FAQPage 스키마 (실데이터 바인딩) */}
-      <div className="border-b border-[#d8dfe9] bg-[#070b16] px-5 py-5">
-        <div className="mx-auto w-full max-w-[1240px]">
-          <GeoAnswerBlock
-            capsule={geo.capsule}
-            faq={geo.faq}
-            tone="dark"
-            sources={geo.sourcesLine}
-            article={{
-              headline: "북미 인터모달 철도 코리도어 상태",
-              description: "북미 인터모달 철도 코리도 상태 지도(정상·주의·지연)와 코리도어별 상태·점수·갱신 시각.",
-              path: "/rail/americas",
-              datePublished: geo.refDate,
-              dateModified: geo.refDate,
-            }}
-          />
-        </div>
-      </div>
+      {/* GEO: 보이지 않는 Article JSON-LD만 유지 (시각 요소 없음) */}
+      <GeoArticleSchema
+        article={{
+          headline: "북미 인터모달 철도 코리도어 상태",
+          description: "북미 인터모달 철도 코리도 상태 지도(정상·주의·지연)와 코리도어별 상태·점수·갱신 시각.",
+          path: "/rail/americas",
+          datePublished: geo.refDate,
+          dateModified: geo.refDate,
+        }}
+      />
 
       <div className="grid min-h-[78vh] grid-cols-[320px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto] max-[900px]:grid-cols-1 max-[900px]:grid-rows-[auto_70vh_auto]">
         <aside className="border-r border-[#d8dfe9] bg-white px-5 py-5 max-[900px]:border-b max-[900px]:border-r-0">

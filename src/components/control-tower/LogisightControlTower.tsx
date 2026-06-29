@@ -35,8 +35,7 @@ import {
 import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
-import { GeoAnswerBlock } from "@/components/geo/GeoAnswerBlock";
-import type { FaqItem } from "@/lib/seo";
+import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
 
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
 const CARD = "rounded-[14px] border border-[#d8dfe9] bg-[#f4f7fb] shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
@@ -209,61 +208,11 @@ function buildHeroSummary(kcciStat: IndexStats | undefined, stats: IndexStats[],
   return parts.join(" ") || "주요 노선 현황과 운임 지수를 확인하세요.";
 }
 
-/* ===================== GEO: 답변 capsule + FAQ (실데이터 바인딩) ===================== */
-function buildDashboardGeo(stats: IndexStats[], alerts: AlertCandidate[]) {
-  const fmtVal = (v: number | null | undefined, code: string) =>
-    v == null ? null : formatNumber(v, code === "SCFI" || code === "CCFI" ? 2 : 0);
-  const wowParen = (v: number | null | undefined) => (v == null ? "" : ` (전주 대비 ${v >= 0 ? "+" : ""}${v.toFixed(1)}%)`);
-  const wowText = (v: number | null | undefined) => (v == null ? "전주 대비 변동 데이터 수집 중" : `전주 대비 ${v >= 0 ? "+" : ""}${v.toFixed(1)}%`);
-
-  const kcci = statByCode(stats, "KCCI");
-  const scfi = statByCode(stats, "SCFI");
+/* ===================== GEO: Article 스키마 기준일 (실데이터 바인딩) ===================== */
+function buildDashboardGeo(stats: IndexStats[]) {
   const dates = stats.map((s) => s.latest_date).filter((d): d is string => Boolean(d));
   const refDate = dates.sort().at(-1) ?? null;
-  const refLabel = refDate ? refDate.slice(0, 10) : null;
-
-  // 활성 경보 = status new/escalated (실배열 기준 카운트)
-  const activeAlerts = alerts.filter((a) => a.status === "new" || a.status === "escalated");
-  const activeCount = activeAlerts.length;
-
-  const idxParts: string[] = [];
-  if (kcci?.latest_value != null) idxParts.push(`KCCI ${fmtVal(kcci.latest_value, "KCCI")}${wowParen(kcci.change_pct)}`);
-  if (scfi?.latest_value != null) idxParts.push(`SCFI ${fmtVal(scfi.latest_value, "SCFI")}${wowParen(scfi.change_pct)}`);
-
-  const lead =
-    idxParts.length > 0
-      ? `${refLabel ? `${refLabel} 기준 ` : ""}${idxParts.join(", ")} · 활성 경보 ${activeCount}건. `
-      : "최신 운임 지수는 데이터 수집 중입니다. ";
-  const capsule = `${lead}오늘의 핵심 운임·노선·정책 변화를 한 화면에 종합합니다.`;
-
-  const faq: FaqItem[] = [];
-  if (kcci?.latest_value != null || scfi?.latest_value != null) {
-    const fa: string[] = [];
-    if (kcci?.latest_value != null) fa.push(`KCCI 종합지수는 ${fmtVal(kcci.latest_value, "KCCI")}(${wowText(kcci.change_pct)})`);
-    if (scfi?.latest_value != null) fa.push(`SCFI(상하이 컨테이너 운임 지수)는 ${fmtVal(scfi.latest_value, "SCFI")}(${wowText(scfi.change_pct)})`);
-    faq.push({
-      q: "오늘 운임 지수는 어떤가요?",
-      a: `${refLabel ? `${refLabel} 기준 ` : ""}${fa.join(", ")}입니다.`,
-    });
-  }
-  if (activeCount > 0) {
-    const high = activeAlerts.filter((a) => a.severity === "high").length;
-    const sev = high > 0 ? ` 이 중 경고 등급은 ${high}건입니다.` : "";
-    faq.push({
-      q: "지금 활성화된 경보는 몇 건인가요?",
-      a: `현재 신규·격상 상태의 활성 경보는 ${activeCount}건입니다.${sev}`,
-    });
-  }
-  faq.push({
-    q: "이 대시보드는 무엇을 보여주나요?",
-    a: "한국발 해상·항공 운임 지수, 주요 노선 모니터, 그리고 정책·유라시아 회랑 장애를 한 화면에 종합해 보여줍니다.",
-  });
-  faq.push({
-    q: "데이터는 얼마나 자주 갱신되나요?",
-    a: "글로벌 스팟 지수와 KITA 운임을 기반으로 정기적으로 갱신됩니다. 화면 상단의 기준일로 최신 반영 시점을 확인할 수 있습니다.",
-  });
-
-  return { capsule, faq, refDate };
+  return { refDate };
 }
 
 /* ---------- spark ---------- */
@@ -618,7 +567,7 @@ export function LogisightControlTower() {
   const summary = useMemo(() => buildHeroSummary(kcciStat, stats, alertCount, disruptions.length, openForecasts),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [kcciStat, stats, alertCount, disruptions.length, openForecasts.length]);
-  const geo = useMemo(() => buildDashboardGeo(stats, alerts), [stats, alerts]);
+  const geo = useMemo(() => buildDashboardGeo(stats), [stats]);
 
   const pressureUp = (kcciStat?.change_pct ?? 0) > 0;
   const chips = [
@@ -642,23 +591,17 @@ export function LogisightControlTower() {
         <div className={WRAP}>
           <div className="pt-[26px] lsg-mono text-[12.5px] text-[#828d9d]">홈 <b className="font-medium text-[#54606f]">›</b> 인사이트</div>
 
-          {/* GEO: 답변 capsule + FAQ + Article/FAQPage 스키마 (실데이터 바인딩) */}
-          <div className="mt-3.5">
-            <GeoAnswerBlock
-              capsule={geo.capsule}
-              faq={geo.faq}
-              tone="light"
-              sources="출처: freight_indices · 리스크/경보 집계"
-              article={{
-                headline: "종합 Control Tower — 운임 지수·노선·정책 종합 대시보드",
-                description:
-                  "한국발 해상·항공 운임 지수, 주요 노선 모니터, 정책·유라시아 회랑 장애를 한 화면에 종합하는 대시보드.",
-                path: "/dashboard",
-                datePublished: geo.refDate,
-                dateModified: geo.refDate,
-              }}
-            />
-          </div>
+          {/* GEO: 보이지 않는 Article 스키마만 유지 (시각 블록 제거, 실데이터 바인딩) */}
+          <GeoArticleSchema
+            article={{
+              headline: "종합 Control Tower — 운임 지수·노선·정책 종합 대시보드",
+              description:
+                "한국발 해상·항공 운임 지수, 주요 노선 모니터, 정책·유라시아 회랑 장애를 한 화면에 종합하는 대시보드.",
+              path: "/dashboard",
+              datePublished: geo.refDate,
+              dateModified: geo.refDate,
+            }}
+          />
 
           <div className="mt-2.5 grid grid-cols-1 items-start gap-5 min-[1080px]:grid-cols-[1fr_360px]">
             <div className="flex flex-col gap-5">

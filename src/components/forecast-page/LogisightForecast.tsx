@@ -8,10 +8,9 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
-import { publishedForecastsQueryOptions, forecastSeriesQueryOptions, hitRate, MODULE_LABEL, type Forecast, type ForecastSeries } from "@/lib/api/forecasts";
+import { publishedForecastsQueryOptions, forecastSeriesQueryOptions, MODULE_LABEL, type Forecast, type ForecastSeries } from "@/lib/api/forecasts";
 import { eurasiaRailBriefQueryOptions } from "@/lib/api/eurasia-rail-brief";
-import { GeoAnswerBlock } from "@/components/geo/GeoAnswerBlock";
-import type { FaqItem } from "@/lib/seo";
+import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
 import {
   DIR_META,
   applyFilter,
@@ -397,57 +396,15 @@ function Methodology() {
   );
 }
 
-/* ===================== GEO: 답변 capsule + FAQ (실데이터 바인딩) ===================== */
-// 공개 화면은 published/resolved만. 적중률은 발행 전수(분모=판정완료) 기준 — 날조·표본 추출 금지.
+/* ===================== GEO: Article 스키마용 latestDate (실데이터 바인딩) ===================== */
+// 공개 화면은 published/resolved만. 최신 발행일만 Article 스키마에 사용.
 function buildForecastsGeo(forecasts: Forecast[]) {
-  const fmtDate = (iso: string | null | undefined) => (iso ? String(iso).slice(0, 10) : "—");
-  const dirText = (d: Forecast["direction"]) => (d === "up" ? "상승" : d === "down" ? "하락" : d === "flat" ? "보합" : null);
-  const confText = (c: Forecast["confidence"]) => (c === "high" ? "높음" : c === "medium" ? "중간" : c === "low" ? "낮음" : null);
-
   const published = forecasts.filter((f) => f.status === "published" || f.status === "resolved");
-  const sorted = [...published].sort((a, b) => String(b.published_at ?? "").localeCompare(String(a.published_at ?? "")));
-  const latest = sorted[0] ?? null;
-  const latestDate = latest?.published_at ?? null;
-  const count = published.length;
-
-  const latestSummary = latest ? (sentences(latest.statement)[0] ?? latest.statement ?? "") : "";
-
-  const capsule =
-    count > 0
-      ? `현재 발행된 시장 전망 ${count}건을 제공합니다.${latestDate ? ` 최신 전망(${fmtDate(latestDate)}): ${latestSummary}` : ""}`
-      : "발행된 시장 전망은 현재 데이터 수집 중입니다. 검수를 통과한 전망이 게재되면 표시됩니다.";
-
-  const faq: FaqItem[] = [];
-
-  if (latest) {
-    const dir = dirText(latest.direction);
-    const conf = confText(latest.confidence);
-    const tail = [dir ? `방향 ${dir}` : null, conf ? `신뢰도 ${conf}` : null].filter(Boolean).join(" · ");
-    faq.push({
-      q: "지금 발행된 최신 시장 전망은 무엇인가요?",
-      a: `${latestDate ? `${fmtDate(latestDate)} 발행 전망입니다. ` : ""}${latestSummary}${tail ? ` (${tail})` : ""}`,
-    });
-  }
-
-  const hr = hitRate(published);
-  if (hr.rate != null && hr.resolved > 0) {
-    faq.push({
-      q: "전망 적중률은 어떻게 되나요?",
-      a: `판정이 완료된 전망 ${hr.resolved}건 기준 방향 적중률은 약 ${hr.rate}%입니다(적중 ${hr.hit} · 부분 ${hr.partial} · 빗나감 ${hr.miss}). 적중률은 일부 표본이 아닌 발행된 전망 전수를 분모로 산정합니다.`,
-    });
-  }
-
-  faq.push({
-    q: "이 전망은 어떻게 만들어지나요?",
-    a: "정량 모델이 모멘텀·수급·비용 등 팩터를 채점한 AI 초안을 에디터가 검수한 뒤 발행합니다. 인과 단정 없이 확률·방향으로 표현하며, 발행 후에는 본문을 수정·삭제하지 않습니다.",
-  });
-
-  faq.push({
-    q: "전망은 얼마나 자주 갱신되나요?",
-    a: "전망은 주간 단위로 갱신되며, 검수를 통과한 전망만 공개됩니다.",
-  });
-
-  return { capsule, faq, latestDate };
+  const latestDate = published.reduce<string | null>(
+    (m, f) => (f.published_at && (!m || f.published_at > m) ? f.published_at : m),
+    null,
+  );
+  return { latestDate };
 }
 
 /* ============================ PAGE ============================ */
@@ -492,23 +449,17 @@ export function LogisightForecast() {
         <div className={WRAP}>
           <div className="pt-[26px] text-[12.5px] text-[#828d9d]">홈 <b className="font-medium text-[#54606f]">›</b> 인사이트 <b className="font-medium text-[#54606f]">›</b> 전망</div>
 
-          {/* GEO: 답변 capsule + FAQ + Article/FAQPage 스키마 (실데이터 바인딩) */}
-          <div className="mt-3.5">
-            <GeoAnswerBlock
-              capsule={geo.capsule}
-              faq={geo.faq}
-              tone="light"
-              sources="출처: Logisight 발행 전망 (AI 초안 · 에디터 검수)"
-              article={{
-                headline: "물류 시장 전망 — AI 초안 · 에디터 검수",
-                description:
-                  "Logisight AI가 현재·과거 데이터를 분석해 운임·유라시아·무역·정책 방향을 확률·방향으로 전망합니다. 발행 전 에디터 검수.",
-                path: "/forecasts",
-                datePublished: geo.latestDate,
-                dateModified: geo.latestDate,
-              }}
-            />
-          </div>
+          {/* GEO: 보이지 않는 Article JSON-LD만 유지 (시각 요소 없음) */}
+          <GeoArticleSchema
+            article={{
+              headline: "물류 시장 전망 — AI 초안 · 에디터 검수",
+              description:
+                "Logisight AI가 현재·과거 데이터를 분석해 운임·유라시아·무역·정책 방향을 확률·방향으로 전망합니다. 발행 전 에디터 검수.",
+              path: "/forecasts",
+              datePublished: geo.latestDate,
+              dateModified: geo.latestDate,
+            }}
+          />
 
           <Kpis kpis={kpis} />
           <TrendBlock trend={trend} />
