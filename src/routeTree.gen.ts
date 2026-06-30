@@ -19,6 +19,7 @@ import { Route as RailRouteImport } from './routes/rail'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PolicyRouteImport } from './routes/policy'
 import { Route as NewsRouteImport } from './routes/news'
+import { Route as MethodologyRouteImport } from './routes/methodology'
 import { Route as IndustriesRouteImport } from './routes/industries'
 import { Route as ForecastsRouteImport } from './routes/forecasts'
 import { Route as FaqRouteImport } from './routes/faq'
@@ -92,6 +93,11 @@ const PolicyRoute = PolicyRouteImport.update({
 const NewsRoute = NewsRouteImport.update({
   id: '/news',
   path: '/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MethodologyRoute = MethodologyRouteImport.update({
+  id: '/methodology',
+  path: '/methodology',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndustriesRoute = IndustriesRouteImport.update({
@@ -225,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/faq': typeof FaqRoute
   '/forecasts': typeof ForecastsRoute
   '/industries': typeof IndustriesRoute
+  '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/privacy': typeof PrivacyRoute
@@ -260,6 +267,7 @@ export interface FileRoutesByTo {
   '/faq': typeof FaqRoute
   '/forecasts': typeof ForecastsRoute
   '/industries': typeof IndustriesRoute
+  '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/privacy': typeof PrivacyRoute
@@ -296,6 +304,7 @@ export interface FileRoutesById {
   '/faq': typeof FaqRoute
   '/forecasts': typeof ForecastsRoute
   '/industries': typeof IndustriesRoute
+  '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
   '/privacy': typeof PrivacyRoute
@@ -334,6 +343,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/forecasts'
     | '/industries'
+    | '/methodology'
     | '/news'
     | '/policy'
     | '/privacy'
@@ -369,6 +379,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/forecasts'
     | '/industries'
+    | '/methodology'
     | '/news'
     | '/policy'
     | '/privacy'
@@ -404,6 +415,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/forecasts'
     | '/industries'
+    | '/methodology'
     | '/news'
     | '/policy'
     | '/privacy'
@@ -441,6 +453,7 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   ForecastsRoute: typeof ForecastsRoute
   IndustriesRoute: typeof IndustriesRoute
+  MethodologyRoute: typeof MethodologyRoute
   NewsRoute: typeof NewsRoute
   PolicyRoute: typeof PolicyRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -527,6 +540,13 @@ declare module '@tanstack/react-router' {
       path: '/news'
       fullPath: '/news'
       preLoaderRoute: typeof NewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/methodology': {
+      id: '/methodology'
+      path: '/methodology'
+      fullPath: '/methodology'
+      preLoaderRoute: typeof MethodologyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/industries': {
@@ -748,6 +768,7 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   ForecastsRoute: ForecastsRoute,
   IndustriesRoute: IndustriesRoute,
+  MethodologyRoute: MethodologyRoute,
   NewsRoute: NewsRoute,
   PolicyRoute: PolicyRoute,
   PrivacyRoute: PrivacyRoute,

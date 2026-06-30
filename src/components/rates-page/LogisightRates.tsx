@@ -39,6 +39,7 @@ import { publishedForecastsQueryOptions } from "@/lib/api/forecasts";
 import { recentRateReports, SERIES_LABEL, type RateReport } from "@/components/forecasts/forecastUtils";
 import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
 import { StatBadge, isStatLowOceanUsd } from "@/components/ui/StatBadge";
+import { DataMeta } from "@/components/ui/DataMeta";
 
 /* ============================ STYLE ============================ */
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
@@ -798,7 +799,10 @@ export function LogisightRates() {
                 </tbody>
               </table>
             )}
-            <div className="mt-3 text-[11px] text-[#828d9d]">출처: KOBC KCCI · 부산 출발 권역별 컨테이너 운임지수</div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <DataMeta source="한국해양진흥공사 (KOBC) · KCCI" unit="$/FEU" cadence="주간" method="부산 출발 권역별 컨테이너 운임지수" />
+              <Link to="/methodology" className="text-[11px] font-semibold text-[#0d9488] hover:underline">데이터 방법론 보기 →</Link>
+            </div>
           </div>
         </div>
       </div>
