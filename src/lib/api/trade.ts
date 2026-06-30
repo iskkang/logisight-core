@@ -40,8 +40,6 @@ export type TradeStatisticsBundle = {
   provisional: TradeStatRow[];
   continent: TradeStatRow[];
   item: TradeStatRow[];
-  itemCountry: TradeStatRow[];
-  newnature: TradeStatRow[];
 };
 
 export type TradeProvisionalRow = {

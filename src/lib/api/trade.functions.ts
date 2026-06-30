@@ -23,12 +23,6 @@ function periodKey(period: string | null | undefined): string {
   return (period ?? "").replace(/\D/g, "").slice(0, 6);
 }
 
-function latestPeriod(rows: Pick<TradeStatRow, "period">[]): string | null {
-  return [...new Set(rows.map((row) => periodKey(row.period)).filter(Boolean))]
-    .sort()
-    .at(-1) ?? null;
-}
-
 async function fetchPagedByType(statType: string, maxRows: number): Promise<TradeStatRow[]> {
   const all: TradeStatRow[] = [];
   let from = 0;
@@ -91,33 +85,6 @@ async function fetchLatestPeriodRows(statType: string, maxRows: number): Promise
     from += pageSize;
   }
   return all;
-}
-
-async function fetchTopRows(statType: string, column: "export_usd" | "import_usd", maxRows: number): Promise<TradeStatRow[]> {
-  const { data, error } = await supabasePublicServer
-    .from("trade_statistics")
-    .select(TRADE_SELECT)
-    .eq("stat_type", statType)
-    .not(column, "is", null)
-    .order("period", { ascending: false })
-    .order(column, { ascending: false })
-    .limit(maxRows);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as TradeStatRow[];
-}
-
-function uniqueRows(rows: TradeStatRow[]): TradeStatRow[] {
-  const seen = new Set<string>();
-  const unique: TradeStatRow[] = [];
-  for (const row of rows) {
-    const key =
-      row.id ??
-      [row.stat_type, row.period, row.priod_dt, row.country_code, row.hs_code, row.direction].join("|");
-    if (seen.has(key)) continue;
-    seen.add(key);
-    unique.push(row);
-  }
-  return unique;
 }
 
 export const getTradeProvisional = createServerFn({ method: "GET" }).handler(
@@ -213,38 +180,34 @@ function aggregateItemsByHs(rows: TradeStatRow[]): TradeStatRow[] {
   return [...byHs.values()];
 }
 
+// 화면은 상위 5개 품목만 표시한다(지표 토글 export/import/total/balance 모두 교역액 상위와
+// 상관). 서버에서 교역액 상위 N개만 보내 9천여 행 → 수백 행으로 줄인다.
+function topItemsByTrade(rows: TradeStatRow[], n: number): TradeStatRow[] {
+  return [...rows]
+    .sort((a, b) => ((b.export_usd ?? 0) + (b.import_usd ?? 0)) - ((a.export_usd ?? 0) + (a.import_usd ?? 0)))
+    .slice(0, n);
+}
+
 export const getTradeStatisticsBundle = createServerFn({ method: "GET" }).handler(
   async (): Promise<TradeStatisticsBundle> => {
     setResponseHeader("cache-control", TRADE_CACHE_CONTROL);
-    const [country, provisional, continent, item, itemCountryExport, itemCountryImport, newnatureExport, newnatureImport] =
-      await Promise.all([
-        fetchPagedByType("country", 5000),
-        fetchPagedByType("provisional_exp", 2000).then(async (exp) => [
-          ...exp,
-          ...(await fetchPagedByType("provisional_imp", 2000)),
-        ]),
-        fetchLatestPeriodRows("continent", 2000),
-        fetchLatestPeriodRows("item", 30000),
-        fetchTopRows("item_country", "export_usd", 1200),
-        fetchTopRows("item_country", "import_usd", 1200),
-        fetchTopRows("newnature", "export_usd", 800),
-        fetchTopRows("newnature", "import_usd", 800),
-      ]);
+    const [countryAll, provisionalAll, continent, item] = await Promise.all([
+      fetchPagedByType("country", 5000),
+      fetchPagedByType("provisional_exp", 2000).then(async (exp) => [
+        ...exp,
+        ...(await fetchPagedByType("provisional_imp", 2000)),
+      ]),
+      fetchLatestPeriodRows("continent", 2000),
+      fetchLatestPeriodRows("item", 30000),
+    ]);
 
-    const latestItemCountry = latestPeriod([...itemCountryExport, ...itemCountryImport]);
-    const latestNewnature = latestPeriod([...newnatureExport, ...newnatureImport]);
-
+    // country/provisional은 전 기간을 받아(월별 추이 집계용) 화면엔 최근 13개 기간만 보낸다.
+    // 월별 추이는 기간별 합계로 사전집계해 별도 전송한다.
     return {
-      country,
-      provisional,
+      country: countryAll,
+      provisional: provisionalAll,
       continent,
-      item: aggregateItemsByHs(item),
-      itemCountry: uniqueRows([...itemCountryExport, ...itemCountryImport]).filter(
-        (row) => !latestItemCountry || periodKey(row.period) === latestItemCountry,
-      ),
-      newnature: uniqueRows([...newnatureExport, ...newnatureImport]).filter(
-        (row) => !latestNewnature || periodKey(row.period) === latestNewnature,
-      ),
+      item: topItemsByTrade(aggregateItemsByHs(item), 200),
     };
   },
 );
