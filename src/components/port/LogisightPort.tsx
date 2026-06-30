@@ -253,6 +253,7 @@ export function LogisightPort() {
                 sub={`${hormuz.crossingDate} · 유조선 ${hormuz.tankerCount} · 벌크 ${hormuz.bulkCount}`}
               />
             </div>
+            <DataMeta className="mt-3" source={`${DATASET_SOURCE.portcast}(항만 혼잡) · ${DATASET_SOURCE.econdb}(해협 TEU) · ${DATASET_SOURCE.shipfinder}(호르무즈)`} cadence="주간·일간" method="항만 median 대기일 · 해협 통과 TEU · 통항 매크로" />
           </Sect>
 
           {/* Chokepoints */}
@@ -286,7 +287,7 @@ export function LogisightPort() {
                 })}
               </div>
             )}
-            <DataMeta className="mt-3" source={DATASET_SOURCE.shipfinder} cadence="일간" unit="TEU" method="해협별 방향 통과 TEU · 통항 추이" />
+            <DataMeta className="mt-3" source={DATASET_SOURCE.econdb} cadence="일간" unit="TEU" method="해협별 방향 통과 TEU · 통항 추이" />
           </Sect>
 
           {/* Hormuz row */}
