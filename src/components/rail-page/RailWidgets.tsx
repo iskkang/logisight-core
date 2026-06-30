@@ -3,6 +3,8 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { eraiStatsQueryOptions, ERAI_LABELS } from "@/lib/api/rates";
 import { formatPublishedAt, type NewsItem } from "@/lib/api/news";
+import { DataMeta } from "@/components/ui/DataMeta";
+import { INDEX_SOURCE } from "@/lib/dataSources";
 
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
 
@@ -56,6 +58,7 @@ export function EraiWidget() {
           <div className="mt-[4px] text-[11.5px] text-[#5d6b80]">철도 운송기간(현재)</div>
         </div>
       </div>
+      <DataMeta className="mt-3" source={INDEX_SOURCE.ERAI} cadence="월간" unit="USD/FEU · 운송기간 일" method="유라시아 철도 운임 컴포지트(ERAI)" />
     </section>
   );
 }
