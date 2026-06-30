@@ -19,6 +19,8 @@ import {
   type TradeStatisticsBundle,
 } from "@/lib/api/trade";
 import { indexStatsQueryOptions, type IndexStats } from "@/lib/api/rates";
+import { DataMeta } from "@/components/ui/DataMeta";
+import { DATASET_SOURCE } from "@/lib/dataSources";
 import { flagEmoji } from "@/lib/iso-country-codes";
 
 /* ============================ STYLE ============================ */
@@ -585,6 +587,7 @@ function FlowCharts({ model, metricKo }: { model: TradeModel; metricKo: MetricKo
           )}
         </div>
       </div>
+      <DataMeta className="mt-2" source={DATASET_SOURCE.trade} cadence="월 1회 · 확정" unit="USD" method="국가·대륙 집계 · 최근 6개월 추이" />
     </>
   );
 }
@@ -627,6 +630,7 @@ function Treemap({ model, metricKo }: { model: TradeModel; metricKo: MetricKo })
           })}
         </div>
       </div>
+      <DataMeta className="mt-2" source={DATASET_SOURCE.trade} cadence="월 1회 · 확정" unit="USD" method="국가별 교역액 랭크" />
     </>
   );
 }
@@ -664,6 +668,7 @@ function TopAndSide({ model }: { model: TradeModel }) {
             </table>
           </div>
         )}
+        <DataMeta className="px-[18px] pb-3.5" source={DATASET_SOURCE.trade} asOf={formatPeriod(model.latestCountryPeriod)} cadence="월 1회 · 확정" unit="USD" />
       </div>
 
       <div className="flex flex-col gap-3.5">
@@ -691,6 +696,7 @@ function TopAndSide({ model }: { model: TradeModel }) {
         <div className={`p-[16px_18px] ${CARD}`}>
           <div className="mb-0.5 text-[14px] font-bold text-[#1a2433]">잠정 데이터 안내</div>
           <p className="text-[12px] leading-[1.6] text-[#54606f]">{formatPeriod(model.snapshot.period)} 데이터는 <b className="text-[#1a2433]">잠정{model.snapshot.priodDt ? ` (${model.snapshot.priodDt} 집계)` : ""}</b>으로 부분집계입니다. 확정치는 익월 갱신됩니다. <b className="text-[#1a2433]">수출액 − 수입액 = 무역수지</b>가 화면에서 일치합니다. 운임 연동·추세 값은 참고용 추정이며 관세청 확정 통계가 아닙니다.</p>
+          <DataMeta className="mt-2.5 border-t border-[#e6ebf2] pt-2.5" source={DATASET_SOURCE.trade} cadence="잠정 · 월 1회" method="익월 확정 갱신" />
         </div>
       </div>
     </div>

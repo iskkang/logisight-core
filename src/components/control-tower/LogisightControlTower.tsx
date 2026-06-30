@@ -37,6 +37,8 @@ import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
 import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
 import { StatBadge, isStatLowOceanUsd } from "@/components/ui/StatBadge";
+import { DataMeta } from "@/components/ui/DataMeta";
+import { DATASET_SOURCE, indexSource } from "@/lib/dataSources";
 
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
 const CARD = "rounded-[14px] border border-[#d8dfe9] bg-[#f4f7fb] shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
@@ -389,7 +391,7 @@ function JudgmentPanel({ forecasts, seriesMap, stats, selectedMetric }: {
 }
 
 /* ============================ ROUTE MONITOR ============================ */
-function RouteMonitor({ title, icon, rows }: { title: string; icon: string; rows: { label: string; price: string; mom: number | null; asOf: string | null; values: number[]; lowStat?: boolean }[] }) {
+function RouteMonitor({ title, icon, rows, source }: { title: string; icon: string; source?: string; rows: { label: string; price: string; mom: number | null; asOf: string | null; values: number[]; lowStat?: boolean }[] }) {
   return (
     <div className={`p-[22px] ${CARD}`}>
       <div className="mb-3.5 flex items-center justify-between"><h3 className="text-[16px] font-bold text-[#1a2433]">{title}</h3><Link to="/rates" className="rounded-[7px] border border-[#d8dfe9] bg-white px-[11px] py-[5px] text-[12px] text-[#828d9d] transition-colors hover:border-[#0d9488] hover:text-[#0d9488]">더보기</Link></div>
@@ -408,6 +410,7 @@ function RouteMonitor({ title, icon, rows }: { title: string; icon: string; rows
           ))}
         </div>
       )}
+      {source && <DataMeta className="mt-3" source={source} cadence="월간" unit="USD" method="KITA 노선 운임 · 전월대비 MoM" />}
     </div>
   );
 }
@@ -461,6 +464,7 @@ function Sidebar({ alerts, stats, asOf, disruptions, railBrief }: {
           </div>
         )}
         <div className="mt-3 lsg-mono text-[11px] text-[#828d9d]">WoW · 기준 {asOf}</div>
+        <DataMeta className="mt-2" source={[...new Set(indexRows.map((x) => indexSource(x.index_code)).filter(Boolean))].join(" · ")} cadence="주간" unit="지수 포인트" />
       </div>
 
       <div className={`p-[22px] ${CARD}`}>
@@ -607,8 +611,8 @@ export function LogisightControlTower() {
           <div className="mt-2.5 grid grid-cols-1 items-start gap-5 min-[1080px]:grid-cols-[1fr_360px]">
             <div className="flex flex-col gap-5">
               <JudgmentPanel forecasts={openForecasts} seriesMap={series} stats={stats} selectedMetric={judgment} />
-              <RouteMonitor title="해상 노선 모니터" icon="🚢" rows={seaMonitorRows} />
-              <RouteMonitor title="항공 노선 모니터" icon="✈" rows={airMonitorRows} />
+              <RouteMonitor title="해상 노선 모니터" icon="🚢" source={DATASET_SOURCE.sea} rows={seaMonitorRows} />
+              <RouteMonitor title="항공 노선 모니터" icon="✈" source={DATASET_SOURCE.air} rows={airMonitorRows} />
               <UtilityRow asOf={asOf} dataUpdates={dataUpdates} stats={stats} seaRates={seaRates} exRate={exRate ?? null} jetFuel={jetFuel} />
             </div>
             <Sidebar alerts={alerts} stats={stats} asOf={asOf} disruptions={disruptions} railBrief={railBrief} />
