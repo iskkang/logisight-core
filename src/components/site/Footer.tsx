@@ -80,7 +80,11 @@ export function Footer() {
           Logisight is operated by MTL Shipping Agency.
         </span>
         <span className="text-[11.5px] text-white/50">
-          공공데이터 출처: PORT-MIS · 관세청 · 해양수산부
+          주요 데이터 출처는{" "}
+          <Link to="/methodology" className="underline transition-colors hover:text-white/80">
+            데이터 방법론
+          </Link>{" "}
+          페이지를 참조하세요.
         </span>
         <span className="text-[11.5px] text-white/50">
           © 2026 MTL Shipping Agency. All rights reserved.

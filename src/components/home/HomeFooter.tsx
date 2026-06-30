@@ -44,7 +44,9 @@ export function HomeFooter() {
           </Col>
         </div>
         <div className="pt-[22px] lsg-mono text-[11.5px] leading-[1.8] text-[#445064]">
-          Logisight is operated by MTL Shipping Agency. · 공공데이터 출처: PORT-MIS · 관세청 · 해양수산부<br />
+          Logisight is operated by MTL Shipping Agency. · 주요 데이터 출처는{" "}
+          <Link to="/methodology" className="underline transition-colors hover:text-[#2dd4bf]">데이터 방법론</Link>{" "}
+          페이지 참조<br />
           © 2026 MTL Shipping Agency. All rights reserved.
         </div>
       </div>

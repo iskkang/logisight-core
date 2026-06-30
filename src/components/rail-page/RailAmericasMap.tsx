@@ -14,6 +14,16 @@ function formatScore(score: number | null): string {
   return score == null ? "-" : String(score);
 }
 
+// 상태 enum 값(데이터)은 그대로 두고, 사용자 표시만 한국어로 매핑한다.
+const STATUS_LABEL_KO: Record<string, string> = {
+  normal: "정상",
+  watch: "주의",
+  delayed: "지연",
+  severe: "심각",
+  unknown: "미상",
+};
+const statusKo = (s: string): string => STATUS_LABEL_KO[s] ?? s;
+
 /* ===================== GEO: Article 스키마용 기준일 계산 ===================== */
 function buildAmericasGeo(geojson: RailCorridorsGeoJSON) {
   let latest: string | null = null;
@@ -44,11 +54,11 @@ function popupHtml(properties: MapGeoJSONFeature["properties"]): string {
   const updated = properties.updated_at || "-";
   return [
     `<strong>${properties.name}</strong>`,
-    `Railroad: ${properties.railroad}`,
-    `Status: ${properties.status}`,
-    `Score: ${score}`,
-    `Reason: ${reason}`,
-    `Updated: ${updated}`,
+    `철도사: ${properties.railroad}`,
+    `상태: ${statusKo(String(properties.status))}`,
+    `점수: ${score}`,
+    `사유: ${reason}`,
+    `갱신: ${updated}`,
   ].join("<br/>");
 }
 
@@ -171,64 +181,64 @@ export function RailAmericasMap() {
       <div className="grid min-h-[78vh] grid-cols-[320px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto] max-[900px]:grid-cols-1 max-[900px]:grid-rows-[auto_70vh_auto]">
         <aside className="border-r border-[#d8dfe9] bg-white px-5 py-5 max-[900px]:border-b max-[900px]:border-r-0">
           <div className="mb-5">
-            <div className="text-[12px] font-semibold uppercase text-[#667085]">Rail Risk Map</div>
-            <h1 className="mt-1 text-[22px] font-bold leading-tight text-[#101828]">North America Intermodal Corridors</h1>
+            <div className="text-[12px] font-semibold uppercase text-[#667085]">철도 리스크 맵</div>
+            <h1 className="mt-1 text-[22px] font-bold leading-tight text-[#101828]">북미 인터모달 철도 코리도어</h1>
             <p className="mt-2 text-[13px] leading-[1.55] text-[#54606f]">
-              Carrier advisory + news monitored. Green = source checked, no reported disruption. Gray = limited public visibility.
+              선사 어드바이저리·뉴스 모니터링 기반. 초록 = 출처 확인·보고된 차질 없음. 회색 = 공개 정보 제한.
             </p>
           </div>
 
           <div className="rounded-lg border border-[#d8dfe9] bg-[#f8fafc] p-4">
-            <div className="text-[13px] font-bold text-[#1a2433]">Status Summary</div>
+            <div className="text-[13px] font-bold text-[#1a2433]">상태 요약</div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-[13px]">
               {Object.entries(summary.counts).map(([status, count]) => (
                 <div key={status} className="flex items-center justify-between rounded-md border border-[#e4e9f1] bg-white px-3 py-2">
-                  <span className="flex items-center gap-2 capitalize">
+                  <span className="flex items-center gap-2">
                     <span
                       className="h-2.5 w-2.5 rounded-full"
                       style={{ backgroundColor: STATUS_COLORS[status as keyof typeof STATUS_COLORS] }}
                     />
-                    {status}
+                    {statusKo(status)}
                   </span>
                   <span className="font-semibold tabular-nums">{count}</span>
                 </div>
               ))}
             </div>
             <div className="mt-3 border-t border-[#e4e9f1] pt-3 text-[12px] text-[#667085]">
-              Last update: <span className="font-medium text-[#344054]">{formatDate(summary.latest)}</span>
+              최종 갱신: <span className="font-medium text-[#344054]">{formatDate(summary.latest)}</span>
             </div>
           </div>
 
           <div className="mt-5 rounded-lg border border-[#d8dfe9] bg-white p-4">
-            <div className="text-[13px] font-bold text-[#1a2433]">Active Severe / Delayed</div>
-            <div className="mt-2 text-[13px] text-[#667085]">No severe or delayed corridors in the current monitoring window.</div>
+            <div className="text-[13px] font-bold text-[#1a2433]">심각·지연 코리도어</div>
+            <div className="mt-2 text-[13px] text-[#667085]">현재 모니터링 구간에서 심각·지연 코리도어가 없습니다.</div>
           </div>
         </aside>
 
         <section className="relative min-h-0">
           <div ref={containerRef} className="h-full min-h-[520px] w-full" data-testid="rail-map-canvas" />
           <div className="pointer-events-none absolute left-4 top-4 rounded-md border border-[#d8dfe9] bg-white/92 px-3 py-2 text-[12px] font-semibold text-[#344054] shadow-sm">
-            {geojson.features.length} corridors / normal green, limited visibility gray
+            코리도어 {geojson.features.length}개 / 정상=초록, 정보 제한=회색
           </div>
         </section>
 
         <section className="col-span-2 border-t border-[#d8dfe9] bg-white px-5 py-4 max-[900px]:col-span-1">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-[15px] font-bold text-[#1a2433]">Corridor Table</h2>
+            <h2 className="text-[15px] font-bold text-[#1a2433]">코리도어 현황</h2>
             <div className="text-[12px] text-[#667085]" data-testid="rail-map-line-count">
-              Rows: {geojson.features.length}
+              {geojson.features.length}개 노선
             </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] border-collapse text-left text-[13px]">
               <thead>
                 <tr className="border-b border-[#d8dfe9] text-[12px] uppercase text-[#667085]">
-                  <th className="py-2 pr-4 font-semibold">Corridor</th>
-                  <th className="py-2 pr-4 font-semibold">Railroad</th>
-                  <th className="py-2 pr-4 font-semibold">Status</th>
-                  <th className="py-2 pr-4 font-semibold">Score</th>
-                  <th className="py-2 pr-4 font-semibold">Reason</th>
-                  <th className="py-2 font-semibold">Updated</th>
+                  <th className="py-2 pr-4 font-semibold">코리도어</th>
+                  <th className="py-2 pr-4 font-semibold">철도사</th>
+                  <th className="py-2 pr-4 font-semibold">상태</th>
+                  <th className="py-2 pr-4 font-semibold">점수</th>
+                  <th className="py-2 pr-4 font-semibold">사유</th>
+                  <th className="py-2 font-semibold">갱신</th>
                 </tr>
               </thead>
               <tbody>
@@ -242,7 +252,7 @@ export function RailAmericasMap() {
                           className="h-2 w-2 rounded-full"
                           style={{ backgroundColor: STATUS_COLORS[feature.properties.status] }}
                         />
-                        {feature.properties.status}
+                        {statusKo(feature.properties.status)}
                       </span>
                     </td>
                     <td className="py-2.5 pr-4 font-mono text-[#344054]">{formatScore(feature.properties.score)}</td>

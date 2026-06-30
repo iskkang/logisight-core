@@ -886,8 +886,8 @@ export default function LogisightReports({
               </div>
             </div>
             <div className="legal mono">
-              Logisight is operated by MTL Shipping Agency. · 공공데이터 출처: PORT-MIS · 관세청 ·
-              해양수산부
+              Logisight is operated by MTL Shipping Agency. · 주요 데이터 출처는{" "}
+              <a href="/methodology" style={{ textDecoration: "underline" }}>데이터 방법론</a> 페이지 참조
               <br />© 2026 MTL Shipping Agency. All rights reserved.
             </div>
           </div>
