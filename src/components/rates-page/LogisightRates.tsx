@@ -746,6 +746,13 @@ export function LogisightRates() {
                     </tbody>
                   </table>
                 )}
+                {carrierRows.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[#828d9d]">
+                    {[...new Map(carrierRows.filter((r) => r.sheet?.source).map((r) => [r.sheet!.source, r.sheet] as const)).values()].map((s, i) => (
+                      <span key={i}>출처 {s!.source}{s!.valid_until ? ` · 유효 ~${s!.valid_until}` : ""}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}
