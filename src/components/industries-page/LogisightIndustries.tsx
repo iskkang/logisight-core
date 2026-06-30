@@ -225,8 +225,58 @@ const TM_TEMPLATE: { rank: number; c: number; r: number; big: boolean }[] = [
 const TM_SHADES = ["#3b4f7a", "#5a6f9e", "#6478a6", "#7d8fb8", "#8294ba", "#92a2c4", "#9aa9c9", "#8a9bc0", "#a2b0ce", "#aab7d3", "#b2bed8", "#bcc7df"];
 const DONUT_COLORS = ["#1864ab", "#38bdf8", "#3b82f6", "#f59e0b", "#8b9dc9", "#cbb6d6"];
 
+/* 데이터 도착 전 즉시 그려지는 스켈레톤. 빈 화면 대신 로딩 맥락(관세청 월간 집계)과
+   필터·차트·테이블 자리를 보여준다. 실제 데이터는 useQuery 가 받아 IndustriesBody 로 교체. */
+function Sk({ h, w, mt }: { h: number; w: number | string; mt?: number }) {
+  return <span className="block animate-pulse rounded-[6px] bg-[#d8dfe9]" style={{ height: h, width: w, marginTop: mt }} />;
+}
+function IndustriesSkeleton() {
+  return (
+    <div className="lsgi-root"><style>{STYLE}</style>
+      <HomeNav active="insight" />
+      <InsightSubNav />
+      <section className="hero">
+        <span className="glow" />
+        <div className="iwrap in">
+          <div className="eyebrow">Industry Intelligence</div>
+          <h1>산업별 교역 동향</h1>
+          <p>산업별 교역 데이터를 불러오고 있습니다. 관세청 월간 수출입 데이터 기준으로 HS Code·산업군·국가별 흐름을 집계 중입니다. 데이터량이 많아 다소 시간이 걸릴 수 있습니다.</p>
+        </div>
+      </section>
+      <div className="sheet">
+        <div className="iwrap">
+          <div className="bc" style={{ color: "#828d9d" }}>홈 › 인사이트 › 산업별</div>
+          {/* 필터(산업·국가) 자리 */}
+          <div className="filters" style={{ marginTop: 14 }}>
+            <Sk h={28} w={140} /><Sk h={28} w={120} /><Sk h={28} w={120} />
+          </div>
+          {/* KPI 카드 자리 */}
+          <div style={{ marginTop: 14, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="card" style={{ padding: "16px 18px" }}>
+                <Sk h={14} w={80} /><Sk h={24} w={120} mt={10} /><Sk h={12} w={96} mt={10} />
+              </div>
+            ))}
+          </div>
+          {/* 차트 박스 자리 */}
+          <div className="card" style={{ marginTop: 14, padding: 18 }}>
+            <Sk h={16} w={160} /><Sk h={180} w="100%" mt={14} />
+          </div>
+          {/* 테이블 자리 */}
+          <div className="card" style={{ marginTop: 14, padding: 18 }}>
+            <Sk h={16} w={140} />
+            {[0, 1, 2, 3, 4].map((i) => <Sk key={i} h={20} w="100%" mt={12} />)}
+          </div>
+          <div className="mono" style={{ marginTop: 14, fontSize: 11, color: "#828d9d" }}>최근 기준월 · 관세청 월간 수출입 통계</div>
+        </div>
+      </div>
+      <HomeFooter />
+    </div>
+  );
+}
+
 /* ============================ PAGE ============================ */
-// 데이터 로드가 끝날 때까지 브랜드 로딩 오버레이를 띄우고, 도착하면 페이드아웃(/trade 와 동일).
+// 데이터 로드가 끝날 때까지 스켈레톤 + 브랜드 로딩 오버레이를 띄우고, 도착하면 페이드아웃(/trade 와 동일).
 export function LogisightIndustries() {
   const { data: allRows } = useQuery(tradeStatisticsQueryOptions());
   const { data: indexStats } = useQuery(indexStatsQueryOptions());
@@ -234,7 +284,7 @@ export function LogisightIndustries() {
   return (
     <>
       <LogisightLoader show={loading} />
-      {loading ? null : <IndustriesBody allRows={allRows} indexStats={indexStats} />}
+      {loading ? <IndustriesSkeleton /> : <IndustriesBody allRows={allRows} indexStats={indexStats} />}
     </>
   );
 }

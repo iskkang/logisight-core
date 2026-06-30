@@ -38,6 +38,7 @@ import { regionOf } from "@/lib/api/partner-rates.normalize";
 import { publishedForecastsQueryOptions } from "@/lib/api/forecasts";
 import { recentRateReports, SERIES_LABEL, type RateReport } from "@/components/forecasts/forecastUtils";
 import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
+import { StatBadge, isStatLowOceanUsd } from "@/components/ui/StatBadge";
 
 /* ============================ STYLE ============================ */
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
@@ -788,7 +789,7 @@ export function LogisightRates() {
                   {kcciRoutes.filter((r) => r.latest_value != null).map((r) => (
                     <tr key={r.index_code}>
                       <td className="border-b border-[#e6ebf2] px-3.5 py-3 font-bold text-[#1a2433]">{KCCI_ROUTE_LABELS[r.index_code] ?? r.index_code}</td>
-                      <td className="border-b border-[#e6ebf2] px-3.5 py-3 text-right text-[#1a2433] lsg-mono">${Math.round(r.latest_value!).toLocaleString()}</td>
+                      <td className="border-b border-[#e6ebf2] px-3.5 py-3 text-right text-[#1a2433] lsg-mono">${Math.round(r.latest_value!).toLocaleString()}{isStatLowOceanUsd(r.latest_value) && <StatBadge kind="stat" />}</td>
                       <td className="border-b border-[#e6ebf2] px-3.5 py-3 text-right text-[#828d9d] lsg-mono">{r.latest_date ? `${r.latest_date.slice(5, 7)}/${r.latest_date.slice(8, 10)}` : "—"}</td>
                       <td className={`border-b border-[#e6ebf2] px-3.5 py-3 text-right font-bold lsg-mono ${r.change_pct == null ? "text-[#828d9d]" : r.change_pct >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>{fmtPct(r.change_pct)}</td>
                       <td className={`border-b border-[#e6ebf2] px-3.5 py-3 text-right font-bold lsg-mono ${r.mom_pct == null ? "text-[#828d9d]" : r.mom_pct >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>{fmtPct(r.mom_pct)}</td>
