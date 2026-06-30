@@ -1,8 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
+import { setResponseHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
-import type { TradeStatRow } from "./industries";
+import type { TradeStatRow, TradeSummaryRow } from "./industries";
+
+// 관세청 통계는 월 단위 갱신 → CDN(s-maxage)에서 1시간 캐시 + 24시간 stale-while-revalidate.
+const TRADE_CACHE_CONTROL = "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400";
 
 export type ChapterPartner = {
   country_name: string;
@@ -40,6 +44,22 @@ export const getCountryTotals = createServerFn({ method: "GET" }).handler(
       .order("period", { ascending: true });
     if (error) throw new Error(error.message);
     return (data ?? []) as TradeStatRow[];
+  },
+);
+
+// 산업별 사전집계 read — trade_summary의 hs_chapter+total 차원만(소량). item 전수 페이징 대체.
+export const getTradeSummary = createServerFn({ method: "GET" }).handler(
+  async (): Promise<TradeSummaryRow[]> => {
+    setResponseHeader("cache-control", TRADE_CACHE_CONTROL);
+    const { data, error } = await supabasePublicServer
+      .from("trade_summary")
+      .select(
+        "period,dim_type,dim_key,dim_label,export_usd,import_usd,export_weight,import_weight,trade_balance,row_count",
+      )
+      .in("dim_type", ["hs_chapter", "total"])
+      .order("period", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as TradeSummaryRow[];
   },
 );
 

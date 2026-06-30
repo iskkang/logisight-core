@@ -11,14 +11,14 @@ import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
 import LogisightLoader from "@/components/LogisightLoader";
 import {
-  tradeStatisticsQueryOptions,
-  hsChapter,
+  tradeSummaryQueryOptions,
   hsChapterName,
   formatPeriod,
   formatUSD,
-  type TradeStatRow,
+  type TradeSummaryRow,
 } from "@/lib/api/industries";
 import { indexStatsQueryOptions, type IndexStats } from "@/lib/api/rates";
+import { DataMeta } from "@/components/ui/DataMeta";
 
 /* ============================ STYLE (.lsgi-root 스코프) ============================ */
 const STYLE = `
@@ -162,17 +162,48 @@ const pk = (p: string | null | undefined) => (p ?? "").replace(/\D/g, "").slice(
 const pctChange = (cur: number, prev: number | undefined | null) => (prev == null || prev === 0 ? null : ((cur - prev) / Math.abs(prev)) * 100);
 const fmtPct = (v: number | null | undefined, d = 1) => (v == null || Number.isNaN(v) ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(d)}%`);
 
-function aggregateByChapter(rows: TradeStatRow[]): ChapterAgg[] {
-  const map = new Map<string, ChapterAgg>();
-  for (const r of rows) {
-    const ch = hsChapter(r.hs_code);
-    if (ch === "—") continue;
-    const cur = map.get(ch) ?? { chapter: ch, name: hsChapterName(ch), exp: 0, imp: 0, balance: 0 };
-    cur.exp += r.export_usd ?? 0;
-    cur.imp += r.import_usd ?? 0;
-    map.set(ch, cur);
+// 사전집계 요약(hs_chapter 차원, 한 기준월)을 ChapterAgg로 변환 — 기존 aggregateByChapter와 동일 산출.
+function chapterAggsFor(rows: TradeSummaryRow[], periodPk: string): ChapterAgg[] {
+  return rows
+    .filter((r) => r.dim_type === "hs_chapter" && pk(r.period) === periodPk)
+    .map((r) => {
+      const exp = r.export_usd ?? 0;
+      const imp = r.import_usd ?? 0;
+      return { chapter: r.dim_key, name: hsChapterName(r.dim_key), exp, imp, balance: exp - imp };
+    })
+    .sort((a, b) => b.exp - a.exp);
+}
+
+// trade_summary(hs_chapter)에서 산업별 모델 재구성. 기존 item 전수 집계와 동일 차원·기간·산출.
+function buildIndustryModel(rows: TradeSummaryRow[]) {
+  const ch = rows.filter((r) => r.dim_type === "hs_chapter");
+  const periods = [...new Set(ch.map((r) => pk(r.period)).filter((x) => x.length === 6))].sort();
+  const latest = periods.at(-1) ?? null;
+  const prevYear = latest ? `${Number(latest.slice(0, 4)) - 1}${latest.slice(4, 6)}` : null;
+  const aggs = latest ? chapterAggsFor(rows, latest) : [];
+  const prevByCh = new Map((prevYear ? chapterAggsFor(rows, prevYear) : []).map((a) => [a.chapter, a.exp]));
+  const totalExp = aggs.reduce((s, a) => s + a.exp, 0);
+  const totalImp = aggs.reduce((s, a) => s + a.imp, 0);
+  const prevTotalExp = [...prevByCh.values()].reduce((s, v) => s + v, 0);
+  // 챕터별 월 수출 시계열(스파크용) — 요약 hs_chapter의 기간별 export.
+  const monthlyOf = (chapter: string) =>
+    ch
+      .filter((r) => r.dim_key === chapter)
+      .sort((a, b) => pk(a.period).localeCompare(pk(b.period)))
+      .map((r) => r.export_usd ?? 0)
+      .slice(-7);
+  // 전체 월별 수출·수입(최근 6) — 기간별 챕터 합.
+  const byMonth = new Map<string, { exp: number; imp: number }>();
+  for (const r of ch) {
+    const p = pk(r.period);
+    if (p.length !== 6) continue;
+    const c = byMonth.get(p) ?? { exp: 0, imp: 0 };
+    c.exp += r.export_usd ?? 0;
+    c.imp += r.import_usd ?? 0;
+    byMonth.set(p, c);
   }
-  return [...map.values()].map((a) => ({ ...a, balance: a.exp - a.imp })).sort((a, b) => b.exp - a.exp);
+  const monthly = [...byMonth.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-6).map(([p, v]) => ({ p, ...v }));
+  return { latest, aggs, prevByCh, totalExp, totalImp, balance: totalExp - totalImp, totalExpYoY: pctChange(totalExp, prevTotalExp), monthlyOf, monthly, periodCount: aggs.length };
 }
 
 /* 산업 → 운송수단·장비 일반화 매핑(편집 상수, 수치 아님) + 연동 운임지수 코드 */
@@ -278,43 +309,21 @@ function IndustriesSkeleton() {
 /* ============================ PAGE ============================ */
 // 데이터 로드가 끝날 때까지 스켈레톤 + 브랜드 로딩 오버레이를 띄우고, 도착하면 페이드아웃(/trade 와 동일).
 export function LogisightIndustries() {
-  const { data: allRows } = useQuery(tradeStatisticsQueryOptions());
+  const { data: summaryRows } = useQuery(tradeSummaryQueryOptions());
   const { data: indexStats } = useQuery(indexStatsQueryOptions());
-  const loading = !allRows || !indexStats;
+  const loading = !summaryRows || !indexStats;
   return (
     <>
       <LogisightLoader show={loading} />
-      {loading ? <IndustriesSkeleton /> : <IndustriesBody allRows={allRows} indexStats={indexStats} />}
+      {loading ? <IndustriesSkeleton /> : <IndustriesBody summaryRows={summaryRows} indexStats={indexStats} />}
     </>
   );
 }
 
-function IndustriesBody({ allRows, indexStats }: { allRows: TradeStatRow[]; indexStats: IndexStats[] }) {
+function IndustriesBody({ summaryRows, indexStats }: { summaryRows: TradeSummaryRow[]; indexStats: IndexStats[] }) {
   const [metric, setMetric] = useState<"exp" | "imp" | "bal">("exp");
 
-  const model = useMemo(() => {
-    const periods = [...new Set(allRows.map((r) => pk(r.period)).filter((x) => x.length === 6))].sort();
-    const latest = periods.at(-1) ?? null;
-    const prevYear = latest ? `${Number(latest.slice(0, 4)) - 1}${latest.slice(4, 6)}` : null;
-    const rowsLatest = latest ? allRows.filter((r) => pk(r.period) === latest) : [];
-    const rowsPrev = prevYear && periods.includes(prevYear) ? allRows.filter((r) => pk(r.period) === prevYear) : [];
-    const aggs = aggregateByChapter(rowsLatest);
-    const prevByCh = new Map(aggregateByChapter(rowsPrev).map((a) => [a.chapter, a.exp]));
-    const totalExp = aggs.reduce((s, a) => s + a.exp, 0);
-    const totalImp = aggs.reduce((s, a) => s + a.imp, 0);
-    const prevTotalExp = [...prevByCh.values()].reduce((s, v) => s + v, 0);
-    // 챕터별 월 수출 시계열(스파크용)
-    const monthlyOf = (ch: string) => {
-      const m = new Map<string, number>();
-      for (const r of allRows) { if (hsChapter(r.hs_code) !== ch) continue; const p = pk(r.period); if (p.length === 6) m.set(p, (m.get(p) ?? 0) + (r.export_usd ?? 0)); }
-      return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map((e) => e[1]).slice(-7);
-    };
-    // 전체 월별 수출·수입(최근 6)
-    const byMonth = new Map<string, { exp: number; imp: number }>();
-    for (const r of allRows) { const p = pk(r.period); if (p.length !== 6) continue; const c = byMonth.get(p) ?? { exp: 0, imp: 0 }; c.exp += r.export_usd ?? 0; c.imp += r.import_usd ?? 0; byMonth.set(p, c); }
-    const monthly = [...byMonth.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-6).map(([p, v]) => ({ p, ...v }));
-    return { latest, aggs, prevByCh, totalExp, totalImp, balance: totalExp - totalImp, totalExpYoY: pctChange(totalExp, prevTotalExp), monthlyOf, monthly, periodCount: aggs.length };
-  }, [allRows]);
+  const model = useMemo(() => buildIndustryModel(summaryRows), [summaryRows]);
 
   const { aggs, totalExp, balance } = model;
   const yoyOf = (ch: string) => pctChange(model.aggs.find((a) => a.chapter === ch)?.exp ?? 0, model.prevByCh.get(ch));
@@ -403,7 +412,7 @@ function IndustriesBody({ allRows, indexStats }: { allRows: TradeStatRow[]; inde
         {/* FILTERS */}
         <div className="filters">
           <div className="grp"><span className="k">구분</span><span className="seg">{(["exp", "imp", "bal"] as const).map((m) => <button key={m} type="button" className={metric === m ? "on" : ""} onClick={() => setMetric(m)}>{m === "exp" ? "수출액(USD)" : m === "imp" ? "수입액" : "무역수지"}</button>)}</span></div>
-          <span className="meta">기간 {periodLabel} ~ {periodLabel} (확정) · HS 챕터별</span>
+          <div className="meta"><DataMeta source="관세청 수출입무역통계" asOf={`${periodLabel} 확정`} cadence="월 1회" unit="USD · HS 챕터별" /></div>
         </div>
 
         {/* JUDGMENT */}

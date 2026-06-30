@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { getTradeStatistics, getCountryTotals, getChapterTradePartners } from "./industries.functions";
+import { getTradeStatistics, getCountryTotals, getChapterTradePartners, getTradeSummary } from "./industries.functions";
 
 export type TradeStatRow = {
   period: string;
@@ -21,6 +21,28 @@ export const tradeStatisticsQueryOptions = () =>
     queryKey: ["trade_statistics", "item"],
     queryFn: () => getTradeStatistics(),
     staleTime: 10 * 60 * 1000,
+  });
+
+// 사전집계 요약(trade_summary) — 산업별 페이지가 방문마다 item 전수를 client 집계하던 13초 병목을
+// 대체한다. hs_chapter(+total) 차원만 읽어 모델을 재구성(차원/기간 동일 → 회귀 없음). 월 1회 갱신.
+export type TradeSummaryRow = {
+  period: string; // 'YYYY-MM'
+  dim_type: "hs_chapter" | "country" | "total";
+  dim_key: string; // HS2 | ISO2 | 'ALL'
+  dim_label: string | null;
+  export_usd: number | null;
+  import_usd: number | null;
+  export_weight: number | null;
+  import_weight: number | null;
+  trade_balance: number | null;
+  row_count: number | null;
+};
+
+export const tradeSummaryQueryOptions = () =>
+  queryOptions({
+    queryKey: ["trade_summary", "industries"],
+    queryFn: () => getTradeSummary(),
+    staleTime: 30 * 60 * 1000,
   });
 
 // 국가별 총교역(stat_type='country') — 국가 뷰 랭킹용.
