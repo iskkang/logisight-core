@@ -287,62 +287,109 @@ function ForecastQualityPanel({ quality }: { quality: ClimateForecastQuality }) 
   );
 }
 
-function CapeMonitor({ rm, route, suez, nodes }: { rm: RiskMap; route: RouteG | null; suez: RouteG | null; nodes: Record<string, AssetRow> }) {
-  if (!route) return null;
-  const segs = route.keys.map((k) => ({ a: nodes[k], c: level(riskAt(rm, k, 0)), wx: segWx(rm, k) })).filter((s) => s.a);
-  const viaCape = segs.some((s) => /희망봉|good\s?hope/i.test(s.a.name));
-  const monitorTitle = viaCape ? "아시아 → 유럽 항로 (희망봉) 모니터링" : "유럽 주력 항로 모니터링";
-  const maxRisk = routeRisk(rm, route, 0);
-  const overall = level(maxRisk);
-  const alertSegs = segs.filter((s) => s.c !== "g").length;
-  const worst = [...segs].sort((a, b) => riskAt(rm, b.a.id, 0) - riskAt(rm, a.a.id, 0))[0];
-  const worstRow = worst ? rm[worst.a.id]?.[HDAYS[0]] : undefined;
-  const goodhopeRow = rm["goodhope"]?.[HDAYS[0]];
-  // 실 항로 지오메트리에서 거리 산출(해리). 수에즈 대비는 두 노선의 공통 시점(말라카)→로테르담 구간 비교.
-  const totalNm = routeDistanceNm(coordsOf(route.waypoints, nodes));
+// 전 노선 상시 모니터링 — DB의 모든 주력 항로를 평가하고, 리스크가 오른 노선만 상세 카드로 펼친다.
+// 정상 노선은 하단에 요약 칩으로 표시(전체를 보고 있음을 명시 + 문제 노선에 집중). 거리·수에즈 대비는 실 지오메트리 기반.
+function RouteMonitor({ rm, routes, suez, nodes }: { rm: RiskMap; routes: RouteG[]; suez: RouteG | null; nodes: Record<string, AssetRow> }) {
+  if (routes.length === 0) return null;
   const fromMalacca = (r: RouteG | null) => {
     if (!r) return null;
     const i = (r.waypoints || []).findIndex((w) => w === "malacca");
     return i < 0 ? null : routeDistanceNm(coordsOf((r.waypoints || []).slice(i), nodes));
   };
-  const capeMal = fromMalacca(route), suezMal = fromMalacca(suez);
-  const vsSuez = capeMal != null && suezMal != null ? capeMal - suezMal : null;
-  const kpis: { k: string; v: string; c?: string }[] = [
-    { k: "총 항로 거리", v: `~${totalNm.toLocaleString()} nm` },
-    { k: "수에즈 대비", v: vsSuez != null ? `+${vsSuez.toLocaleString()} nm` : "수집 중", c: vsSuez != null && vsSuez > 0 ? "#b45309" : undefined },
-    { k: "통과 주요 해협", v: `${(route.chokes || []).length}개` },
-    { k: "최대 리스크", v: String(maxRisk), c: rc(overall) },
-    { k: "예보 신뢰도", v: `${HCONF[0]}%` },
-  ];
+  const suezMal = fromMalacca(suez);
+  const summaries = routes
+    .map((r) => {
+      const segs = r.keys.map((k) => ({ a: nodes[k], c: level(riskAt(rm, k, 0)), wx: segWx(rm, k) })).filter((s) => s.a);
+      const maxRisk = routeRisk(rm, r, 0);
+      const overall = level(maxRisk);
+      const worst = [...segs].sort((a, b) => riskAt(rm, b.a.id, 0) - riskAt(rm, a.a.id, 0))[0];
+      const worstRow = worst ? rm[worst.a.id]?.[HDAYS[0]] : undefined;
+      const totalNm = routeDistanceNm(coordsOf(r.waypoints, nodes));
+      const isCape = r.keys.includes("goodhope") || /희망봉|우회/.test(r.name);
+      const capeMal = isCape ? fromMalacca(r) : null;
+      const vsSuez = isCape && capeMal != null && suezMal != null ? capeMal - suezMal : null;
+      return { r, segs, maxRisk, overall, worst, worstRow, totalNm, isCape, vsSuez };
+    })
+    .sort((a, b) => b.maxRisk - a.maxRisk);
+  const elevated = summaries.filter((s) => s.overall !== "g");
+  const normal = summaries.filter((s) => s.overall === "g");
+  const counts: Record<Lv, number> = { r: 0, a: 0, g: 0 };
+  for (const s of summaries) counts[s.overall] += 1;
+  const Dot = ({ c }: { c: Lv }) => <span className="inline-block h-2 w-2 rounded-full" style={{ background: rc(c) }} />;
   return (
     <>
-      <div className="mb-3.5 mt-[26px] flex items-center justify-between gap-2.5"><h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">{monitorTitle}</h2><span className={CHIP}>실측 기상 · 지금 시점</span></div>
-      <div className={`border-l-[3px] border-l-[#38bdf8] px-6 py-[22px] ${CARD}`}>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex flex-wrap items-center gap-2.5"><span className="rounded-full border border-[#bae6fd] bg-[#e0f2fe] px-[9px] py-[3px] text-[11px] font-bold text-[#0369a1]">유럽 주력 항로</span><b className="text-[15px] font-extrabold text-[#1a2433]">{route.name}</b></div>
-          <Badge c={overall}>종합 {levelKo(overall)} · 최대 리스크 {maxRisk}</Badge>
-        </div>
-        {segs.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-            {segs.map((s, i) => (
-              <div key={s.a.id} className="contents">
-                <div className="flex flex-none items-center gap-2"><span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: rc(s.c) }} /><div><b className="block whitespace-nowrap text-[12.5px] font-bold text-[#1a2433]">{s.a.name}</b><span className="whitespace-nowrap text-[11px] text-[#828d9d]">{s.wx}</span></div></div>
-                {i < segs.length - 1 && <div className="h-0.5 min-w-[24px] flex-1" style={{ background: "repeating-linear-gradient(90deg,#cbd5e1 0 6px,transparent 6px 12px)" }} />}
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="mt-[18px] grid grid-cols-2 gap-3 border-t border-[#d8dfe9] pt-4 min-[640px]:grid-cols-5">
-          {kpis.map((m, i) => <div key={i} className="flex flex-col gap-1"><span className="text-[11px] text-[#828d9d]">{m.k}</span><b className="lsg-mono text-[17px] font-extrabold tracking-[-0.02em]" style={{ color: m.c || "#1a2433" }}>{m.v}</b></div>)}
-        </div>
-        <p className="mt-4 text-[12.5px] leading-[1.55] text-[#54606f]">
-          홍해·수에즈 통항 리스크 시 아시아–유럽 컨테이너의 주력 우회 항로입니다.{" "}
-          {worst && worst.c !== "g"
-            ? <>현재 주요 리스크 요인: <b className="text-[#b45309]">{worst.a.name} · {worst.wx}</b>{worstRow?.wave_height != null ? <> (파고 {worstRow.wave_height}m)</> : null}.</>
-            : <>현재 경유 전 구간 정상 범위{goodhopeRow?.wave_height != null ? <> (희망봉 실측 파고 {goodhopeRow.wave_height}m)</> : null}로 추정됩니다.</>}
-          {" "}선박 추적·실 소요일·예상 지연은 미연동(데이터 수집 중)입니다.
-        </p>
+      <div className="mb-3 mt-[26px] flex items-center justify-between gap-2.5">
+        <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">주요 항로 모니터링</h2>
+        <span className={CHIP}>전 {summaries.length}개 노선 · 지금 시점</span>
       </div>
+      <div className="mb-3.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12px] text-[#54606f]">
+        <span>주력 항로 <b className="text-[#1a2433]">{summaries.length}개</b> 상시 모니터링</span>
+        <span className="inline-flex items-center gap-1.5"><Dot c="g" />정상 {counts.g}</span>
+        <span className="inline-flex items-center gap-1.5"><Dot c="a" />주의 {counts.a}</span>
+        <span className="inline-flex items-center gap-1.5"><Dot c="r" />경보 {counts.r}</span>
+      </div>
+
+      {elevated.length === 0 ? (
+        <div className={`border-l-[3px] border-l-[#16a34a] px-6 py-5 ${CARD}`}>
+          <b className="text-[14px] font-extrabold text-[#067647]">전 노선 정상 범위</b>
+          <p className="mt-1 text-[12.5px] leading-[1.55] text-[#54606f]">현재 모니터링 중인 {summaries.length}개 항로 모두 실측 기상 기준 정상 범위입니다. 특정 노선의 리스크가 상승하면 해당 노선이 상세 카드로 펼쳐집니다.</p>
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {elevated.map(({ r, segs, maxRisk, overall, worst, worstRow, totalNm, isCape, vsSuez }) => {
+            const kpis: { k: string; v: string; c?: string }[] = [
+              { k: "총 항로 거리", v: `~${totalNm.toLocaleString()} nm` },
+              ...(isCape && vsSuez != null ? [{ k: "수에즈 대비", v: `+${vsSuez.toLocaleString()} nm`, c: vsSuez > 0 ? "#b45309" : undefined }] : []),
+              { k: "통과 주요 해협", v: `${(r.chokes || []).length}개` },
+              { k: "최대 리스크", v: String(maxRisk), c: rc(overall) },
+              { k: "예보 신뢰도", v: `${HCONF[0]}%` },
+            ];
+            return (
+              <div key={r.id} className={`border-l-[3px] px-6 py-[22px] ${CARD}`} style={{ borderLeftColor: rc(overall) }}>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {isCape && <span className="rounded-full border border-[#bae6fd] bg-[#e0f2fe] px-[9px] py-[3px] text-[11px] font-bold text-[#0369a1]">수에즈 우회</span>}
+                    <b className="text-[15px] font-extrabold text-[#1a2433]">{r.name}</b>
+                  </div>
+                  <Badge c={overall}>종합 {levelKo(overall)} · 최대 리스크 {maxRisk}</Badge>
+                </div>
+                {segs.length > 0 && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    {segs.map((s, i) => (
+                      <div key={s.a.id} className="contents">
+                        <div className="flex flex-none items-center gap-2"><span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: rc(s.c) }} /><div><b className="block whitespace-nowrap text-[12.5px] font-bold text-[#1a2433]">{s.a.name}</b><span className="whitespace-nowrap text-[11px] text-[#828d9d]">{s.wx}</span></div></div>
+                        {i < segs.length - 1 && <div className="h-0.5 min-w-[24px] flex-1" style={{ background: "repeating-linear-gradient(90deg,#cbd5e1 0 6px,transparent 6px 12px)" }} />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-[18px] grid grid-cols-2 gap-3 border-t border-[#d8dfe9] pt-4 min-[640px]:grid-cols-5">
+                  {kpis.map((m, i) => <div key={i} className="flex flex-col gap-1"><span className="text-[11px] text-[#828d9d]">{m.k}</span><b className="lsg-mono text-[17px] font-extrabold tracking-[-0.02em]" style={{ color: m.c || "#1a2433" }}>{m.v}</b></div>)}
+                </div>
+                {worst && worst.c !== "g" && (
+                  <p className="mt-4 text-[12.5px] leading-[1.55] text-[#54606f]">
+                    현재 주요 리스크 요인: <b className="text-[#b45309]">{worst.a.name} · {worst.wx}</b>{worstRow?.wave_height != null ? <> (파고 {worstRow.wave_height}m)</> : null}.
+                    {isCape ? " 홍해·수에즈 통항 리스크 시 아시아–유럽 컨테이너의 주력 우회 항로입니다." : ""}
+                    {" "}선박 추적·실 소요일·예상 지연은 미연동(데이터 수집 중)입니다.
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {normal.length > 0 && (
+        <div className="mt-3.5 grid grid-cols-1 gap-3 min-[640px]:grid-cols-2 min-[1080px]:grid-cols-3">
+          {normal.map(({ r, maxRisk, totalNm, isCape }) => (
+            <div key={r.id} className={`px-4 py-[15px] ${CARD}`}>
+              <div className="flex items-center justify-between gap-2"><span className="text-[13px] font-bold text-[#1a2433]">{r.name}</span><span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: rc("g") }} /></div>
+              <div className="mt-1.5 text-[11px] text-[#828d9d]">~{totalNm.toLocaleString()} nm · 통과 해협 {(r.chokes || []).length}개{isCape ? " · 수에즈 우회" : ""}</div>
+              <span className="mt-2 inline-block rounded-[6px] bg-[#ecfdf3] px-2 py-[3px] text-[10.5px] font-bold text-[#067647]">정상 · 최대 {maxRisk}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }
@@ -424,7 +471,9 @@ function Impact({ rm, routes, events, nodes, forecasts }: { rm: RiskMap; routes:
       const lead = [...evs].sort((a, b) => tierRank(b.tier) - tierRank(a.tier) || a.km - b.km)[0] ?? null;
       return { r, base, evs, lead, worst, forecast };
     })
-    .filter((x) => !!x.forecast || x.worst >= 1 || x.base >= 30)
+    // 카드 노출은 '현재 살아있는 신호'만으로 결정 — 발행된 forecast는 삭제 불가(CLAUDE.md)라
+    // 그것만으로 노출하면 태풍이 지나가도 카드가 영구히 남는다. forecast는 살아있는 노선에만 덧붙이는 보강 정보.
+    .filter((x) => x.worst >= 1 || x.base >= 30)
     .sort((a, b) => (b.forecast ? 1 : 0) - (a.forecast ? 1 : 0) || b.worst - a.worst || (a.lead?.km ?? 1e9) - (b.lead?.km ?? 1e9) || b.base - a.base)
     .slice(0, 3);
   if (rows.length === 0) return null;
@@ -436,7 +485,7 @@ function Impact({ rm, routes, events, nodes, forecasts }: { rm: RiskMap; routes:
           const crit = worst === 3;
           const c: Lv = crit ? "r" : worst === 2 || evs.length ? "a" : level(base);
           const tag = forecast ? "AI 예보 연결" : crit ? "경보 · 예보 track" : worst === 2 ? "주의 · 예보 track" : evs.length ? "track 주시" : "영향 낮음";
-          const traj = [0, 1, 2, 3].map((h) => routeRisk(rm, r, h));
+          const traj = HDAYS.map((_, h) => routeRisk(rm, r, h));
           const chk = (r.chokes || []).join(" · ") || "—";
           const inten = lead ? parseIntensity(lead.e.title) : null;
           return (
@@ -599,7 +648,6 @@ export function LogisightClimate() {
     { lab: "감시 자산", v: String(data.assets.length), c: "#1a2433", s: "항만·주요 해협·철도" },
   ];
 
-  const capeRoute = routesG.find((r) => r.keys.includes("goodhope")) ?? routesG.find((r) => /희망봉|우회|유럽/.test(r.name)) ?? [...routesG].sort((a, b) => routeRisk(rm, b, 0) - routeRisk(rm, a, 0))[0] ?? null;
   const suezRoute = routesG.find((r) => (r.chokes || []).includes("suez")) ?? null;
 
   const pills: { c: string; t: ReactNode }[] = [
@@ -639,7 +687,7 @@ export function LogisightClimate() {
 
           <Kpis items={kpis} />
           <ForecastQualityPanel quality={forecastQuality} />
-          {capeRoute && <CapeMonitor rm={rm} route={capeRoute} suez={suezRoute} nodes={nodes} />}
+          <RouteMonitor rm={rm} routes={routesG} suez={suezRoute} nodes={nodes} />
           <Impact rm={rm} routes={routesG} events={data.events} nodes={nodes} forecasts={data.forecasts} />
           <Straits rm={rm} chokes={chokes} routes={routesG} />
           <Timeline events={data.events} />
