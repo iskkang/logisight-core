@@ -32,7 +32,10 @@ export const DATASET_SOURCE = {
   sea: "KITA 해상운임",
   fx: "하나은행 고시환율",
   jetFuel: "IATA / Platts",
-  // 코드 추적으로 확인(risk.functions): 호르무즈·Persian Gulf·해협 통항 = Shipfinder, 글로벌 TEU = EconDB.
+  // 코드 추적으로 확인: 호르무즈·Persian Gulf = Shipfinder(risk.functions), 해협 통과 TEU = EconDB
+  // (econdb.com/widgets/chokepoint-pass), 항만 혼잡(median 대기일) = Portcast(파이프라인 port-congestion.js).
+  // ※ PORT-MIS(해수부/KOSIS)는 한국 항만 '처리량(throughput)' 출처 — 글로벌 '혼잡'에는 쓰지 말 것.
   shipfinder: "Shipfinder",
   econdb: "EconDB",
+  portcast: "Portcast",
 } as const;
