@@ -222,7 +222,7 @@ function LivePanel() {
             </span>
             <span>· 시장 핵심 요약</span>
           </div>
-          <div className="text-[12px] normal-case tracking-normal text-[#828d9d]">업데이트 <b className="font-medium text-[#54606f]">주간 단위</b> · 출처 PORT-MIS · 관세청 · 해양수산부</div>
+          <div className="text-[12px] normal-case tracking-normal text-[#828d9d]">업데이트 <b className="font-medium text-[#54606f]">주간 단위</b> · 출처 KOBC(KCCI) · PORT-MIS(항만) · KITA(항공)</div>
         </div>
         <div className="grid grid-cols-1 gap-3.5 min-[620px]:grid-cols-2 min-[980px]:grid-cols-4">
           <MarketCard

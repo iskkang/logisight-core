@@ -9,14 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TradeRouteImport } from './routes/trade'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as RailMapRouteImport } from './routes/rail-map'
 import { Route as RailRouteImport } from './routes/rail'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PolicyRouteImport } from './routes/policy'
 import { Route as NewsRouteImport } from './routes/news'
+import { Route as MethodologyRouteImport } from './routes/methodology'
 import { Route as IndustriesRouteImport } from './routes/industries'
 import { Route as ForecastsRouteImport } from './routes/forecasts'
 import { Route as FaqRouteImport } from './routes/faq'
@@ -24,13 +27,16 @@ import { Route as EurasiaRouteImport } from './routes/eurasia'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClimateRouteImport } from './routes/climate'
 import { Route as BriefingRouteImport } from './routes/briefing'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RailIndexRouteImport } from './routes/rail.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as RailEuropeRouteImport } from './routes/rail.europe'
 import { Route as RailEurasiaRouteImport } from './routes/rail.eurasia'
 import { Route as RailAmericasRouteImport } from './routes/rail.americas'
 import { Route as Index1520RoutesRouteImport } from './routes/index1520.routes'
 import { Route as ArticleSlugRouteImport } from './routes/article.$slug'
+import { Route as AdminSubscribersRouteImport } from './routes/admin.subscribers'
 import { Route as AdminRoutesRouteImport } from './routes/admin.routes'
 import { Route as AdminPoliciesRouteImport } from './routes/admin.policies'
 import { Route as AdminPartnerRatesRouteImport } from './routes/admin.partner-rates'
@@ -39,6 +45,11 @@ import { Route as AdminForecastsRouteImport } from './routes/admin.forecasts'
 import { Route as ApiTradeBriefRouteImport } from './routes/api/trade/brief'
 import { Route as ApiCronIndexnowRouteImport } from './routes/api/cron/indexnow'
 
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TradeRoute = TradeRouteImport.update({
   id: '/trade',
   path: '/trade',
@@ -69,6 +80,11 @@ const RailRoute = RailRouteImport.update({
   path: '/rail',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PolicyRoute = PolicyRouteImport.update({
   id: '/policy',
   path: '/policy',
@@ -77,6 +93,11 @@ const PolicyRoute = PolicyRouteImport.update({
 const NewsRoute = NewsRouteImport.update({
   id: '/news',
   path: '/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MethodologyRoute = MethodologyRouteImport.update({
+  id: '/methodology',
+  path: '/methodology',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndustriesRoute = IndustriesRouteImport.update({
@@ -114,6 +135,11 @@ const BriefingRoute = BriefingRouteImport.update({
   path: '/briefing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -123,6 +149,11 @@ const RailIndexRoute = RailIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => RailRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const RailEuropeRoute = RailEuropeRouteImport.update({
   id: '/europe',
@@ -149,30 +180,35 @@ const ArticleSlugRoute = ArticleSlugRouteImport.update({
   path: '/article/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSubscribersRoute = AdminSubscribersRouteImport.update({
+  id: '/subscribers',
+  path: '/subscribers',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminRoutesRoute = AdminRoutesRouteImport.update({
-  id: '/admin/routes',
-  path: '/admin/routes',
-  getParentRoute: () => rootRouteImport,
+  id: '/routes',
+  path: '/routes',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminPoliciesRoute = AdminPoliciesRouteImport.update({
-  id: '/admin/policies',
-  path: '/admin/policies',
-  getParentRoute: () => rootRouteImport,
+  id: '/policies',
+  path: '/policies',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminPartnerRatesRoute = AdminPartnerRatesRouteImport.update({
-  id: '/admin/partner-rates',
-  path: '/admin/partner-rates',
-  getParentRoute: () => rootRouteImport,
+  id: '/partner-rates',
+  path: '/partner-rates',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
-  id: '/admin/login',
-  path: '/admin/login',
-  getParentRoute: () => rootRouteImport,
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminForecastsRoute = AdminForecastsRouteImport.update({
-  id: '/admin/forecasts',
-  path: '/admin/forecasts',
-  getParentRoute: () => rootRouteImport,
+  id: '/forecasts',
+  path: '/forecasts',
+  getParentRoute: () => AdminRoute,
 } as any)
 const ApiTradeBriefRoute = ApiTradeBriefRouteImport.update({
   id: '/api/trade/brief',
@@ -187,6 +223,7 @@ const ApiCronIndexnowRoute = ApiCronIndexnowRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/briefing': typeof BriefingRoute
   '/climate': typeof ClimateRoute
   '/dashboard': typeof DashboardRoute
@@ -194,24 +231,29 @@ export interface FileRoutesByFullPath {
   '/faq': typeof FaqRoute
   '/forecasts': typeof ForecastsRoute
   '/industries': typeof IndustriesRoute
+  '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
+  '/privacy': typeof PrivacyRoute
   '/rail': typeof RailRouteWithChildren
   '/rail-map': typeof RailMapRoute
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/forecasts': typeof AdminForecastsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/partner-rates': typeof AdminPartnerRatesRoute
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
+  '/admin/subscribers': typeof AdminSubscribersRoute
   '/article/$slug': typeof ArticleSlugRoute
   '/index1520/routes': typeof Index1520RoutesRoute
   '/rail/americas': typeof RailAmericasRoute
   '/rail/eurasia': typeof RailEurasiaRoute
   '/rail/europe': typeof RailEuropeRoute
+  '/admin/': typeof AdminIndexRoute
   '/rail/': typeof RailIndexRoute
   '/api/cron/indexnow': typeof ApiCronIndexnowRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
@@ -225,23 +267,28 @@ export interface FileRoutesByTo {
   '/faq': typeof FaqRoute
   '/forecasts': typeof ForecastsRoute
   '/industries': typeof IndustriesRoute
+  '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
+  '/privacy': typeof PrivacyRoute
   '/rail-map': typeof RailMapRoute
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/forecasts': typeof AdminForecastsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/partner-rates': typeof AdminPartnerRatesRoute
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
+  '/admin/subscribers': typeof AdminSubscribersRoute
   '/article/$slug': typeof ArticleSlugRoute
   '/index1520/routes': typeof Index1520RoutesRoute
   '/rail/americas': typeof RailAmericasRoute
   '/rail/eurasia': typeof RailEurasiaRoute
   '/rail/europe': typeof RailEuropeRoute
+  '/admin': typeof AdminIndexRoute
   '/rail': typeof RailIndexRoute
   '/api/cron/indexnow': typeof ApiCronIndexnowRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
@@ -249,6 +296,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/briefing': typeof BriefingRoute
   '/climate': typeof ClimateRoute
   '/dashboard': typeof DashboardRoute
@@ -256,24 +304,29 @@ export interface FileRoutesById {
   '/faq': typeof FaqRoute
   '/forecasts': typeof ForecastsRoute
   '/industries': typeof IndustriesRoute
+  '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
+  '/privacy': typeof PrivacyRoute
   '/rail': typeof RailRouteWithChildren
   '/rail-map': typeof RailMapRoute
   '/rates': typeof RatesRoute
   '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/forecasts': typeof AdminForecastsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/partner-rates': typeof AdminPartnerRatesRoute
   '/admin/policies': typeof AdminPoliciesRoute
   '/admin/routes': typeof AdminRoutesRoute
+  '/admin/subscribers': typeof AdminSubscribersRoute
   '/article/$slug': typeof ArticleSlugRoute
   '/index1520/routes': typeof Index1520RoutesRoute
   '/rail/americas': typeof RailAmericasRoute
   '/rail/eurasia': typeof RailEurasiaRoute
   '/rail/europe': typeof RailEuropeRoute
+  '/admin/': typeof AdminIndexRoute
   '/rail/': typeof RailIndexRoute
   '/api/cron/indexnow': typeof ApiCronIndexnowRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
@@ -282,6 +335,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/briefing'
     | '/climate'
     | '/dashboard'
@@ -289,24 +343,29 @@ export interface FileRouteTypes {
     | '/faq'
     | '/forecasts'
     | '/industries'
+    | '/methodology'
     | '/news'
     | '/policy'
+    | '/privacy'
     | '/rail'
     | '/rail-map'
     | '/rates'
     | '/reports'
     | '/sitemap.xml'
     | '/trade'
+    | '/unsubscribe'
     | '/admin/forecasts'
     | '/admin/login'
     | '/admin/partner-rates'
     | '/admin/policies'
     | '/admin/routes'
+    | '/admin/subscribers'
     | '/article/$slug'
     | '/index1520/routes'
     | '/rail/americas'
     | '/rail/eurasia'
     | '/rail/europe'
+    | '/admin/'
     | '/rail/'
     | '/api/cron/indexnow'
     | '/api/trade/brief'
@@ -320,29 +379,35 @@ export interface FileRouteTypes {
     | '/faq'
     | '/forecasts'
     | '/industries'
+    | '/methodology'
     | '/news'
     | '/policy'
+    | '/privacy'
     | '/rail-map'
     | '/rates'
     | '/reports'
     | '/sitemap.xml'
     | '/trade'
+    | '/unsubscribe'
     | '/admin/forecasts'
     | '/admin/login'
     | '/admin/partner-rates'
     | '/admin/policies'
     | '/admin/routes'
+    | '/admin/subscribers'
     | '/article/$slug'
     | '/index1520/routes'
     | '/rail/americas'
     | '/rail/eurasia'
     | '/rail/europe'
+    | '/admin'
     | '/rail'
     | '/api/cron/indexnow'
     | '/api/trade/brief'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/briefing'
     | '/climate'
     | '/dashboard'
@@ -350,24 +415,29 @@ export interface FileRouteTypes {
     | '/faq'
     | '/forecasts'
     | '/industries'
+    | '/methodology'
     | '/news'
     | '/policy'
+    | '/privacy'
     | '/rail'
     | '/rail-map'
     | '/rates'
     | '/reports'
     | '/sitemap.xml'
     | '/trade'
+    | '/unsubscribe'
     | '/admin/forecasts'
     | '/admin/login'
     | '/admin/partner-rates'
     | '/admin/policies'
     | '/admin/routes'
+    | '/admin/subscribers'
     | '/article/$slug'
     | '/index1520/routes'
     | '/rail/americas'
     | '/rail/eurasia'
     | '/rail/europe'
+    | '/admin/'
     | '/rail/'
     | '/api/cron/indexnow'
     | '/api/trade/brief'
@@ -375,6 +445,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   BriefingRoute: typeof BriefingRoute
   ClimateRoute: typeof ClimateRoute
   DashboardRoute: typeof DashboardRoute
@@ -382,19 +453,17 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   ForecastsRoute: typeof ForecastsRoute
   IndustriesRoute: typeof IndustriesRoute
+  MethodologyRoute: typeof MethodologyRoute
   NewsRoute: typeof NewsRoute
   PolicyRoute: typeof PolicyRoute
+  PrivacyRoute: typeof PrivacyRoute
   RailRoute: typeof RailRouteWithChildren
   RailMapRoute: typeof RailMapRoute
   RatesRoute: typeof RatesRoute
   ReportsRoute: typeof ReportsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TradeRoute: typeof TradeRoute
-  AdminForecastsRoute: typeof AdminForecastsRoute
-  AdminLoginRoute: typeof AdminLoginRoute
-  AdminPartnerRatesRoute: typeof AdminPartnerRatesRoute
-  AdminPoliciesRoute: typeof AdminPoliciesRoute
-  AdminRoutesRoute: typeof AdminRoutesRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   ArticleSlugRoute: typeof ArticleSlugRoute
   Index1520RoutesRoute: typeof Index1520RoutesRoute
   ApiCronIndexnowRoute: typeof ApiCronIndexnowRoute
@@ -403,6 +472,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trade': {
       id: '/trade'
       path: '/trade'
@@ -445,6 +521,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/policy': {
       id: '/policy'
       path: '/policy'
@@ -457,6 +540,13 @@ declare module '@tanstack/react-router' {
       path: '/news'
       fullPath: '/news'
       preLoaderRoute: typeof NewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/methodology': {
+      id: '/methodology'
+      path: '/methodology'
+      fullPath: '/methodology'
+      preLoaderRoute: typeof MethodologyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/industries': {
@@ -508,6 +598,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BriefingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -521,6 +618,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/rail/'
       preLoaderRoute: typeof RailIndexRouteImport
       parentRoute: typeof RailRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/rail/europe': {
       id: '/rail/europe'
@@ -557,40 +661,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArticleSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/subscribers': {
+      id: '/admin/subscribers'
+      path: '/subscribers'
+      fullPath: '/admin/subscribers'
+      preLoaderRoute: typeof AdminSubscribersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/routes': {
       id: '/admin/routes'
-      path: '/admin/routes'
+      path: '/routes'
       fullPath: '/admin/routes'
       preLoaderRoute: typeof AdminRoutesRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/policies': {
       id: '/admin/policies'
-      path: '/admin/policies'
+      path: '/policies'
       fullPath: '/admin/policies'
       preLoaderRoute: typeof AdminPoliciesRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/partner-rates': {
       id: '/admin/partner-rates'
-      path: '/admin/partner-rates'
+      path: '/partner-rates'
       fullPath: '/admin/partner-rates'
       preLoaderRoute: typeof AdminPartnerRatesRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/login': {
       id: '/admin/login'
-      path: '/admin/login'
+      path: '/login'
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/forecasts': {
       id: '/admin/forecasts'
-      path: '/admin/forecasts'
+      path: '/forecasts'
       fullPath: '/admin/forecasts'
       preLoaderRoute: typeof AdminForecastsRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/api/trade/brief': {
       id: '/api/trade/brief'
@@ -608,6 +719,28 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminForecastsRoute: typeof AdminForecastsRoute
+  AdminLoginRoute: typeof AdminLoginRoute
+  AdminPartnerRatesRoute: typeof AdminPartnerRatesRoute
+  AdminPoliciesRoute: typeof AdminPoliciesRoute
+  AdminRoutesRoute: typeof AdminRoutesRoute
+  AdminSubscribersRoute: typeof AdminSubscribersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminForecastsRoute: AdminForecastsRoute,
+  AdminLoginRoute: AdminLoginRoute,
+  AdminPartnerRatesRoute: AdminPartnerRatesRoute,
+  AdminPoliciesRoute: AdminPoliciesRoute,
+  AdminRoutesRoute: AdminRoutesRoute,
+  AdminSubscribersRoute: AdminSubscribersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface RailRouteChildren {
   RailAmericasRoute: typeof RailAmericasRoute
@@ -627,6 +760,7 @@ const RailRouteWithChildren = RailRoute._addFileChildren(RailRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   BriefingRoute: BriefingRoute,
   ClimateRoute: ClimateRoute,
   DashboardRoute: DashboardRoute,
@@ -634,19 +768,17 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   ForecastsRoute: ForecastsRoute,
   IndustriesRoute: IndustriesRoute,
+  MethodologyRoute: MethodologyRoute,
   NewsRoute: NewsRoute,
   PolicyRoute: PolicyRoute,
+  PrivacyRoute: PrivacyRoute,
   RailRoute: RailRouteWithChildren,
   RailMapRoute: RailMapRoute,
   RatesRoute: RatesRoute,
   ReportsRoute: ReportsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TradeRoute: TradeRoute,
-  AdminForecastsRoute: AdminForecastsRoute,
-  AdminLoginRoute: AdminLoginRoute,
-  AdminPartnerRatesRoute: AdminPartnerRatesRoute,
-  AdminPoliciesRoute: AdminPoliciesRoute,
-  AdminRoutesRoute: AdminRoutesRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   ArticleSlugRoute: ArticleSlugRoute,
   Index1520RoutesRoute: Index1520RoutesRoute,
   ApiCronIndexnowRoute: ApiCronIndexnowRoute,

@@ -29,6 +29,7 @@ export function HomeFooter() {
             <Link to="/rail" className={itemCls}>철도 코리도어</Link>
             <Link to="/industries" className={itemCls}>산업별 교역</Link>
             <Link to="/reports" className={itemCls}>마켓 리포트</Link>
+            <Link to="/methodology" className={itemCls}>데이터 방법론</Link>
             <Link to="/faq" className={itemCls}>자주 묻는 질문</Link>
           </Col>
           <Col title="뉴스">
