@@ -137,6 +137,16 @@ const STYLE = `
 .lsgi-root .tm{border-radius:9px;padding:9px 11px;color:#fff;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start}
 .lsgi-root .tm b{font-size:12.5px;font-weight:700}.lsgi-root .tm span{font-size:10.5px;opacity:.85}
 .lsgi-root .tm.s{justify-content:center}.lsgi-root .tm.s b{font-size:11px}.lsgi-root .tm.s span{font-size:9.5px}
+/* 모바일: 12열 트리맵은 좁은 화면에서 라벨이 잘리므로 상위 5개 수평 막대 리스트로 대체 */
+.lsgi-root .tree-m{display:none}
+.lsgi-root .tree-m .row{display:flex;align-items:center;gap:10px}
+.lsgi-root .tree-m .rk2{width:26px;flex:none;text-align:center;font-size:12px;font-weight:800;color:var(--mute)}
+.lsgi-root .tree-m .bd{flex:1;min-width:0}
+.lsgi-root .tree-m .tp{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:700;color:var(--ink)}
+.lsgi-root .tree-m .tp .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lsgi-root .tree-m .br{margin-top:5px;height:8px;width:100%;border-radius:5px;background:var(--line2);overflow:hidden}
+.lsgi-root .tree-m .br i{display:block;height:100%;border-radius:5px;background:var(--blue)}
+@media(max-width:640px){.lsgi-root .tree{display:none}.lsgi-root .tree-m{display:flex;flex-direction:column;gap:11px}}
 
 .lsgi-root .ttable{width:100%;border-collapse:collapse;font-size:13px}
 .lsgi-root .ttable thead th{text-align:left;font-size:11px;font-weight:600;color:var(--mute);text-transform:uppercase;letter-spacing:.04em;padding:11px 14px;border-bottom:1px solid var(--line)}
@@ -517,6 +527,21 @@ function IndustriesBody({ summaryRows, indexStats }: { summaryRows: TradeSummary
                 </div>
               );
             })}
+          </div>
+          {/* 모바일 대체 뷰: 상위 5개 HS 챕터 수평 막대(트리맵 클리핑·가독성 문제 회피) */}
+          <div className="tree-m">
+            {tmSorted.slice(0, 5).map((x, i) => (
+              <div className="row" key={x.a.chapter}>
+                <span className="rk2">#{i + 1}</span>
+                <div className="bd">
+                  <div className="tp">
+                    <span className="nm">HS{x.a.chapter} {x.a.name}</span>
+                    <span className="mono">{formatUSD(x.v)}</span>
+                  </div>
+                  <div className="br"><i style={{ width: `${tmSorted[0].v > 0 ? Math.round((x.v / tmSorted[0].v) * 100) : 0}%` }} /></div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

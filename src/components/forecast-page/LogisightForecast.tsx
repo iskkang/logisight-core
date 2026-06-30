@@ -299,7 +299,21 @@ function ForecastCards({ cards, series, selectedId, onSelect }: {
         const sp = (series[c.id]?.points ?? []).map((p) => p.value).slice(-8);
         const src = baseIndexCaption(c);
         return (
-          <div key={c.id} onClick={() => onSelect(c.id)} className={`cursor-pointer p-[18px] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 ${CARD} ${c.id === selectedId ? "!border-[#0d9488] shadow-[0_0_0_1px_#0d9488,0_6px_18px_-10px_rgba(13,148,136,0.4)]" : "hover:border-[#c8d2df]"}`}>
+          <div
+            key={c.id}
+            role="button"
+            tabIndex={0}
+            aria-pressed={c.id === selectedId}
+            aria-label={`${displayLabelOf(c)} 전망 상세 보기`}
+            onClick={() => onSelect(c.id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelect(c.id);
+              }
+            }}
+            className={`cursor-pointer p-[18px] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 ${CARD} ${c.id === selectedId ? "!border-[#0d9488] shadow-[0_0_0_1px_#0d9488,0_6px_18px_-10px_rgba(13,148,136,0.4)]" : "hover:border-[#c8d2df]"}`}
+          >
             <div className="flex items-center gap-2">
               <span className="text-[15px] font-extrabold text-[#1a2433]">{displayLabelOf(c)}</span>
               <span className={`inline-flex items-center gap-1 rounded-[6px] px-2 py-[3px] text-[11.5px] font-bold ${up ? "border border-[#c7ead6] bg-[#ecfdf3] text-[#067647]" : c.direction === "down" ? "border border-[#fbd5d5] bg-[#fef2f2] text-[#dc2626]" : "border border-[#d8dfe9] bg-[#eef1f6] text-[#54606f]"}`}>{dir.glyph} {c.expected_range_pct ?? dir.label}</span>

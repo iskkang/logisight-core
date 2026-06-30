@@ -23,7 +23,6 @@ import {
 } from "@/lib/rates-search";
 import {
   freightIndicesHistoryQueryOptions,
-  bunkerPricesQueryOptions,
   kitaAirRatesQueryOptions,
   kitaSeaRatesQueryOptions,
   indexStatsQueryOptions,
@@ -315,7 +314,6 @@ function buildRatesGeo(indexStats: GeoIdxRow[]) {
 
 export function LogisightRates() {
   const { data: history } = useSuspenseQuery(freightIndicesHistoryQueryOptions());
-  useSuspenseQuery(bunkerPricesQueryOptions());
   const { data: seaRates } = useSuspenseQuery(kitaSeaRatesQueryOptions());
   const { data: airRates } = useSuspenseQuery(kitaAirRatesQueryOptions());
   const { data: exchangeRate } = useSuspenseQuery(latestExchangeRateQueryOptions());
