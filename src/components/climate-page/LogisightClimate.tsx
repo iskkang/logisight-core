@@ -195,7 +195,7 @@ const LOGI_BADGE: Record<GateTier, { label: string; cls: string }> = {
 };
 function logiVerdictText(v: GateVerdict): string {
   if (v.tier === "LIMITED") return v.nearestAsset ? `최근접 ${v.nearestAsset.name} ~${v.nearestKm}km` : "물류 거점 원거리";
-  const lead = v.linkedAssets[0]?.name ?? "주요 항로 인근";
+  const lead = v.linkedAssets[0]?.name ?? (v.linkedRoutes[0] ? `${v.linkedRoutes[0].name} 항로 인근` : "주요 항로 인근");
   const more = v.linkedAssets.length > 1 ? ` 외 ${v.linkedAssets.length - 1}곳` : "";
   return `${lead}${more}`;
 }

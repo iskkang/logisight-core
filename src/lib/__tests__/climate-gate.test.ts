@@ -51,6 +51,7 @@ describe("gateEvent", () => {
     expect(v.tier).toBe("LINKED_HIGH");
     expect(v.linkedRouteIds).toEqual(["r1"]);
     expect(v.linkedAssets).toHaveLength(0);
+    expect(v.linkedRoutes[0].name).toBe("R1");
   });
 
   it("노드 문자열 waypoint를 nodes로 해소", () => {

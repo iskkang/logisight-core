@@ -12,6 +12,7 @@ export type GateVerdict = {
   nearestKm: number | null;
   linkedAssets: LinkedAsset[];
   linkedRouteIds: string[];
+  linkedRoutes: { id: string; name: string }[];
 };
 
 const EARTH_KM = 6371;
@@ -39,7 +40,7 @@ export function gateEvent(
   nodes: Record<string, AssetRow>,
 ): GateVerdict {
   if (event.lon == null || event.lat == null) {
-    return { tier: "LIMITED", nearestAsset: null, nearestKm: null, linkedAssets: [], linkedRouteIds: [] };
+    return { tier: "LIMITED", nearestAsset: null, nearestKm: null, linkedAssets: [], linkedRouteIds: [], linkedRoutes: [] };
   }
   const elon = event.lon, elat = event.lat;
   const linkedAssets: LinkedAsset[] = [];
@@ -53,14 +54,15 @@ export function gateEvent(
     if (rawKm <= ASSET_RADIUS_KM) linkedAssets.push(la);
   }
   linkedAssets.sort((x, y) => x.km - y.km);
-  const linkedRouteIds: string[] = [];
+  const linkedRoutes: { id: string; name: string }[] = [];
   for (const r of routes) {
     let min = Infinity;
     for (const c of routeCoords(r, nodes)) { const d = hav(elat, elon, c[1], c[0]); if (d < min) min = d; }
-    if (min <= ROUTE_RADIUS_KM) linkedRouteIds.push(r.id);
+    if (min <= ROUTE_RADIUS_KM) linkedRoutes.push({ id: r.id, name: r.name });
   }
+  const linkedRouteIds = linkedRoutes.map((r) => r.id);
   const linked = linkedAssets.length > 0 || linkedRouteIds.length > 0;
   const sev = event.severity;
   const tier: GateTier = !linked ? "LIMITED" : sev === "r" ? "LINKED_HIGH" : sev === "a" ? "LINKED_WATCH" : "LIMITED";
-  return { tier, nearestAsset: nearest, nearestKm: nearest ? nearest.km : null, linkedAssets, linkedRouteIds };
+  return { tier, nearestAsset: nearest, nearestKm: nearest ? nearest.km : null, linkedAssets, linkedRouteIds, linkedRoutes };
 }
