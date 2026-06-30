@@ -2,8 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { seoHead } from "@/lib/seo";
 import { LogisightTrade } from "@/components/trade-page/LogisightTrade";
+import { tradeStatisticsBundleQueryOptions } from "@/lib/api/trade";
+import { indexStatsQueryOptions } from "@/lib/api/rates";
 
 export const Route = createFileRoute("/trade")({
+  loader: ({ context }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(tradeStatisticsBundleQueryOptions()),
+      context.queryClient.ensureQueryData(indexStatsQueryOptions()),
+    ])
+      .then(() => undefined)
+      .catch(() => undefined),
   head: () =>
     seoHead({
       title: "무역 동향 인사이트 - Logisight",
