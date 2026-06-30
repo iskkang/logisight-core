@@ -528,6 +528,54 @@ function Impact({ rm, routes, events, nodes, forecasts }: { rm: RiskMap; routes:
   );
 }
 
+// 관측 경보 → 물류 영향. 게이트가 LINKED인 이벤트만 카드화(LIMITED은 타임라인 배지가 담당).
+// published 이벤트 forecast(metric_ref='climate:event:<id>')가 있으면 AI 3단 서술을 RouteForecast로 표시.
+function RegionImpact({ events, assets, routes, nodes, forecasts }: { events: EventRow[]; assets: AssetRow[]; routes: RouteG[]; nodes: Record<string, AssetRow>; forecasts: ClimateForecastRow[] }) {
+  const fcByEvent: Record<string, ClimateForecastRow> = {};
+  const PFX = "climate:event:";
+  for (const f of forecasts) {
+    const ref = f.metric_ref ?? "";
+    if (ref.startsWith(PFX)) { const eid = ref.slice(PFX.length); if (eid && !fcByEvent[eid]) fcByEvent[eid] = f; }
+  }
+  const linked = events
+    .map((e) => ({ e, v: gateEvent(e, assets, routes, nodes), fc: fcByEvent[e.id] ?? null }))
+    .filter((x) => x.v.tier !== "LIMITED")
+    .sort((a, b) => (a.v.tier === "LINKED_HIGH" ? 0 : 1) - (b.v.tier === "LINKED_HIGH" ? 0 : 1) || (a.v.nearestKm ?? 1e9) - (b.v.nearestKm ?? 1e9))
+    .slice(0, 6);
+  if (linked.length === 0) return null;
+  return (
+    <>
+      <div className="mb-3.5 mt-[26px] flex items-center justify-between gap-2.5"><h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">지역 경보 → 물류 영향</h2><span className={CHIP}>관측 경보 · 물류 거점 근접</span></div>
+      <div className="grid grid-cols-1 gap-3.5 min-[1080px]:grid-cols-2">
+        {linked.map(({ e, v, fc }) => {
+          const b = LOGI_BADGE[v.tier];
+          const sev: Lv = e.severity === "r" ? "r" : "a";
+          return (
+            <div key={e.id} className={`p-[18px] ${CARD}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[14px] font-extrabold text-[#1a2433]">{eventName(e)}</span>
+                <span className={`inline-flex items-center gap-1 rounded-[6px] border px-2 py-[3px] text-[10px] font-bold ${b.cls}`}>{b.label}</span>
+                <Badge c={sev}>{KIND_KO[e.kind] || e.kind}</Badge>
+              </div>
+              <div className="mt-2 text-[12px] leading-[1.5] text-[#54606f]">
+                {e.area ? <><b className="font-bold text-[#1a2433]">{e.area}</b> · </> : null}{e.source.toUpperCase()} · {logiVerdictText(v)}
+              </div>
+              {v.linkedAssets.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {v.linkedAssets.slice(0, 4).map((la) => (
+                    <span key={la.id} className="rounded-[6px] border border-[#d8dfe9] bg-[#eef1f6] px-2 py-[3px] text-[11px] text-[#54606f] lsg-mono">{la.name} ~{la.km}km</span>
+                  ))}
+                </div>
+              )}
+              {fc ? <RouteForecast fc={fc} /> : <div className="mt-3 rounded-[8px] border border-[#e6ebf2] bg-[#f6f8fb] px-3 py-2 text-[11.5px] text-[#828d9d]">AI 영향 분석 검수 중 — 발행되면 여기에 표시됩니다.</div>}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 // 최상단 CRITICAL 배너 — 심각 이벤트(태풍 등)가 노선 인근(≤1000km)에 있을 때. 문구는 '접근/위협'.
 function CriticalBanner({ events, routes, nodes }: { events: EventRow[]; routes: RouteG[]; nodes: Record<string, AssetRow> }) {
   const [closedId, setClosed] = useState<string | null>(null);
@@ -714,6 +762,7 @@ export function LogisightClimate() {
           <ForecastQualityPanel quality={forecastQuality} />
           <RouteMonitor rm={rm} routes={routesG} suez={suezRoute} nodes={nodes} />
           <Impact rm={rm} routes={routesG} events={data.events} nodes={nodes} forecasts={data.forecasts} />
+          <RegionImpact events={data.events} assets={data.assets} routes={routesG} nodes={nodes} forecasts={data.forecasts} />
           <Straits rm={rm} chokes={chokes} routes={routesG} />
           <Timeline events={data.events} assets={data.assets} routes={routesG} nodes={nodes} />
           {data.assets.length === 0 && data.events.length === 0 && (
