@@ -616,21 +616,18 @@ function Timeline({ events, assets, routes, nodes }: { events: EventRow[]; asset
           <div className="px-[18px] py-6 text-center text-[12.5px] text-[#828d9d]">해당 등급의 활성 이벤트가 없습니다.</div>
         ) : shown.map((e, i) => {
           const sev: Lv = e.severity === "r" ? "r" : "a";
+          const v = verdicts[e.id];
+          if (!v) return null; // 모든 행은 verdicts에 키가 있으나 방어적 가드
+          const b = LOGI_BADGE[v.tier];
           return (
             <div key={e.id ?? i} className="grid grid-cols-1 items-center gap-3 border-t border-[#e6ebf2] px-[18px] py-3 min-[640px]:grid-cols-[90px_70px_1fr_auto]">
               <span className="lsg-mono text-[11.5px] text-[#828d9d]">{KIND_KO[e.kind] || e.kind || "경보"}</span>
               <span className={`rounded-[6px] px-2 py-[3px] text-center text-[10px] font-bold ${sev === "r" ? "border border-[#fbd5d5] bg-[#fef2f2] text-[#b42318]" : "border border-[#fde6c8] bg-[#fff7ed] text-[#b45309]"}`}>{sev === "r" ? "경보" : "주의"}</span>
               <span className="text-[13px] text-[#1a2433]">{e.url ? <a href={e.url} target="_blank" rel="noopener noreferrer" className="hover:text-[#0d9488]">{e.title}</a> : e.title}{e.area ? <small className="ml-1 font-normal text-[#828d9d]">· {e.area}</small> : null}</span>
               <span className="flex items-center gap-2 text-[11px] text-[#828d9d]">
-                {(() => {
-                  const v = verdicts[e.id];
-                  const b = LOGI_BADGE[v.tier];
-                  return (
-                    <span className={`inline-flex items-center gap-1 rounded-[6px] border px-2 py-[3px] text-[10px] font-bold ${b.cls}`} title={logiVerdictText(v)}>
-                      {b.label}
-                    </span>
-                  );
-                })()}
+                <span className={`inline-flex items-center gap-1 rounded-[6px] border px-2 py-[3px] text-[10px] font-bold ${b.cls}`} title={logiVerdictText(v)}>
+                  {b.label}
+                </span>
                 <span className="whitespace-nowrap">{e.source.toUpperCase()}</span>
               </span>
             </div>
