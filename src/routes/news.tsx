@@ -320,6 +320,11 @@ function NewsPage() {
               </>
             )}
 
+            {/* 출처·해석 표기 (페이지 단위 통일 — 카드별 By {source}·발행일은 각 기사에 표기) */}
+            <p className="mt-12 border-t border-[var(--color-line)] pt-4 text-[12px] leading-relaxed text-[var(--color-ink-muted)]">
+              원문 출처·발행일은 각 기사에 표기됩니다. 내부 기사(Logisight)는 원문 기반 한국어 요약·해석이며, 외부 기사는 원문 링크로 연결됩니다.
+            </p>
+
             {/* Newsletter band */}
             <div
               className="mt-14 flex flex-wrap items-center justify-between gap-6 rounded-lg px-7 py-6 text-white"
