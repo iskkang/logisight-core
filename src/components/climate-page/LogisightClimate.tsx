@@ -2,7 +2,7 @@
 // 핵심 지구본은 기존 실데이터 컴포넌트(RiskGlobe: assets/asset_risk/routes/events)를 재사용한다.
 // 샘플의 합성 기상(SPOTS·하드코딩 KPI·임의 지연·타임스탬프)은 쓰지 않고, 실 리스크 데이터로 대체하거나
 // 없으면 "데이터 수집 중"으로 표시(더미 수치 실데이터 행세 금지).
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -29,6 +29,7 @@ import {
   type ClimateForecastQuality,
 } from "@/lib/climate-quality";
 import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
+import { gateEvent, type GateVerdict, type GateTier } from "@/lib/climate-gate";
 
 /* ============================ STYLE ============================ */
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
@@ -187,6 +188,17 @@ function nearRouteCount(e: EventRow, routes: RouteG[], nodes: Record<string, Ass
 }
 
 /* ============================ SMALL UI ============================ */
+const LOGI_BADGE: Record<GateTier, { label: string; cls: string }> = {
+  LINKED_HIGH: { label: "물류 연관", cls: "border-[#fbd5d5] bg-[#fef2f2] text-[#dc2626]" },
+  LINKED_WATCH: { label: "연관 가능", cls: "border-[#fde6c8] bg-[#fff7ed] text-[#b45309]" },
+  LIMITED: { label: "영향 제한적", cls: "border-[#d8dfe9] bg-[#eef1f6] text-[#828d9d]" },
+};
+function logiVerdictText(v: GateVerdict): string {
+  if (v.tier === "LIMITED") return v.nearestAsset ? `최근접 ${v.nearestAsset.name} ~${v.nearestKm}km` : "물류 거점 원거리";
+  const lead = v.linkedAssets[0]?.name ?? "주요 항로 인근";
+  const more = v.linkedAssets.length > 1 ? ` 외 ${v.linkedAssets.length - 1}곳` : "";
+  return `${lead}${more}`;
+}
 function Spark({ vals, color, className }: { vals: number[]; color: string; className?: string }) {
   const rawId = useId();
   const id = "sp" + rawId.replace(/[^a-zA-Z0-9]/g, "");
@@ -578,8 +590,13 @@ function Straits({ rm, chokes, routes }: { rm: RiskMap; chokes: AssetRow[]; rout
   );
 }
 
-function Timeline({ events }: { events: EventRow[] }) {
+function Timeline({ events, assets, routes, nodes }: { events: EventRow[]; assets: AssetRow[]; routes: RouteG[]; nodes: Record<string, AssetRow> }) {
   const [filter, setFilter] = useState<"all" | "r" | "a">("all");
+  const verdicts = useMemo(() => {
+    const m: Record<string, GateVerdict> = {};
+    for (const e of events) m[e.id] = gateEvent(e, assets, routes, nodes);
+    return m;
+  }, [events, assets, routes, nodes]);
   if (events.length === 0) return null;
   // 태풍·폭풍 등 광역 시스템을 상단에 노출(다수의 홍수 경보에 묻히지 않게), 그 뒤 경보>주의 순.
   const kp = (k: string) => (k === "cyclone" ? 3 : k === "storm" ? 2 : 1);
@@ -604,7 +621,18 @@ function Timeline({ events }: { events: EventRow[] }) {
               <span className="lsg-mono text-[11.5px] text-[#828d9d]">{KIND_KO[e.kind] || e.kind || "경보"}</span>
               <span className={`rounded-[6px] px-2 py-[3px] text-center text-[10px] font-bold ${sev === "r" ? "border border-[#fbd5d5] bg-[#fef2f2] text-[#b42318]" : "border border-[#fde6c8] bg-[#fff7ed] text-[#b45309]"}`}>{sev === "r" ? "경보" : "주의"}</span>
               <span className="text-[13px] text-[#1a2433]">{e.url ? <a href={e.url} target="_blank" rel="noopener noreferrer" className="hover:text-[#0d9488]">{e.title}</a> : e.title}{e.area ? <small className="ml-1 font-normal text-[#828d9d]">· {e.area}</small> : null}</span>
-              <span className="text-[11px] text-[#828d9d]">{e.source.toUpperCase()}</span>
+              <span className="flex items-center gap-2 text-[11px] text-[#828d9d]">
+                {(() => {
+                  const v = verdicts[e.id];
+                  const b = LOGI_BADGE[v.tier];
+                  return (
+                    <span className={`inline-flex items-center gap-1 rounded-[6px] border px-2 py-[3px] text-[10px] font-bold ${b.cls}`} title={logiVerdictText(v)}>
+                      {b.label}
+                    </span>
+                  );
+                })()}
+                <span className="whitespace-nowrap">{e.source.toUpperCase()}</span>
+              </span>
             </div>
           );
         })}
@@ -690,7 +718,7 @@ export function LogisightClimate() {
           <RouteMonitor rm={rm} routes={routesG} suez={suezRoute} nodes={nodes} />
           <Impact rm={rm} routes={routesG} events={data.events} nodes={nodes} forecasts={data.forecasts} />
           <Straits rm={rm} chokes={chokes} routes={routesG} />
-          <Timeline events={data.events} />
+          <Timeline events={data.events} assets={data.assets} routes={routesG} nodes={nodes} />
           {data.assets.length === 0 && data.events.length === 0 && (
             <div className={`mt-[26px] px-6 py-16 text-center ${CARD}`}>
               <p className="text-[14px] font-semibold text-[#1a2433]">데이터 수집 중</p>
