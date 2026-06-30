@@ -10,7 +10,6 @@ import { useQuery } from "@tanstack/react-query";
 import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
-import LogisightLoader from "@/components/LogisightLoader";
 import {
   formatPeriod,
   pctChange,
@@ -190,8 +189,9 @@ function buildMonthly(rows: TradeStatRow[]): MonthlyPoint[] {
     return { period, label: `${period.slice(2, 4)}.${period.slice(4, 6)}`, exportUsd, importUsd, balanceUsd: exportUsd - importUsd };
   });
 }
-function useTradeModel(bundle: TradeStatisticsBundle, region: RegionKey, metric: MetricMode) {
+function useTradeModel(bundle: TradeStatisticsBundle | undefined, region: RegionKey, metric: MetricMode) {
   return useMemo(() => {
+    if (!bundle) return null;
     const countries = buildCountryAgg(bundle.country, region, metric);
     const allCountries = buildCountryAgg(bundle.country, "전체", metric);
     const items = buildItemAgg(bundle.item, metric);
@@ -204,7 +204,7 @@ function useTradeModel(bundle: TradeStatisticsBundle, region: RegionKey, metric:
     return { countries, allCountries, items, continents, monthly, snapshot, totalTrade: (snapshot.exportUsd ?? 0) + (snapshot.importUsd ?? 0), totalTradeYoY: snapshot.totalYoY, latestCountryPeriod, latestItemPeriod, totalCountryTrade };
   }, [bundle, region, metric]);
 }
-type TradeModel = ReturnType<typeof useTradeModel>;
+type TradeModel = NonNullable<ReturnType<typeof useTradeModel>>;
 
 const METRIC_KO = ["교역액", "수출액", "수입액", "무역수지"] as const;
 type MetricKo = (typeof METRIC_KO)[number];
@@ -345,12 +345,14 @@ function buildFallbackBrief(model: TradeModel, indexStats: IndexStats[]): TradeB
 }
 
 /* ============================ HERO ============================ */
-function Hero({ snapshot, balanceUsd, latestCountryPeriod }: { snapshot: ProvisionalSnapshot; balanceUsd: number | null; latestCountryPeriod: string | null }) {
-  const pills: { c: string; t: ReactNode }[] = [
-    { c: "#2dd4bf", t: <>기준 <b className="lsg-mono text-[#e9eef7]">{formatPeriod(snapshot.period)}</b> 잠정</> },
-    { c: balanceUsd != null && balanceUsd >= 0 ? "#16a34a" : "#dc2626", t: <>무역수지 <b className="lsg-mono text-[#e9eef7]">{moneyUsd(balanceUsd)}</b> {balanceUsd != null && balanceUsd >= 0 ? "흑자" : "적자"}</> },
-    { c: "#3b82f6", t: <>확정 <b className="lsg-mono text-[#e9eef7]">{formatPeriod(latestCountryPeriod)}</b> · 잠정 <b className="lsg-mono text-[#e9eef7]">{formatPeriod(snapshot.period)}</b></> },
-  ];
+function Hero({ snapshot, balanceUsd, latestCountryPeriod }: { snapshot: ProvisionalSnapshot | null; balanceUsd: number | null; latestCountryPeriod: string | null }) {
+  const pills: { c: string; t: ReactNode }[] = snapshot
+    ? [
+        { c: "#2dd4bf", t: <>기준 <b className="lsg-mono text-[#e9eef7]">{formatPeriod(snapshot.period)}</b> 잠정</> },
+        { c: balanceUsd != null && balanceUsd >= 0 ? "#16a34a" : "#dc2626", t: <>무역수지 <b className="lsg-mono text-[#e9eef7]">{moneyUsd(balanceUsd)}</b> {balanceUsd != null && balanceUsd >= 0 ? "흑자" : "적자"}</> },
+        { c: "#3b82f6", t: <>확정 <b className="lsg-mono text-[#e9eef7]">{formatPeriod(latestCountryPeriod)}</b> · 잠정 <b className="lsg-mono text-[#e9eef7]">{formatPeriod(snapshot.period)}</b></> },
+      ]
+    : [];
   return (
     <section className="relative overflow-hidden bg-[#070b16]">
       <div className="pointer-events-none absolute left-1/2 top-[-120px] h-[500px] w-[900px] -translate-x-1/2" style={{ background: "radial-gradient(50% 60% at 50% 40%,rgba(45,212,191,.10),transparent 70%)" }} />
@@ -366,9 +368,11 @@ function Hero({ snapshot, balanceUsd, latestCountryPeriod }: { snapshot: Provisi
         <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">Trade Intelligence <span className="lsgt-live" /><span className="text-[#34d399]">LIVE</span></span>
         <h1 className="mt-3 text-[clamp(30px,4vw,46px)] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#e9eef7]">무역 동향</h1>
         <p className="mt-3.5 max-w-[640px] text-[15px] leading-[1.6] text-[#93a1b7]">관세청 수출입무역통계를 국가·대륙·품목으로 분해하고, 교역 변화를 <b className="text-[#cbd5e6]">운임·노선 신호</b>와 연결합니다. 확정·잠정 데이터는 명확히 구분합니다.</p>
-        <div className="mt-5 flex flex-wrap gap-2.5">
-          {pills.map((p, i) => <span key={i} className="inline-flex items-center gap-2 rounded-full border border-[#78a0cd1c] bg-[#0e1626] px-[13px] py-[7px] text-[12.5px] text-[#93a1b7]"><span className="h-[7px] w-[7px] rounded-full" style={{ background: p.c }} />{p.t}</span>)}
-        </div>
+        {pills.length > 0 && (
+          <div className="mt-5 flex flex-wrap gap-2.5">
+            {pills.map((p, i) => <span key={i} className="inline-flex items-center gap-2 rounded-full border border-[#78a0cd1c] bg-[#0e1626] px-[13px] py-[7px] text-[12.5px] text-[#93a1b7]"><span className="h-[7px] w-[7px] rounded-full" style={{ background: p.c }} />{p.t}</span>)}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -704,18 +708,125 @@ function TopAndSide({ model }: { model: TradeModel }) {
 }
 
 /* ============================ PAGE ============================ */
-function TradeBody({ bundle, indexStats }: { bundle: TradeStatisticsBundle; indexStats: IndexStats[] }) {
+function TradeSections({ model, indexStats, region, setRegion, metricKo, setMetricKo }: {
+  model: TradeModel;
+  indexStats: IndexStats[];
+  region: RegionKey;
+  setRegion: (r: RegionKey) => void;
+  metricKo: MetricKo;
+  setMetricKo: (m: MetricKo) => void;
+}) {
+  return (
+    <>
+      <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-[12px] border border-[#d8dfe9] bg-[#f4f7fb] px-3.5 py-3 text-[12.5px]">
+        <div className="flex items-center gap-1.5"><span className="text-[11.5px] text-[#828d9d]">목적 권역</span><Seg items={REGIONS} value={region} onChange={setRegion} /></div>
+        <div className="flex items-center gap-1.5"><span className="text-[11.5px] text-[#828d9d]">지표</span><Seg items={METRIC_KO} value={metricKo} onChange={setMetricKo} /></div>
+        <span className="ml-auto text-[11.5px] text-[#828d9d]">확정 {formatPeriod(model.latestCountryPeriod)} · 잠정 {formatPeriod(model.snapshot.period)}</span>
+      </div>
+
+      <BriefBand model={model} indexStats={indexStats} />
+      <Signals model={model} indexStats={indexStats} />
+      <Bridge model={model} indexStats={indexStats} />
+      <FlowCharts model={model} metricKo={metricKo} />
+      <Treemap model={model} metricKo={metricKo} />
+      <TopAndSide model={model} />
+    </>
+  );
+}
+
+/* 로딩/에러/빈 상태 — 셸(헤더·히어로·푸터)은 그대로 두고 이 본문만 교체된다. */
+function TradeLoading() {
+  return (
+    <>
+      <div className="mt-3.5 rounded-[12px] border border-[#d4e6f2] bg-[#eef6fb] px-4 py-[15px] text-[13px] leading-[1.7] text-[#54606f]">
+        <b className="text-[#1a2433]">관세청 수출입무역통계를 불러오고 있습니다.</b>
+        <br />HS 챕터별 수출입액, 무역수지, 주요 국가별 흐름을 집계 중입니다.
+        <br />데이터량이 많아 최대 10~15초 소요될 수 있습니다.
+      </div>
+
+      {/* HS 챕터 / 국가 선택 필터 */}
+      <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-[12px] border border-[#d8dfe9] bg-[#f4f7fb] px-3.5 py-3">
+        <span className="sk h-7 w-[150px]" />
+        <span className="sk h-7 w-[210px]" />
+        <span className="sk ml-auto h-4 w-40" />
+      </div>
+
+      {/* 기준월/업데이트 + 총수출·총수입·무역수지 요약 카드 3개 */}
+      <div className="mt-3.5 rounded-[16px] border border-[#d8dfe9] p-[18px_20px]" style={{ background: "linear-gradient(180deg,#fbfcfe,#f4f7fb)" }}>
+        <span className="sk h-4 w-44" />
+        <div className="mt-3.5 grid grid-cols-1 gap-3 min-[640px]:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="rounded-[12px] border border-[#d8dfe9] bg-white px-3.5 py-[13px]">
+              <span className="sk h-3.5 w-20" />
+              <span className="sk mt-2 h-7 w-32" />
+              <span className="sk mt-2 h-3 w-24" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 수출입 추이 차트 */}
+      <div className="mt-3.5 rounded-[14px] border border-[#d8dfe9] bg-[#f4f7fb] p-[16px_18px]">
+        <span className="sk h-4 w-40" />
+        <span className="sk mt-3 h-[220px] w-full" />
+      </div>
+
+      {/* 주요 교역국 테이블 + HS 챕터별 테이블 */}
+      <div className="mt-3.5 grid grid-cols-1 gap-3.5 min-[980px]:grid-cols-2">
+        {[0, 1].map((i) => (
+          <div key={i} className="rounded-[14px] border border-[#d8dfe9] bg-[#f4f7fb] p-[16px_18px]">
+            <span className="sk h-4 w-32" />
+            {[0, 1, 2, 3, 4, 5].map((j) => <span key={j} className="sk mt-2.5 h-5 w-full" />)}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function TradeError() {
+  return (
+    <div className="mt-3.5 rounded-[14px] border border-[#f1c7c7] bg-[#fef4f4] px-5 py-12 text-center">
+      <div className="text-[15px] font-bold text-[#b42318]">무역 데이터를 불러오지 못했습니다.</div>
+      <p className="mt-2 text-[13px] leading-[1.7] text-[#9a6a6a]">
+        일시적인 네트워크 또는 데이터 API 문제일 수 있습니다.
+        <br />잠시 후 다시 시도해주세요.
+      </p>
+    </div>
+  );
+}
+
+function TradeEmpty() {
+  return (
+    <div className="mt-3.5 rounded-[14px] border border-[#d8dfe9] bg-[#f4f7fb] px-5 py-12 text-center">
+      <div className="text-[14px] font-semibold text-[#1a2433]">해당 조건에 맞는 무역 데이터가 없습니다.</div>
+      <p className="mt-2 text-[13px] leading-[1.6] text-[#828d9d]">기간, 국가, HS 챕터 조건을 변경해 다시 조회해주세요.</p>
+    </div>
+  );
+}
+
+export function LogisightTrade() {
+  // 클라이언트 useQuery — 셸(헤더·히어로·푸터)과 스켈레톤을 즉시 렌더(SSR 포함)하고, 데이터가
+  // 도착하면 본문만 loading → loaded 로 교체한다(셸 재마운트·스크롤 리셋 없음). 번들이 작아 전환이 빠르다.
+  const { data: bundle, isError } = useQuery(tradeStatisticsBundleQueryOptions());
+  const { data: indexStats } = useQuery(indexStatsQueryOptions());
   const [region, setRegion] = useState<RegionKey>("전체");
   const [metricKo, setMetricKo] = useState<MetricKo>("교역액");
   const metric = METRIC_BY_KO[metricKo];
   const model = useTradeModel(bundle, region, metric);
+  const loading = !isError && (!bundle || !indexStats || !model);
+  const empty = !!model && model.countries.length === 0 && model.items.length === 0;
 
   return (
     <div className="lsgt-root min-h-screen bg-[#070b16] text-[#1a2433]">
       <style>{STYLE}</style>
       <HomeNav active="insight" />
       <InsightSubNav />
-      <Hero snapshot={model.snapshot} balanceUsd={model.snapshot.balanceUsd} latestCountryPeriod={model.latestCountryPeriod} />
+      <Hero
+        snapshot={model?.snapshot ?? null}
+        balanceUsd={model?.snapshot.balanceUsd ?? null}
+        latestCountryPeriod={model?.latestCountryPeriod ?? null}
+      />
 
       <div className="relative z-[2] -mt-7 rounded-t-[28px] bg-[#e6eaf1] pb-2.5" style={{ boxShadow: "0 -24px 60px -34px rgba(0,0,0,.7)" }}>
         <div className={WRAP}>
@@ -723,87 +834,26 @@ function TradeBody({ bundle, indexStats }: { bundle: TradeStatisticsBundle; inde
             <Link to="/" className="hover:text-[#0d9488]">홈</Link> <b className="font-medium text-[#54606f]">›</b> 인사이트 <b className="font-medium text-[#54606f]">›</b> 무역
           </div>
 
-          <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-[12px] border border-[#d8dfe9] bg-[#f4f7fb] px-3.5 py-3 text-[12.5px]">
-            <div className="flex items-center gap-1.5"><span className="text-[11.5px] text-[#828d9d]">목적 권역</span><Seg items={REGIONS} value={region} onChange={setRegion} /></div>
-            <div className="flex items-center gap-1.5"><span className="text-[11.5px] text-[#828d9d]">지표</span><Seg items={METRIC_KO} value={metricKo} onChange={setMetricKo} /></div>
-            <span className="ml-auto text-[11.5px] text-[#828d9d]">확정 {formatPeriod(model.latestCountryPeriod)} · 잠정 {formatPeriod(model.snapshot.period)}</span>
-          </div>
-
-          <BriefBand model={model} indexStats={indexStats} />
-          <Signals model={model} indexStats={indexStats} />
-          <Bridge model={model} indexStats={indexStats} />
-          <FlowCharts model={model} metricKo={metricKo} />
-          <Treemap model={model} metricKo={metricKo} />
-          <TopAndSide model={model} />
+          {isError ? (
+            <TradeError />
+          ) : loading ? (
+            <TradeLoading />
+          ) : empty ? (
+            <TradeEmpty />
+          ) : (
+            <TradeSections
+              model={model!}
+              indexStats={indexStats!}
+              region={region}
+              setRegion={setRegion}
+              metricKo={metricKo}
+              setMetricKo={setMetricKo}
+            />
+          )}
         </div>
       </div>
 
       <HomeFooter />
     </div>
-  );
-}
-
-/* 데이터 도착 전 즉시 그려지는 스켈레톤. SSR 이 이 화면을 곧바로 내보내(빠른 TTFB),
-   사용자는 빈 화면 대신 로딩 상태를 본다. 실제 데이터는 클라이언트 useQuery 가 받아
-   TradeBody 로 교체한다. */
-function TradeSkeleton() {
-  return (
-    <div className="lsgt-root min-h-screen bg-[#070b16] text-[#1a2433]">
-      <style>{STYLE}</style>
-      <HomeNav active="insight" />
-      <InsightSubNav />
-      <section className="relative overflow-hidden bg-[#070b16]">
-        <div className={`${WRAP} relative z-[1] pb-[74px] pt-[52px]`}>
-          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">Trade Intelligence <span className="lsgt-live" /><span className="text-[#34d399]">LIVE</span></span>
-          <h1 className="mt-3 text-[clamp(30px,4vw,46px)] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#e9eef7]">무역 동향</h1>
-          <p className="mt-3.5 max-w-[640px] text-[15px] leading-[1.6] text-[#93a1b7]">관세청 수출입무역통계를 불러오고 있습니다. HS 챕터별 수출입액·무역수지·주요 국가별 흐름을 집계 중이며, 데이터량이 많아 최대 10~15초 소요될 수 있습니다.</p>
-        </div>
-      </section>
-
-      <div className="relative z-[2] -mt-7 rounded-t-[28px] bg-[#e6eaf1] pb-2.5" style={{ boxShadow: "0 -24px 60px -34px rgba(0,0,0,.7)" }}>
-        <div className={WRAP}>
-          <div className="mt-3.5 rounded-[16px] border border-[#d8dfe9] p-[18px_20px]" style={{ background: "linear-gradient(180deg,#fbfcfe,#f4f7fb)" }}>
-            <span className="sk h-5 w-full max-w-[520px]" />
-            <span className="sk mt-2 h-4 w-full max-w-[680px]" />
-            <div className="mt-3.5 grid grid-cols-2 gap-3 min-[880px]:grid-cols-4">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="rounded-[12px] border border-[#d8dfe9] bg-white px-3.5 py-[13px]">
-                  <span className="sk h-3.5 w-20" />
-                  <span className="sk mt-2 h-6 w-28" />
-                  <span className="sk mt-2 h-3 w-24" />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="mt-3.5 grid grid-cols-1 gap-3.5 min-[980px]:grid-cols-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className={`p-[16px_17px] ${CARD}`}>
-                <span className="sk h-4 w-24" />
-                <span className="sk mt-3 h-5 w-40" />
-                <span className="sk mt-3 h-16 w-full" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <HomeFooter />
-    </div>
-  );
-}
-
-export function LogisightTrade() {
-  // useSuspenseQuery → useQuery: SSR 을 막지 않는다. 데이터가 없는 동안 스켈레톤을 즉시
-  // 렌더하고, 클라이언트에서 데이터가 도착하면 TradeBody 로 교체한다.
-  const { data: bundle } = useQuery(tradeStatisticsBundleQueryOptions());
-  const { data: indexStats } = useQuery(indexStatsQueryOptions());
-  const loading = !bundle || !indexStats;
-
-  // 데이터 로드가 끝날 때까지 브랜드 로딩 오버레이를 띄우고, 도착하면 페이드아웃.
-  return (
-    <>
-      <LogisightLoader show={loading} />
-      {loading ? <TradeSkeleton /> : <TradeBody bundle={bundle} indexStats={indexStats} />}
-    </>
   );
 }
