@@ -17,6 +17,7 @@ import { Route as RatesRouteImport } from './routes/rates'
 import { Route as RailMapRouteImport } from './routes/rail-map'
 import { Route as RailRouteImport } from './routes/rail'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PortRiskRouteImport } from './routes/port-risk'
 import { Route as PolicyRouteImport } from './routes/policy'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as MethodologyRouteImport } from './routes/methodology'
@@ -83,6 +84,11 @@ const RailRoute = RailRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortRiskRoute = PortRiskRouteImport.update({
+  id: '/port-risk',
+  path: '/port-risk',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PolicyRoute = PolicyRouteImport.update({
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
+  '/port-risk': typeof PortRiskRoute
   '/privacy': typeof PrivacyRoute
   '/rail': typeof RailRouteWithChildren
   '/rail-map': typeof RailMapRoute
@@ -270,6 +277,7 @@ export interface FileRoutesByTo {
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
+  '/port-risk': typeof PortRiskRoute
   '/privacy': typeof PrivacyRoute
   '/rail-map': typeof RailMapRoute
   '/rates': typeof RatesRoute
@@ -307,6 +315,7 @@ export interface FileRoutesById {
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/policy': typeof PolicyRoute
+  '/port-risk': typeof PortRiskRoute
   '/privacy': typeof PrivacyRoute
   '/rail': typeof RailRouteWithChildren
   '/rail-map': typeof RailMapRoute
@@ -346,6 +355,7 @@ export interface FileRouteTypes {
     | '/methodology'
     | '/news'
     | '/policy'
+    | '/port-risk'
     | '/privacy'
     | '/rail'
     | '/rail-map'
@@ -382,6 +392,7 @@ export interface FileRouteTypes {
     | '/methodology'
     | '/news'
     | '/policy'
+    | '/port-risk'
     | '/privacy'
     | '/rail-map'
     | '/rates'
@@ -418,6 +429,7 @@ export interface FileRouteTypes {
     | '/methodology'
     | '/news'
     | '/policy'
+    | '/port-risk'
     | '/privacy'
     | '/rail'
     | '/rail-map'
@@ -456,6 +468,7 @@ export interface RootRouteChildren {
   MethodologyRoute: typeof MethodologyRoute
   NewsRoute: typeof NewsRoute
   PolicyRoute: typeof PolicyRoute
+  PortRiskRoute: typeof PortRiskRoute
   PrivacyRoute: typeof PrivacyRoute
   RailRoute: typeof RailRouteWithChildren
   RailMapRoute: typeof RailMapRoute
@@ -526,6 +539,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/port-risk': {
+      id: '/port-risk'
+      path: '/port-risk'
+      fullPath: '/port-risk'
+      preLoaderRoute: typeof PortRiskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/policy': {
@@ -771,6 +791,7 @@ const rootRouteChildren: RootRouteChildren = {
   MethodologyRoute: MethodologyRoute,
   NewsRoute: NewsRoute,
   PolicyRoute: PolicyRoute,
+  PortRiskRoute: PortRiskRoute,
   PrivacyRoute: PrivacyRoute,
   RailRoute: RailRouteWithChildren,
   RailMapRoute: RailMapRoute,

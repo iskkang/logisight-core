@@ -1,20 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { seoHead } from "@/lib/seo";
-import { policiesQueryOptions } from "@/lib/api/policies";
-import { riskSnapshotQueryOptions } from "@/lib/api/risk";
-import { LogisightPort } from "@/components/port/LogisightPort";
-
+// 옛 URL 보존 — /policy → /port-risk (IA 정리: 메뉴·제목·URL을 "포트 리스크"로 일치).
+// SPA 내비게이션용 라우터 리다이렉트. 외부/직접 진입의 301은 vercel.json redirects가 처리.
 export const Route = createFileRoute("/policy")({
-  loader: ({ context }) => {
-    context.queryClient.ensureQueryData(policiesQueryOptions());
-    context.queryClient.ensureQueryData(riskSnapshotQueryOptions());
+  beforeLoad: () => {
+    throw redirect({ to: "/port-risk" });
   },
-  head: () =>
-    seoHead({
-      title: "포트 리스크 인텔리전스 — Logisight",
-      description: "항만 혼잡, 해상 병목, 초크포인트와 규제 이벤트 리스크 모니터.",
-      path: "/policy",
-    }),
-  component: LogisightPort,
 });

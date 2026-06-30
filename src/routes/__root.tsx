@@ -211,7 +211,7 @@ function RootComponent() {
 const THEME_TOGGLE_PREFIXES = [
   "/rates",
   "/trade",
-  "/policy",
+  "/port-risk",
   "/eurasia",
   "/forecasts",
   "/industries",
@@ -228,6 +228,7 @@ function SiteShell({ children }: { children: React.ReactNode }) {
       "/",
       "/news",
       "/reports",
+      "/port-risk",
       "/policy",
       "/dashboard",
       "/forecasts",

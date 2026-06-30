@@ -9,7 +9,7 @@ const DASH_SUB: Record<string, string> = {
   "/forecasts": "전망",
   "/rates": "운임",
   "/eurasia": "유라시아",
-  "/policy": "포트",
+  "/port-risk": "포트 리스크",
   "/trade": "무역",
   "/industries": "산업",
   "/climate": "기후예측",
