@@ -40,6 +40,7 @@ import { recentRateReports, SERIES_LABEL, type RateReport } from "@/components/f
 import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
 import { StatBadge, isStatLowOceanUsd } from "@/components/ui/StatBadge";
 import { DataMeta } from "@/components/ui/DataMeta";
+import { DATASET_SOURCE, INDEX_SOURCE } from "@/lib/dataSources";
 
 /* ============================ STYLE ============================ */
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
@@ -600,6 +601,7 @@ export function LogisightRates() {
                 </div>
               </div>
             )}
+            <DataMeta className="mt-4 border-t border-[#e6ebf2] pt-3" source={`${mode === "sea" ? DATASET_SOURCE.sea : DATASET_SOURCE.air} · ${INDEX_SOURCE.KCCI}`} cadence="KITA 월간 · KCCI 주간" unit={mode === "sea" ? `$/${metric.toUpperCase()}` : "USD/kg"} method="권역 단순평균 · 52주 분포 백분위 · 전월대비 MoM" />
           </div>
 
           {/* 주목 레인 · 시그널 */}
@@ -625,6 +627,8 @@ export function LogisightRates() {
               })}
             </div>
           )}
+
+          <DataMeta className="mb-3" source={mode === "sea" ? DATASET_SOURCE.sea : DATASET_SOURCE.air} cadence="월간" unit={mode === "sea" ? `$/${metric.toUpperCase()}` : "USD/kg"} method="권역 노선 전월대비 MoM 상위 자동 탐지" />
 
           {/* 추이 + 히트맵 */}
           <div className="mt-[26px] grid grid-cols-1 gap-[18px] min-[1080px]:grid-cols-[1.15fr_1fr]">
@@ -672,6 +676,8 @@ export function LogisightRates() {
             </div>
           </div>
 
+          <DataMeta className="mb-3" source={mode === "sea" ? DATASET_SOURCE.sea : DATASET_SOURCE.air} cadence="월간" unit={mode === "sea" ? `$/${metric.toUpperCase()}` : "USD/kg"} method="권역 중앙값·범위 시계열 · 전월대비 MoM 히트맵" />
+
           {/* 세부 운임 동향 */}
           <div className="mb-3.5 mt-[26px] flex items-center justify-between gap-2.5">
             <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">세부 운임 동향</h2>
@@ -701,6 +707,7 @@ export function LogisightRates() {
               </table>
             )}
             {mode === "air" && fxCaption && <div className="mt-3 text-[11px] text-[#828d9d]">항공 운임은 USD/kg 원본입니다 · ₩ 환산 기준 {fxCaption}</div>}
+            <DataMeta className="mt-3" source={mode === "sea" ? DATASET_SOURCE.sea : DATASET_SOURCE.air} cadence="월간" unit={mode === "sea" ? `USD/${metric.toUpperCase()}` : "USD/kg"} method="노선별 전월·현재·MoM · 최근 1년 분포 위치" />
           </div>
 
           {/* 선사별 실시간 운임 — 해상 전용(실측 파트너 운임) */}
@@ -759,6 +766,7 @@ export function LogisightRates() {
                   </div>
                 </>
               )}
+              <DataMeta className="mt-3.5 border-t border-[#e6ebf2] pt-3" source={[INDEX_SOURCE.SCFI, INDEX_SOURCE.KCCI, INDEX_SOURCE.BDI, INDEX_SOURCE.WCI].join(" · ")} cadence="주간" unit="지수 포인트" method="발표 지수 원본 시계열" />
             </div>
             <div className={`px-[22px] py-5 ${CARD}`}>
               <CardHead title="최근 리포트" chip="운임 전망" />
