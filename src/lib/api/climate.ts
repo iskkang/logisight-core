@@ -2,11 +2,12 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { getClimateRisk } from "./climate.functions";
 
-// 예보 시점 — asset_risk.horizon_days 와 일치. globe-data.js 기준.
-export const HDAYS = [0, 3, 7, 14] as const;
-export const HLBL = ["지금", "+3일", "+7일", "+14일"] as const;
+// 예보 시점 — asset_risk.horizon_days 의 부분집합. 14일은 해상 파고가 장기예보 미제공(모델 한계)이라
+// 표시에서 제외(7일까지만 신뢰 가능한 예보). asset_risk엔 14일 행이 남아 있어도 화면·품질평가는 0/3/7만 사용.
+export const HDAYS = [0, 3, 7] as const;
+export const HLBL = ["지금", "+3일", "+7일"] as const;
 // 예보 신뢰도(표시용) — 승인 비주얼의 HCONF.
-export const HCONF = [90, 84, 76, 66] as const;
+export const HCONF = [90, 84, 76] as const;
 
 export type AssetType = "port" | "choke" | "rail";
 
