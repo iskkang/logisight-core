@@ -196,11 +196,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LogisightLoader show={loading} />
       <SiteShell>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </SiteShell>
+      {/* 로더는 콘텐츠 뒤(DOM 순서)에 배치한다 — position:fixed라 시각적으로는 전체를 덮지만,
+          크롤러·텍스트 추출 기준 첫 본문이 로딩 문구가 아니라 각 페이지의 실제 콘텐츠가 되도록 한다. */}
+      <LogisightLoader show={loading} />
     </QueryClientProvider>
   );
 }

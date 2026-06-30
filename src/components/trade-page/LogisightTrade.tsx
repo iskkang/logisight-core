@@ -756,7 +756,7 @@ function TradeSkeleton() {
         <div className={`${WRAP} relative z-[1] pb-[74px] pt-[52px]`}>
           <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">Trade Intelligence <span className="lsgt-live" /><span className="text-[#34d399]">LIVE</span></span>
           <h1 className="mt-3 text-[clamp(30px,4vw,46px)] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#e9eef7]">무역 동향</h1>
-          <p className="mt-3.5 max-w-[640px] text-[15px] leading-[1.6] text-[#93a1b7]">관세청 수출입무역통계를 불러오는 중입니다…</p>
+          <p className="mt-3.5 max-w-[640px] text-[15px] leading-[1.6] text-[#93a1b7]">관세청 수출입무역통계를 불러오고 있습니다. HS 챕터별 수출입액·무역수지·주요 국가별 흐름을 집계 중이며, 데이터량이 많아 최대 10~15초 소요될 수 있습니다.</p>
         </div>
       </section>
 

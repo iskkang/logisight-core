@@ -204,7 +204,7 @@ function NewsPage() {
                   <h3 className="font-serif-display text-lg font-bold text-[var(--color-navy-900)]">
                     추천 기사
                   </h3>
-                  <ol className="mt-4 space-y-3">
+                  <ol className="mt-4 list-none space-y-3">
                     {mostPopular.map((n, i) => (
                       <li
                         key={n.id}
