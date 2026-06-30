@@ -9,7 +9,7 @@ export const HLBL = ["지금", "+3일", "+7일"] as const;
 // 예보 신뢰도(표시용) — 승인 비주얼의 HCONF.
 export const HCONF = [90, 84, 76] as const;
 
-export type AssetType = "port" | "choke" | "rail";
+export type AssetType = "port" | "choke" | "rail" | "inland";
 
 export type AssetRow = {
   id: string;
