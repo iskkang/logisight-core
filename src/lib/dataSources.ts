@@ -32,4 +32,7 @@ export const DATASET_SOURCE = {
   sea: "KITA 해상운임",
   fx: "하나은행 고시환율",
   jetFuel: "IATA / Platts",
+  // 코드 추적으로 확인(risk.functions): 호르무즈·Persian Gulf·해협 통항 = Shipfinder, 글로벌 TEU = EconDB.
+  shipfinder: "Shipfinder",
+  econdb: "EconDB",
 } as const;

@@ -9,6 +9,8 @@ import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
 import { CargoImpactPanel } from "@/components/port/CargoImpactPanel";
 import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
+import { DataMeta } from "@/components/ui/DataMeta";
+import { DATASET_SOURCE } from "@/lib/dataSources";
 import { policiesQueryOptions } from "@/lib/api/policies";
 import {
   riskSnapshotQueryOptions,
@@ -284,6 +286,7 @@ export function LogisightPort() {
                 })}
               </div>
             )}
+            <DataMeta className="mt-3" source={DATASET_SOURCE.shipfinder} cadence="일간" unit="TEU" method="해협별 방향 통과 TEU · 통항 추이" />
           </Sect>
 
           {/* Hormuz row */}
@@ -291,6 +294,7 @@ export function LogisightPort() {
             <div className="grid grid-cols-1 items-start gap-[18px] min-[1080px]:grid-cols-2">
               <div className={`p-[22px] ${CARD}`}>
                 <div><div className="text-[16px] font-bold text-[#1a2433]">호르무즈 상황판</div><div className="mt-[3px] text-[12px] text-[#828d9d]">Persian Gulf 선박 수와 Strait of Hormuz 일별 통항 상세</div></div>
+                <DataMeta className="mt-2" source={DATASET_SOURCE.shipfinder} cadence="일간" unit="척" method="Persian Gulf 선박 수 · Strait of Hormuz 통항" />
                 <div className="my-[18px] grid grid-cols-1 gap-x-[18px] gap-y-3.5 min-[640px]:grid-cols-2">
                   <div><div className="text-[11px] text-[#828d9d]">Gulf 선박 수</div><div className="mt-[3px] lsg-mono text-[19px] font-bold text-[#0d9488]">{fmtNum(hormuz.gulfShipCount)}</div><div className="mt-0.5 lsg-mono text-[11px] text-[#828d9d]">7일 변화 {fmtPct(hormuz.gulfShipWowPct)}</div></div>
                   <div><div className="text-[11px] text-[#828d9d]">통항 기준일</div><div className="mt-[3px] lsg-mono text-[19px] font-bold text-[#1a2433]">{hormuz.crossingDate}</div><div className="mt-0.5 lsg-mono text-[11px] text-[#828d9d]">{hormuz.crossingCount}척 · DWT {fmtNum(hormuz.totalDwt)}</div></div>
