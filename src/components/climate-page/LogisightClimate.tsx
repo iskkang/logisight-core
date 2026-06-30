@@ -407,27 +407,25 @@ function RouteMonitor({ rm, routes, suez, nodes }: { rm: RiskMap; routes: RouteG
 }
 
 /* ===== published climate forecast(AI 분석) — read만, 카드 보강 ===== */
-// metric_ref='climate:<route>:<event>:<via>' → route id
+// metric_ref='climate:<route>:<event>:<via>' → route id. (이벤트 중심 'climate:event:<id>'는 route가 아님 → 제외)
 function fcRouteId(ref: string | null): string | null {
   if (!ref) return null;
   const p = ref.split(":");
-  return p[0] === "climate" && p[1] ? p[1] : null;
+  return p[0] === "climate" && p[1] && p[1] !== "event" ? p[1] : null;
 }
 // basis "걸린 관문: 미야코해협 · 100km · …" → 관문명
 function fcVia(basis: string[] | null): string | null {
   const line = (basis || []).find((b) => b.startsWith("걸린 관문:"));
   return line ? line.replace("걸린 관문:", "").split("·")[0].trim() || null : null;
 }
-// statement "[기상 리스크 변화]\n…\n\n[영향]\n…" → {weather, impact}
+// statement "[기상 리스크 변화]\n…\n\n[영향]\n…" → {weather, impact}.
+// 선행 헤더는 종류별로 다름([기상 리스크 변화]·[지진 상황]·[쓰나미 상황] 등) → 한 개를 통째로 제거.
 function fcSections(statement: string): { weather: string; impact: string } {
-  const W = "[기상 리스크 변화]", I = "[영향]";
+  const I = "[영향]";
   const ii = statement.indexOf(I);
-  if (ii < 0) return { weather: statement.replace(W, "").trim(), impact: "" };
-  const wi = statement.indexOf(W);
-  return {
-    weather: statement.slice(wi >= 0 ? wi + W.length : 0, ii).trim(),
-    impact: statement.slice(ii + I.length).trim(),
-  };
+  const head = ii < 0 ? statement : statement.slice(0, ii);
+  const weather = head.replace(/^\s*\[[^\]]*\]\s*/, "").trim();
+  return { weather, impact: ii < 0 ? "" : statement.slice(ii + I.length).trim() };
 }
 function fcAction(note: string | null): string {
   return (note || "").replace("[권장 행동]", "").trim();
