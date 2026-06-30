@@ -85,7 +85,7 @@ function NewsPage() {
         onPeriodChange={setPeriod}
         pick={pick}
         pickLoading={false}
-        noteText="최신 수집 기사 중 대표 헤드라인을 자동 노출합니다. 지표 기반 큐레이션은 백로그입니다."
+        noteText="최신 수집 기사 중 대표 헤드라인을 자동으로 선별해 보여줍니다."
         renderPickLink={(_p, children, className) =>
           featured && isInternalNewsItem(featured) ? (
             <Link
@@ -202,7 +202,7 @@ function NewsPage() {
                 {/* Most Popular */}
                 <aside className="mt-8 border-t-[3px] border-[var(--color-navy-900)] pt-4">
                   <h3 className="font-serif-display text-lg font-bold text-[var(--color-navy-900)]">
-                    Most Popular · 많이 본 기사
+                    추천 기사
                   </h3>
                   <ol className="mt-4 space-y-3">
                     {mostPopular.map((n, i) => (

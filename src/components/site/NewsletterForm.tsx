@@ -118,7 +118,7 @@ export function NewsletterForm({ compact = false }: { compact?: boolean }) {
           </button>
         </div>
         <p className="mt-2 text-xs text-white/50">
-          주 2~3회 발송되며, 언제든 구독을 해지할 수 있습니다.
+          주 1회 발송되며, 언제든 구독을 해지할 수 있습니다.
         </p>
       </form>
 
@@ -127,7 +127,7 @@ export function NewsletterForm({ compact = false }: { compact?: boolean }) {
           <DialogHeader>
             <DialogTitle className="text-[var(--color-ink)]">뉴스레터 구독</DialogTitle>
             <DialogDescription className="text-[var(--color-ink-muted)]">
-              주 2~3회 물류 인텔리전스 브리핑을 보내드립니다. 이름·회사명을 남겨주시면 더 맞춤화해 드립니다.
+              주 1회 물류 인텔리전스 브리핑을 보내드립니다. 이름·회사명을 남겨주시면 더 맞춤화해 드립니다.
             </DialogDescription>
           </DialogHeader>
 

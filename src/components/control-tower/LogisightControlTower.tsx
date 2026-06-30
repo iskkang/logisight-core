@@ -36,6 +36,7 @@ import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
 import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
+import { StatBadge, isStatLowOceanUsd } from "@/components/ui/StatBadge";
 
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
 const CARD = "rounded-[14px] border border-[#d8dfe9] bg-[#f4f7fb] shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
@@ -388,7 +389,7 @@ function JudgmentPanel({ forecasts, seriesMap, stats, selectedMetric }: {
 }
 
 /* ============================ ROUTE MONITOR ============================ */
-function RouteMonitor({ title, icon, rows }: { title: string; icon: string; rows: { label: string; price: string; mom: number | null; asOf: string | null; values: number[] }[] }) {
+function RouteMonitor({ title, icon, rows }: { title: string; icon: string; rows: { label: string; price: string; mom: number | null; asOf: string | null; values: number[]; lowStat?: boolean }[] }) {
   return (
     <div className={`p-[22px] ${CARD}`}>
       <div className="mb-3.5 flex items-center justify-between"><h3 className="text-[16px] font-bold text-[#1a2433]">{title}</h3><Link to="/rates" className="rounded-[7px] border border-[#d8dfe9] bg-white px-[11px] py-[5px] text-[12px] text-[#828d9d] transition-colors hover:border-[#0d9488] hover:text-[#0d9488]">더보기</Link></div>
@@ -399,7 +400,7 @@ function RouteMonitor({ title, icon, rows }: { title: string; icon: string; rows
           {rows.map((r, i) => (
             <div key={i} className="rounded-[12px] border border-[#d8dfe9] bg-white p-3.5 transition-[transform,border-color] duration-200 hover:-translate-y-0.5 hover:border-[#c8d2df]">
               <div className="mb-2 overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] font-medium text-[#54606f]">{icon} {r.label}</div>
-              <div className="lsg-mono text-[16px] font-bold text-[#1a2433]">{r.price}</div>
+              <div className="lsg-mono text-[16px] font-bold text-[#1a2433]">{r.price}{r.lowStat && <StatBadge kind="stat" />}</div>
               <div className={`mt-[3px] lsg-mono text-[11px] ${trendColor(r.mom)}`}>{trendSym(r.mom)} {pctText(r.mom)}</div>
               {r.values.slice(-8).length > 1 && <Spark vals={r.values.slice(-8)} color={(r.mom ?? 0) < 0 ? "#dc2626" : "#16a34a"} className="mt-2 block h-[34px] w-full" />}
               <div className="mt-1 lsg-mono text-[10px] text-[#828d9d]">{yyyymmLabel(r.asOf)}</div>
@@ -577,7 +578,7 @@ export function LogisightControlTower() {
     { c: "bg-[#3b82f6]", label: "기준일", value: today },
   ];
 
-  const seaMonitorRows = laneRows.filter((r) => r.lane.mode === "ocean" && r.value != null).slice(0, 4).map((r) => ({ label: `${r.lane.origin} → ${r.lane.dest}`, price: r.value ?? "—", mom: r.mom, asOf: r.asOf, values: r.values }));
+  const seaMonitorRows = laneRows.filter((r) => r.lane.mode === "ocean" && r.value != null).slice(0, 4).map((r) => ({ label: `${r.lane.origin} → ${r.lane.dest}`, price: r.value ?? "—", mom: r.mom, asOf: r.asOf, values: r.values, lowStat: isStatLowOceanUsd(r.values.at(-1)) }));
   const airMonitorRows = airRows.map((r) => ({ label: `${r.origin} → ${r.dest}`, price: r.value ?? "—", mom: r.mom, asOf: r.asOf, values: r.values }));
 
   return (
