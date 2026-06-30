@@ -81,11 +81,9 @@ export function IndexBar({ items }: { items?: Item[] }) {
             <TickerItem key={it.code + "-" + i} it={it} last={i === resolved.length - 1} />
           ))}
         </ul>
-        {asOf && (
-          <span className="ml-auto whitespace-nowrap pl-4 text-[11.5px] text-[var(--color-ink-muted)]">
-            기준일 {asOf} (KST)
-          </span>
-        )}
+        <span className="ml-auto whitespace-nowrap pl-4 text-[11.5px] text-[var(--color-ink-muted)]">
+          {asOf ? `기준일 ${asOf} (KST) · ` : ""}출처 각 지수 발표기관(SSE·KOBC·Drewry·NYSHEX 등)
+        </span>
       </div>
     </div>
   );
