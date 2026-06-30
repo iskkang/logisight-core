@@ -53,8 +53,8 @@ type TrackHorizonPosition = {
 
 const MONO = '600 10px "JetBrains Mono", ui-monospace, monospace';
 const KIND_LABEL: Record<string, string> = { cyclone: "태풍", storm: "폭풍", flood: "홍수", snow: "폭설", earthquake: "지진", tsunami: "쓰나미", other: "경보" };
-const TYPE_KO: Record<AssetType, string> = { port: "항만", choke: "초크포인트", rail: "철도" };
-const TYPE_BADGE: Record<AssetType, string> = { port: "항만", choke: "관문", rail: "철도" };
+const TYPE_KO: Record<AssetType, string> = { port: "항만", choke: "초크포인트", rail: "철도", inland: "내륙거점" };
+const TYPE_BADGE: Record<AssetType, string> = { port: "항만", choke: "관문", rail: "철도", inland: "내륙" };
 
 const level = (r: number) => (r >= 60 ? "r" : r >= 30 ? "a" : "g");
 const levelKo = (c: string) => (c === "r" ? "경보" : c === "a" ? "주의" : "정상");
@@ -435,6 +435,11 @@ export function RiskGlobe({ data, forecastQuality }: { data: ClimateRiskData; fo
         } else if (n.type === "rail") {
           const sq = seld ? 5 : 3.6;
           ctx.beginPath(); ctx.rect(p[0] - sq, p[1] - sq, 2 * sq, 2 * sq);
+          ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = "rgba(7,15,28,.7)"; ctx.stroke();
+          if (seld) label(n.name, p[0], p[1] - 9);
+        } else if (n.type === "inland") {
+          const t = seld ? 6 : 4.4;
+          ctx.beginPath(); ctx.moveTo(p[0], p[1] - t); ctx.lineTo(p[0] + t, p[1] + t); ctx.lineTo(p[0] - t, p[1] + t); ctx.closePath();
           ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = "rgba(7,15,28,.7)"; ctx.stroke();
           if (seld) label(n.name, p[0], p[1] - 9);
         } else {

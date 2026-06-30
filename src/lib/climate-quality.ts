@@ -65,7 +65,10 @@ function latestRiskUpdatedAt(rows: RiskRow[]): { updatedAt: string | null; updat
 
 export function buildClimateForecastQuality(data: ClimateRiskData, nowMs = Date.now()): ClimateForecastQuality {
   const maritimeIds = new Set(data.assets.filter((a) => a.type === "port" || a.type === "choke").map((a) => a.id));
-  const expectedRows = data.assets.length;
+  // inland 자산은 risk 잡이 채점하기 전까지 expectedRows에서 제외 — 신규 자산이 "일부 자산 누락(warn)"을
+  // 유발하지 않게. risk 행이 생기면 자동으로 포함된다.
+  const riskAssetIds = new Set(data.risk.map((r) => r.asset_id));
+  const expectedRows = data.assets.filter((a) => a.type !== "inland" || riskAssetIds.has(a.id)).length;
   const riskByHorizon = new Map<number, RiskRow[]>();
   for (const row of data.risk) {
     const list = riskByHorizon.get(row.horizon_days) ?? [];

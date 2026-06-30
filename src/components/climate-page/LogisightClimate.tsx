@@ -2,7 +2,7 @@
 // 핵심 지구본은 기존 실데이터 컴포넌트(RiskGlobe: assets/asset_risk/routes/events)를 재사용한다.
 // 샘플의 합성 기상(SPOTS·하드코딩 KPI·임의 지연·타임스탬프)은 쓰지 않고, 실 리스크 데이터로 대체하거나
 // 없으면 "데이터 수집 중"으로 표시(더미 수치 실데이터 행세 금지).
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -29,6 +29,7 @@ import {
   type ClimateForecastQuality,
 } from "@/lib/climate-quality";
 import { GeoArticleSchema } from "@/components/geo/GeoArticleSchema";
+import { gateEvent, type GateVerdict, type GateTier } from "@/lib/climate-gate";
 
 /* ============================ STYLE ============================ */
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
@@ -187,6 +188,17 @@ function nearRouteCount(e: EventRow, routes: RouteG[], nodes: Record<string, Ass
 }
 
 /* ============================ SMALL UI ============================ */
+const LOGI_BADGE: Record<GateTier, { label: string; cls: string }> = {
+  LINKED_HIGH: { label: "물류 연관", cls: "border-[#fbd5d5] bg-[#fef2f2] text-[#dc2626]" },
+  LINKED_WATCH: { label: "연관 가능", cls: "border-[#fde6c8] bg-[#fff7ed] text-[#b45309]" },
+  LIMITED: { label: "영향 제한적", cls: "border-[#d8dfe9] bg-[#eef1f6] text-[#828d9d]" },
+};
+function logiVerdictText(v: GateVerdict): string {
+  if (v.tier === "LIMITED") return v.nearestAsset ? `최근접 ${v.nearestAsset.name} ~${v.nearestKm}km` : "물류 거점 원거리";
+  const lead = v.linkedAssets[0]?.name ?? (v.linkedRoutes[0] ? `${v.linkedRoutes[0].name} 항로 인근` : "주요 항로 인근");
+  const more = v.linkedAssets.length > 1 ? ` 외 ${v.linkedAssets.length - 1}곳` : "";
+  return `${lead}${more}`;
+}
 function Spark({ vals, color, className }: { vals: number[]; color: string; className?: string }) {
   const rawId = useId();
   const id = "sp" + rawId.replace(/[^a-zA-Z0-9]/g, "");
@@ -516,6 +528,54 @@ function Impact({ rm, routes, events, nodes, forecasts }: { rm: RiskMap; routes:
   );
 }
 
+// 관측 경보 → 물류 영향. 게이트가 LINKED인 이벤트만 카드화(LIMITED은 타임라인 배지가 담당).
+// published 이벤트 forecast(metric_ref='climate:event:<id>')가 있으면 AI 3단 서술을 RouteForecast로 표시.
+function RegionImpact({ events, assets, routes, nodes, forecasts }: { events: EventRow[]; assets: AssetRow[]; routes: RouteG[]; nodes: Record<string, AssetRow>; forecasts: ClimateForecastRow[] }) {
+  const fcByEvent: Record<string, ClimateForecastRow> = {};
+  const PFX = "climate:event:";
+  for (const f of forecasts) {
+    const ref = f.metric_ref ?? "";
+    if (ref.startsWith(PFX)) { const eid = ref.slice(PFX.length); if (eid && !fcByEvent[eid]) fcByEvent[eid] = f; }
+  }
+  const linked = events
+    .map((e) => ({ e, v: gateEvent(e, assets, routes, nodes), fc: fcByEvent[e.id] ?? null }))
+    .filter((x) => x.v.tier !== "LIMITED")
+    .sort((a, b) => (a.v.tier === "LINKED_HIGH" ? 0 : 1) - (b.v.tier === "LINKED_HIGH" ? 0 : 1) || (a.v.nearestKm ?? 1e9) - (b.v.nearestKm ?? 1e9))
+    .slice(0, 6);
+  if (linked.length === 0) return null;
+  return (
+    <>
+      <div className="mb-3.5 mt-[26px] flex items-center justify-between gap-2.5"><h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">지역 경보 → 물류 영향</h2><span className={CHIP}>관측 경보 · 물류 거점 근접</span></div>
+      <div className="grid grid-cols-1 gap-3.5 min-[1080px]:grid-cols-2">
+        {linked.map(({ e, v, fc }) => {
+          const b = LOGI_BADGE[v.tier];
+          const sev: Lv = e.severity === "r" ? "r" : "a";
+          return (
+            <div key={e.id} className={`p-[18px] ${CARD}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[14px] font-extrabold text-[#1a2433]">{eventName(e)}</span>
+                <span className={`inline-flex items-center gap-1 rounded-[6px] border px-2 py-[3px] text-[10px] font-bold ${b.cls}`}>{b.label}</span>
+                <Badge c={sev}>{KIND_KO[e.kind] || e.kind}</Badge>
+              </div>
+              <div className="mt-2 text-[12px] leading-[1.5] text-[#54606f]">
+                {e.area ? <><b className="font-bold text-[#1a2433]">{e.area}</b> · </> : null}{e.source.toUpperCase()} · {logiVerdictText(v)}
+              </div>
+              {v.linkedAssets.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {v.linkedAssets.slice(0, 4).map((la) => (
+                    <span key={la.id} className="rounded-[6px] border border-[#d8dfe9] bg-[#eef1f6] px-2 py-[3px] text-[11px] text-[#54606f] lsg-mono">{la.name} ~{la.km}km</span>
+                  ))}
+                </div>
+              )}
+              {fc ? <RouteForecast fc={fc} /> : <div className="mt-3 rounded-[8px] border border-[#e6ebf2] bg-[#f6f8fb] px-3 py-2 text-[11.5px] text-[#828d9d]">AI 영향 분석 검수 중 — 발행되면 여기에 표시됩니다.</div>}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 // 최상단 CRITICAL 배너 — 심각 이벤트(태풍 등)가 노선 인근(≤1000km)에 있을 때. 문구는 '접근/위협'.
 function CriticalBanner({ events, routes, nodes }: { events: EventRow[]; routes: RouteG[]; nodes: Record<string, AssetRow> }) {
   const [closedId, setClosed] = useState<string | null>(null);
@@ -578,8 +638,13 @@ function Straits({ rm, chokes, routes }: { rm: RiskMap; chokes: AssetRow[]; rout
   );
 }
 
-function Timeline({ events }: { events: EventRow[] }) {
+function Timeline({ events, assets, routes, nodes }: { events: EventRow[]; assets: AssetRow[]; routes: RouteG[]; nodes: Record<string, AssetRow> }) {
   const [filter, setFilter] = useState<"all" | "r" | "a">("all");
+  const verdicts = useMemo(() => {
+    const m: Record<string, GateVerdict> = {};
+    for (const e of events) m[e.id] = gateEvent(e, assets, routes, nodes);
+    return m;
+  }, [events, assets, routes, nodes]);
   if (events.length === 0) return null;
   // 태풍·폭풍 등 광역 시스템을 상단에 노출(다수의 홍수 경보에 묻히지 않게), 그 뒤 경보>주의 순.
   const kp = (k: string) => (k === "cyclone" ? 3 : k === "storm" ? 2 : 1);
@@ -599,12 +664,20 @@ function Timeline({ events }: { events: EventRow[] }) {
           <div className="px-[18px] py-6 text-center text-[12.5px] text-[#828d9d]">해당 등급의 활성 이벤트가 없습니다.</div>
         ) : shown.map((e, i) => {
           const sev: Lv = e.severity === "r" ? "r" : "a";
+          const v = verdicts[e.id];
+          if (!v) return null; // 모든 행은 verdicts에 키가 있으나 방어적 가드
+          const b = LOGI_BADGE[v.tier];
           return (
             <div key={e.id ?? i} className="grid grid-cols-1 items-center gap-3 border-t border-[#e6ebf2] px-[18px] py-3 min-[640px]:grid-cols-[90px_70px_1fr_auto]">
               <span className="lsg-mono text-[11.5px] text-[#828d9d]">{KIND_KO[e.kind] || e.kind || "경보"}</span>
               <span className={`rounded-[6px] px-2 py-[3px] text-center text-[10px] font-bold ${sev === "r" ? "border border-[#fbd5d5] bg-[#fef2f2] text-[#b42318]" : "border border-[#fde6c8] bg-[#fff7ed] text-[#b45309]"}`}>{sev === "r" ? "경보" : "주의"}</span>
               <span className="text-[13px] text-[#1a2433]">{e.url ? <a href={e.url} target="_blank" rel="noopener noreferrer" className="hover:text-[#0d9488]">{e.title}</a> : e.title}{e.area ? <small className="ml-1 font-normal text-[#828d9d]">· {e.area}</small> : null}</span>
-              <span className="text-[11px] text-[#828d9d]">{e.source.toUpperCase()}</span>
+              <span className="flex items-center gap-2 text-[11px] text-[#828d9d]">
+                <span className={`inline-flex items-center gap-1 rounded-[6px] border px-2 py-[3px] text-[10px] font-bold ${b.cls}`} title={logiVerdictText(v)}>
+                  {b.label}
+                </span>
+                <span className="whitespace-nowrap">{e.source.toUpperCase()}</span>
+              </span>
             </div>
           );
         })}
@@ -689,8 +762,9 @@ export function LogisightClimate() {
           <ForecastQualityPanel quality={forecastQuality} />
           <RouteMonitor rm={rm} routes={routesG} suez={suezRoute} nodes={nodes} />
           <Impact rm={rm} routes={routesG} events={data.events} nodes={nodes} forecasts={data.forecasts} />
+          <RegionImpact events={data.events} assets={data.assets} routes={routesG} nodes={nodes} forecasts={data.forecasts} />
           <Straits rm={rm} chokes={chokes} routes={routesG} />
-          <Timeline events={data.events} />
+          <Timeline events={data.events} assets={data.assets} routes={routesG} nodes={nodes} />
           {data.assets.length === 0 && data.events.length === 0 && (
             <div className={`mt-[26px] px-6 py-16 text-center ${CARD}`}>
               <p className="text-[14px] font-semibold text-[#1a2433]">데이터 수집 중</p>
