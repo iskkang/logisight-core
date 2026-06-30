@@ -291,7 +291,7 @@ export function EurasiaStatisticsPanel() {
                 const yoy = yoyOf(r.currentTeu, r.previousTeu);
                 const on = r.routeId === selectedId;
                 return (
-                  <tr key={r.routeId} onClick={() => setSelectedId(r.routeId)} className={`cursor-pointer border-b border-[#eef2f7] last:border-0 ${on ? "bg-[#eaf1ff]" : "hover:bg-[#f6f9fc]"}`}>
+                  <tr key={r.routeId} role="button" tabIndex={0} aria-pressed={on} aria-label={`${r.fromName} → ${r.toName} 라우트 선택`} onClick={() => setSelectedId(r.routeId)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedId(r.routeId); } }} className={`cursor-pointer border-b border-[#eef2f7] last:border-0 ${on ? "bg-[#eaf1ff]" : "hover:bg-[#f6f9fc]"}`}>
                     <td className="py-2.5 pr-4 font-medium">{flagEmoji(r.fromId)} {r.fromName}</td>
                     <td className="py-2.5 pr-4">{flagEmoji(r.toId)} {r.toName}</td>
                     <td className="py-2.5 pr-4 text-right tabular-nums">{fmt(r.currentTeu)}</td>

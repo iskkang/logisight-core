@@ -434,6 +434,17 @@
     transition: color 150ms ease, background-color 150ms ease,
       border-color 150ms ease, opacity 150ms ease, transform 150ms ease;
   }
+
+  /* Accessibility: visible keyboard-focus baseline. Restore an outline for
+     keyboard users on every focusable element — including the bespoke
+     role="button" cards/rows on the insight pages, which carry no focus style
+     of their own. shadcn primitives set focus-visible:outline-none + their own
+     ring in the utilities layer, which wins over this base rule (no doubling).
+     :focus-visible only triggers on keyboard focus, so mouse clicks are unaffected. */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
 }
 
 @layer utilities {

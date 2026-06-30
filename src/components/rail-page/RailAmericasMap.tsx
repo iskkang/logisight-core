@@ -84,6 +84,14 @@ export function RailAmericasMap() {
         center: [-101, 43.5],
         zoom: 3.1,
         attributionControl: false,
+        // 페이지 세로 스크롤이 지도에 흡수되지 않도록 협조적 제스처 사용.
+        // 데스크톱은 ⌘/Ctrl+스크롤, 모바일은 두 손가락일 때만 지도를 조작한다.
+        cooperativeGestures: true,
+        locale: {
+          "CooperativeGesturesHandler.WindowsHelpText": "Ctrl + 스크롤로 지도를 확대/축소합니다",
+          "CooperativeGesturesHandler.MacHelpText": "⌘ + 스크롤로 지도를 확대/축소합니다",
+          "CooperativeGesturesHandler.MobileHelpText": "두 손가락으로 지도를 움직입니다",
+        },
       });
       mapRef.current = map;
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), "top-right");

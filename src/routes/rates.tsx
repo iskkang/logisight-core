@@ -4,7 +4,6 @@ import { seoHead } from "@/lib/seo";
 import { LogisightRates } from "@/components/rates-page/LogisightRates";
 import {
   freightIndicesHistoryQueryOptions,
-  bunkerPricesQueryOptions,
   kitaAirRatesQueryOptions,
   kitaSeaRatesQueryOptions,
   indexStatsQueryOptions,
@@ -18,7 +17,6 @@ export const Route = createFileRoute("/rates")({
   loader: async ({ context }) => {
     await Promise.all([
       context.queryClient.ensureQueryData(freightIndicesHistoryQueryOptions()),
-      context.queryClient.ensureQueryData(bunkerPricesQueryOptions()),
       context.queryClient.ensureQueryData(kitaAirRatesQueryOptions()),
       context.queryClient.ensureQueryData(kitaSeaRatesQueryOptions()),
       context.queryClient.ensureQueryData(latestExchangeRateQueryOptions()),
