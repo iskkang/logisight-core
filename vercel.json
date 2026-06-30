@@ -1,5 +1,8 @@
 {
   "crons": [
     { "path": "/api/cron/indexnow", "schedule": "0 6 * * *" }
+  ],
+  "redirects": [
+    { "source": "/policy", "destination": "/port-risk", "statusCode": 301 }
   ]
 }

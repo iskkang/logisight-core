@@ -437,10 +437,10 @@ function Body() {
   );
 }
 
-const INSIGHTS: { em: string; k: string; h: string; p: string; to: "/trade" | "/industries" | "/policy" }[] = [
+const INSIGHTS: { em: string; k: string; h: string; p: string; to: "/trade" | "/industries" | "/port-risk" }[] = [
   { em: "↗", k: "무역 인사이트", h: "HS 챕터별 수출입 동향", p: "관세청 통계 기준 월간 갱신", to: "/trade" },
   { em: "🏭", k: "산업 인사이트", h: "주요 산업별 물동량 · 운임 동향", p: "업종별 데이터 기반 분석", to: "/industries" },
-  { em: "⚠️", k: "리스크 인사이트", h: "주요 항만 disruption 이벤트 추적", p: "실시간 신호등 모니터링", to: "/policy" },
+  { em: "⚠️", k: "리스크 인사이트", h: "주요 항만 disruption 이벤트 추적", p: "실시간 신호등 모니터링", to: "/port-risk" },
 ];
 
 function Insight() {

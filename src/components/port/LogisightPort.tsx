@@ -204,7 +204,7 @@ export function LogisightPort() {
               headline: "포트 리스크 인텔리전스 — 항만·초크포인트·규제 모니터",
               description:
                 "항만 혼잡·해상 병목·주요 해협·규제 이벤트 리스크를 한 화면에서 모니터링하는 대시보드.",
-              path: "/policy",
+              path: "/port-risk",
               datePublished: geo.refDate,
               dateModified: geo.refDate,
             }}

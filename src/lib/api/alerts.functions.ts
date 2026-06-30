@@ -119,7 +119,7 @@ export const getAlertCandidates = createServerFn({ method: "GET" }).handler(
         title: p.title_ko,
         sub: `시행 D−${daysUntil}`,
         source: "policy",
-        deepLink: "/policy",
+        deepLink: "/port-risk",
         asOf: today,
       });
     }
