@@ -407,6 +407,8 @@
 
   html {
     font-family: var(--font-sans);
+    /* body와 동일 배경 고정 — 렌더 공백 구간에 흰 화면이 새지 않도록 방어 */
+    background-color: var(--color-background);
   }
 
   body {
