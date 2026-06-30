@@ -152,10 +152,15 @@ function Hero() {
         <div className="max-w-[660px] pt-14 pb-16 min-[620px]:pt-[84px] min-[620px]:pb-24">
           <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">Logistics Intelligence Platform</span>
           <h1 className="mt-[18px] text-[clamp(38px,5.4vw,62px)] font-extrabold leading-[1.04] tracking-[-0.035em] text-[#e9eef7]">물류를 읽는<br /><span className="text-[#2dd4bf]">새로운 시선</span></h1>
-          <p className="mt-[22px] max-w-[520px] text-[17px] leading-[1.6] text-[#93a1b7]">운임 지수, 교역 흐름, 정책 변화 동향을 한 화면에서 분석하세요.<br />흩어진 데이터를 구조화해 빠르게 판단할 인텔리전스를 제공합니다.</p>
-          <div className="mt-[34px] flex flex-wrap gap-3">
-            <Link to="/forecasts" search={{ dir: [], series: [] }} className="rounded-[9px] bg-[#2dd4bf] px-[22px] py-[13px] text-[14.5px] font-semibold text-[#04231f] transition-transform hover:-translate-y-px" style={{ boxShadow: "0 8px 28px -10px rgba(45,212,191,.6)" }}>이번 주 분석 보기</Link>
-            <Link to="/rates" className="rounded-[9px] border border-[#78a0cd33] bg-white/5 px-[22px] py-[13px] text-[14.5px] font-semibold text-[#e9eef7] transition-transform hover:-translate-y-px hover:bg-white/10">운임 대시보드 →</Link>
+          <p className="mt-[22px] max-w-[520px] text-[17px] leading-[1.6] text-[#93a1b7]">한국발 해상·항공·유라시아 운임 변화를 매주 추적합니다.<br />화주·포워더의 운임 협상·선적 판단을 보조하는 인텔리전스를 제공합니다.</p>
+          {/* CTA 2갈래 — ① 구독(주간 리포트) ② 영업문의(MTL 운송문의). 데이터 탐색은 보조 링크. */}
+          <div className="mt-[34px] flex flex-wrap items-center gap-3">
+            <a href="#newsletter" className="rounded-[9px] bg-[#2dd4bf] px-[22px] py-[13px] text-[14.5px] font-semibold text-[#04231f] transition-transform hover:-translate-y-px" style={{ boxShadow: "0 8px 28px -10px rgba(45,212,191,.6)" }}>주간 리포트 구독</a>
+            <a href="mailto:sales@mtlship.com" className="rounded-[9px] border border-[#78a0cd33] bg-white/5 px-[22px] py-[13px] text-[14.5px] font-semibold text-[#e9eef7] transition-transform hover:-translate-y-px hover:bg-white/10">운송 문의 →</a>
+          </div>
+          <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-[#93a1b7]">
+            <Link to="/forecasts" search={{ dir: [], series: [] }} className="transition-colors hover:text-[#2dd4bf]">이번 주 분석 보기 →</Link>
+            <Link to="/rates" className="transition-colors hover:text-[#2dd4bf]">운임 대시보드 →</Link>
           </div>
           <div className="mt-[30px] flex flex-wrap gap-2.5">
             {asOf && (
