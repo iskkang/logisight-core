@@ -49,11 +49,48 @@ async function fetchPagedByType(statType: string, maxRows: number): Promise<Trad
   return all;
 }
 
-async function fetchLatestRowsByType(statType: string, maxRows: number): Promise<TradeStatRow[]> {
-  const rows = await fetchPagedByType(statType, maxRows);
-  const latest = latestPeriod(rows);
-  if (!latest) return [];
-  return rows.filter((row) => periodKey(row.period) === latest);
+// 최신 기간만 직접 조회. 기존 fetchLatestRowsByType은 전 기간(최대 maxRows)을 1000행씩
+// 순차 페이징해 받은 뒤 최신 1개월만 남겨, item(최대 30k행·~30회 왕복)에서 큰 지연을 냈다.
+// 대신 ① period 컬럼만 받아(가벼움) 최신 정규화 기간을 구하고 ② 그 기간 행만 가져온다 →
+// 왕복 수·전송량이 모두 급감한다. (period 포맷 "202606"·"2026-06" 혼재는 정규화로 흡수.)
+async function fetchLatestPeriodRows(statType: string, maxRows: number): Promise<TradeStatRow[]> {
+  const { data: periodRows, error: periodError } = await supabasePublicServer
+    .from("trade_statistics")
+    .select("period")
+    .eq("stat_type", statType)
+    .order("period", { ascending: false })
+    .limit(1000);
+  if (periodError) throw new Error(periodError.message);
+
+  let maxKey = "";
+  const rawByKey = new Map<string, Set<string>>();
+  for (const row of (periodRows ?? []) as { period: string }[]) {
+    const key = periodKey(row.period);
+    if (!key) continue;
+    if (key > maxKey) maxKey = key;
+    if (!rawByKey.has(key)) rawByKey.set(key, new Set());
+    rawByKey.get(key)!.add(row.period);
+  }
+  if (!maxKey) return [];
+  const rawPeriods = [...(rawByKey.get(maxKey) ?? [])];
+
+  const all: TradeStatRow[] = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (from < maxRows) {
+    const { data, error } = await supabasePublicServer
+      .from("trade_statistics")
+      .select(TRADE_SELECT)
+      .eq("stat_type", statType)
+      .in("period", rawPeriods)
+      .range(from, Math.min(from + pageSize - 1, maxRows - 1));
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as TradeStatRow[];
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
 }
 
 async function fetchTopRows(statType: string, column: "export_usd" | "import_usd", maxRows: number): Promise<TradeStatRow[]> {
@@ -157,6 +194,25 @@ export const getTradeByItem = createServerFn({ method: "GET" }).handler(
   },
 );
 
+// item 행을 HS 코드별로 합산(국가 차원 제거). 화면의 buildItemAgg가 어차피 hs_code로
+// 그룹·합산하므로 결과는 동일하고, 전송 페이로드만 급감한다(HS×국가 ~수만 행 → HS ~수백 행).
+function aggregateItemsByHs(rows: TradeStatRow[]): TradeStatRow[] {
+  const byHs = new Map<string, TradeStatRow>();
+  for (const row of rows) {
+    const hs = row.hs_code ?? "미분류";
+    const cur = byHs.get(hs);
+    if (cur) {
+      cur.export_usd = (cur.export_usd ?? 0) + (row.export_usd ?? 0);
+      cur.import_usd = (cur.import_usd ?? 0) + (row.import_usd ?? 0);
+      cur.export_weight = (cur.export_weight ?? 0) + (row.export_weight ?? 0);
+      cur.import_weight = (cur.import_weight ?? 0) + (row.import_weight ?? 0);
+    } else {
+      byHs.set(hs, { ...row, country_code: null, country_name: null, trade_balance: null });
+    }
+  }
+  return [...byHs.values()];
+}
+
 export const getTradeStatisticsBundle = createServerFn({ method: "GET" }).handler(
   async (): Promise<TradeStatisticsBundle> => {
     setResponseHeader("cache-control", TRADE_CACHE_CONTROL);
@@ -167,8 +223,8 @@ export const getTradeStatisticsBundle = createServerFn({ method: "GET" }).handle
           ...exp,
           ...(await fetchPagedByType("provisional_imp", 2000)),
         ]),
-        fetchLatestRowsByType("continent", 2000),
-        fetchLatestRowsByType("item", 30000),
+        fetchLatestPeriodRows("continent", 2000),
+        fetchLatestPeriodRows("item", 30000),
         fetchTopRows("item_country", "export_usd", 1200),
         fetchTopRows("item_country", "import_usd", 1200),
         fetchTopRows("newnature", "export_usd", 800),
@@ -182,7 +238,7 @@ export const getTradeStatisticsBundle = createServerFn({ method: "GET" }).handle
       country,
       provisional,
       continent,
-      item,
+      item: aggregateItemsByHs(item),
       itemCountry: uniqueRows([...itemCountryExport, ...itemCountryImport]).filter(
         (row) => !latestItemCountry || periodKey(row.period) === latestItemCountry,
       ),
