@@ -44,11 +44,13 @@ export function gateEvent(
   const elon = event.lon, elat = event.lat;
   const linkedAssets: LinkedAsset[] = [];
   let nearest: LinkedAsset | null = null;
+  let nearestRaw = Infinity;
   for (const a of assets) {
-    const km = Math.round(hav(elat, elon, a.lat, a.lon));
+    const rawKm = hav(elat, elon, a.lat, a.lon);
+    const km = Math.round(rawKm);
     const la: LinkedAsset = { id: a.id, name: a.name, type: a.type, km };
-    if (nearest == null || km < nearest.km) nearest = la;
-    if (km <= ASSET_RADIUS_KM) linkedAssets.push(la);
+    if (rawKm < nearestRaw) { nearest = la; nearestRaw = rawKm; }
+    if (rawKm <= ASSET_RADIUS_KM) linkedAssets.push(la);
   }
   linkedAssets.sort((x, y) => x.km - y.km);
   const linkedRouteIds: string[] = [];

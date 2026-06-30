@@ -52,4 +52,11 @@ describe("gateEvent", () => {
     expect(v.linkedRouteIds).toEqual(["r1"]);
     expect(v.linkedAssets).toHaveLength(0);
   });
+
+  it("노드 문자열 waypoint를 nodes로 해소", () => {
+    const routes: RouteRow[] = [{ id: "r1", name: "R1", waypoints: ["port-a"], chokes: [] }];
+    const nodes = { "port-a": asset("port-a", 0, 0) };
+    const v = gateEvent(ev({ lon: 0, lat: 0, severity: "r" }), [], routes, nodes);
+    expect(v.linkedRouteIds).toEqual(["r1"]);
+  });
 });
