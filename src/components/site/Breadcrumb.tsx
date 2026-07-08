@@ -9,10 +9,10 @@ const DASH_SUB: Record<string, string> = {
   "/forecasts": "전망",
   "/rates": "운임",
   "/eurasia": "유라시아",
-  "/port-risk": "포트 리스크",
+  "/port-risk": "포트",
   "/trade": "무역",
   "/industries": "산업",
-  "/climate": "기후예측",
+  "/climate": "기상",
 };
 
 const HOME: Crumb = { label: "홈", to: "/" };

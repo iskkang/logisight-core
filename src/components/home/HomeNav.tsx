@@ -11,10 +11,10 @@ const SUB_GNB = [
   { to: "/forecasts", label: "전망" },
   { to: "/rates", label: "운임" },
   { to: "/rail", label: "철도" },
-  { to: "/port-risk", label: "포트 리스크" },
+  { to: "/port-risk", label: "포트" },
   { to: "/trade", label: "무역" },
   { to: "/industries", label: "산업" },
-  { to: "/climate", label: "기후예측" },
+  { to: "/climate", label: "기상" },
 ] as const;
 
 export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insight" | "reports" }) {
