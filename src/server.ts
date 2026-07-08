@@ -37,11 +37,24 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   });
 }
 
+// 크롤러가 비인코딩(원시 UTF-8) 한글 경로로 접근하면 라우터 매칭·SSR 메타가 깨진다 —
+// WHATWG URL 파서로 percent-인코딩 정규화한 요청으로 재작성.
+function normalizeRawPath(request: Request): Request {
+  if (!/[^\x20-\x7E]/.test(request.url)) return request;
+  try {
+    const normalized = new URL(request.url).toString();
+    if (normalized === request.url) return request;
+    return new Request(normalized, request);
+  } catch {
+    return request;
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
+      const response = await handler.fetch(normalizeRawPath(request), env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);

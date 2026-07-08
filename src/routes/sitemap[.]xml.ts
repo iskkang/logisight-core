@@ -27,8 +27,14 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/", changefreq: "daily", priority: "1.0" },
           { path: "/news", changefreq: "daily", priority: "0.9" },
           { path: "/rates", changefreq: "daily", priority: "0.9" },
+          { path: "/briefing", changefreq: "daily", priority: "0.9" },
+          { path: "/reports", changefreq: "weekly", priority: "0.9" },
           { path: "/eurasia", changefreq: "weekly", priority: "0.8" },
           { path: "/industries", changefreq: "weekly", priority: "0.8" },
+          { path: "/climate", changefreq: "daily", priority: "0.8" },
+          { path: "/port-risk", changefreq: "daily", priority: "0.8" },
+          { path: "/methodology", changefreq: "monthly", priority: "0.5" },
+          { path: "/faq", changefreq: "monthly", priority: "0.5" },
         ];
 
         try {
@@ -41,7 +47,8 @@ export const Route = createFileRoute("/sitemap.xml")({
             const param =
               row.slug && row.slug.length > 0 ? row.slug : String(row.id);
             entries.push({
-              path: `/article/${param}`,
+              // sitemap 규격상 <loc>는 percent-인코딩 필수 — 원시 한글이면 크롤러가 잘못 fetch한다
+              path: `/article/${encodeURIComponent(param)}`,
               lastmod: row.published_at ?? undefined,
               changefreq: "monthly",
               priority: "0.6",
