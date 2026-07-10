@@ -26,7 +26,7 @@ import { toTickerItems, aggregatePortCongestion, pickAirMoM } from "@/lib/home-v
 import { HomeNav } from "./HomeNav";
 import { HomeFooter } from "./HomeFooter";
 
-const WRAP = "mx-auto w-full max-w-[1200px] px-[18px] min-[620px]:px-7";
+const WRAP = "mx-auto w-full max-w-[1280px] px-[18px] min-[620px]:px-7";
 const NA = "데이터 수집 중";
 
 const STYLE = `
@@ -58,43 +58,15 @@ function IconPlane() {
 /* ============================ HERO ART ============================ */
 function HeroArt({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 760 520" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <defs>
-        <radialGradient id="lsg-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="#2dd4bf" stopOpacity="0" />
-        </radialGradient>
-        <linearGradient id="lsg-route" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.1" />
-          <stop offset="50%" stopColor="#2dd4bf" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#5eead4" stopOpacity="0.2" />
-        </linearGradient>
-      </defs>
-      <circle cx="400" cy="260" r="250" fill="url(#lsg-glow)" />
-      <g stroke="rgba(120,170,205,.16)" strokeWidth="1" fill="none">
-        <circle cx="400" cy="260" r="200" />
-        <ellipse cx="400" cy="260" rx="200" ry="80" />
-        <ellipse cx="400" cy="260" rx="200" ry="150" />
-        <ellipse cx="400" cy="260" rx="120" ry="200" />
-        <ellipse cx="400" cy="260" rx="70" ry="200" />
-        <line x1="200" y1="260" x2="600" y2="260" />
-      </g>
-      <g fill="rgba(150,190,220,.4)">
-        <circle cx="320" cy="180" r="1.6" /><circle cx="470" cy="150" r="1.6" /><circle cx="540" cy="230" r="1.6" />
-        <circle cx="280" cy="300" r="1.6" /><circle cx="360" cy="360" r="1.6" /><circle cx="510" cy="340" r="1.6" />
-        <circle cx="420" cy="220" r="1.6" /><circle cx="250" cy="220" r="1.6" /><circle cx="560" cy="300" r="1.6" />
-      </g>
-      <path d="M300 320 Q400 140 560 200" stroke="url(#lsg-route)" strokeWidth="2.2" fill="none" strokeLinecap="round" />
-      <g>
-        <circle cx="300" cy="320" r="4.5" fill="#2dd4bf" />
-        <circle cx="300" cy="320" r="4.5" fill="none" stroke="#2dd4bf" strokeWidth="1.5" opacity="0.5">
-          <animate attributeName="r" from="4.5" to="16" dur="2.4s" repeatCount="indefinite" />
-          <animate attributeName="opacity" from="0.5" to="0" dur="2.4s" repeatCount="indefinite" />
-        </circle>
-        <circle cx="430" cy="206" r="3.4" fill="#5eead4" />
-        <circle cx="560" cy="200" r="4" fill="#2dd4bf" />
-      </g>
-    </svg>
+    <img
+      className={className}
+      src="/logisight-hero-navigator.webp"
+      alt=""
+      width={1536}
+      height={1024}
+      decoding="async"
+      fetchPriority="high"
+    />
   );
 }
 
@@ -139,30 +111,20 @@ function Ticker() {
 
 /* ============================ HERO ============================ */
 function Hero() {
-  const { data: stats } = useSuspenseQuery(indexStatsQueryOptions());
-  const { data: alerts } = useSuspenseQuery(alertCandidatesQueryOptions());
-  const asOf = stats.find((s) => s.index_code === "KCCI")?.latest_date?.slice(0, 10) ?? null;
   return (
     <section className="relative overflow-hidden bg-[#070b16]">
       <div className="pointer-events-none absolute inset-0">
-        <HeroArt className="absolute right-[-4%] top-1/2 w-[780px] max-w-[72%] -translate-y-1/2 opacity-90" />
-        <div className="absolute inset-0" style={{ background: "radial-gradient(120% 90% at 80% 30%, rgba(45,212,191,.10), transparent 55%), linear-gradient(90deg, #070b16 30%, rgba(7,11,22,.4) 62%, transparent 100%)" }} />
+        <HeroArt className="absolute right-[-2%] top-1/2 w-[760px] max-w-[60%] -translate-y-1/2 opacity-95" />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(100% 84% at 82% 42%, rgba(45,212,191,.08), transparent 58%), linear-gradient(90deg, #070b16 34%, rgba(7,11,22,.68) 54%, transparent 78%)" }} />
       </div>
       <div className={`${WRAP} relative z-[1]`}>
-        <div className="max-w-[660px] pt-14 pb-16 min-[620px]:pt-[84px] min-[620px]:pb-24">
-          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">Logistics Intelligence Platform</span>
-          <h1 className="mt-[18px] text-[clamp(38px,5.4vw,62px)] font-extrabold leading-[1.04] tracking-[-0.035em] text-[#e9eef7]">물류를 읽는<br /><span className="text-[#2dd4bf]">새로운 시선</span></h1>
-          <p className="mt-[22px] max-w-[520px] text-[17px] leading-[1.6] text-[#93a1b7]">한국발 해상·항공·유라시아 운임 변화를 매주 추적합니다.<br />화주·포워더의 운임 협상·선적 판단을 보조하는 인텔리전스를 제공합니다.</p>
-          {/* CTA — 데이터 탐색 2갈래(분석 보기·운임 대시보드)를 네모칸 버튼으로 노출. */}
+        <div className="max-w-[650px] pt-14 pb-16 min-[620px]:pt-[78px] min-[620px]:pb-[100px]">
+          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">LOGISIGHT · 물류를 읽는 새로운 시선</span>
+          <h1 className="mt-[18px] text-[clamp(42px,5vw,64px)] font-extrabold leading-[1.04] tracking-[-0.04em] text-[#e9eef7]">내일을 읽는<br /><span className="text-[#2dd4bf]">물류 인텔리전스</span></h1>
+          <p className="mt-[22px] max-w-[560px] text-[17px] leading-[1.65] text-[#a7b4c7]">과거의 흐름과 현재의 신호를 분석해<br className="hidden min-[620px]:block" /> 다음 변화를 전망합니다.</p>
           <div className="mt-[34px] flex flex-wrap items-center gap-3">
-            <Link to="/forecasts" search={{ dir: [], series: [] }} className="rounded-[9px] border border-[#78a0cd33] bg-white/5 px-[22px] py-[13px] text-[14.5px] font-semibold text-[#e9eef7] transition-transform hover:-translate-y-px hover:bg-white/10">분석 보기 →</Link>
-            <Link to="/rates" className="rounded-[9px] border border-[#78a0cd33] bg-white/5 px-[22px] py-[13px] text-[14.5px] font-semibold text-[#e9eef7] transition-transform hover:-translate-y-px hover:bg-white/10">운임 대시보드 →</Link>
-          </div>
-          <div className="mt-[30px] flex flex-wrap gap-2.5">
-            {asOf && (
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#78a0cd1c] bg-[#0e1626] px-[13px] py-[7px] text-[12.5px] text-[#93a1b7]"><span className="h-[7px] w-[7px] rounded-full bg-[#2dd4bf]" />기준일 <span className="lsg-mono text-[12px] text-[#e9eef7]">{asOf}</span></span>
-            )}
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#78a0cd1c] bg-[#0e1626] px-[13px] py-[7px] text-[12.5px] text-[#93a1b7]"><span className="h-[7px] w-[7px] rounded-full bg-[#ef4444] shadow-[0_0_0_3px_rgba(239,68,68,0.16)]" />활성 리스크 <span className="lsg-mono text-[12px] text-[#e9eef7]">{alerts.length}건</span></span>
+            <Link to="/briefing" className="rounded-[9px] border border-[#2dd4bf] bg-[#2dd4bf] px-[22px] py-[13px] text-[14.5px] font-bold text-[#04231f] transition-transform hover:-translate-y-px hover:bg-[#5eead4]">이번 주 시장 브리핑</Link>
+            <Link to="/rates" className="rounded-[9px] border border-[#2dd4bf] bg-transparent px-[22px] py-[13px] text-[14.5px] font-semibold text-[#e9eef7] transition-transform hover:-translate-y-px hover:bg-white/5">운임 대시보드</Link>
           </div>
         </div>
       </div>
