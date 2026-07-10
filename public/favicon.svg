@@ -1,8 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="-3 140 420 420">
-  <rect x="-3" y="140" width="420" height="420" rx="56" fill="#0A1F3C"/>
-  <g transform="translate(285,380)">
-    <path d="M -90 -150 L -210 -30 L -90 90" stroke="#FFFFFF" stroke-width="72" stroke-linecap="square" stroke-linejoin="miter" fill="none"/>
-    <path d="M -18 -80 L 54 -8 L -18 64" stroke="#FFFFFF" stroke-width="72" stroke-linecap="square" stroke-linejoin="miter" fill="none"/>
-    <rect x="-58" y="-58" width="116" height="116" fill="#29B6FF" transform="rotate(45)"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Logisight">
+  <defs>
+    <linearGradient id="mark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#0ea5a0"/>
+    </linearGradient>
+  </defs>
+  <rect
+    width="11"
+    height="24"
+    rx="2.5"
+    fill="url(#mark)"
+    transform="translate(13.05 4) skewX(-12)"
+  />
 </svg>
