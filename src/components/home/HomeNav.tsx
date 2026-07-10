@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { Wordmark } from "./Wordmark";
 
-const WRAP = "mx-auto w-full max-w-[1200px] px-[18px] min-[620px]:px-7";
+const WRAP = "mx-auto w-full max-w-[1360px] px-[18px] min-[620px]:px-7";
 
 const SUB_GNB = [
   { to: "/dashboard", label: "종합" },
@@ -24,7 +24,7 @@ export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insig
     key === active ? "relative py-1 text-white" : "py-1 text-[#93a1b7] transition-colors hover:text-white";
   return (
     <header className="sticky top-0 z-50 border-b border-[#78a0cd1c] bg-[#070b16cc] backdrop-blur-[14px] backdrop-saturate-150">
-      <div className={`${WRAP} flex h-[62px] items-center gap-9`}>
+      <div className={`${WRAP} flex h-[82px] items-center gap-14`}>
         <Link to="/"><Wordmark /></Link>
         <nav className="hidden gap-[26px] text-[14px] font-medium text-[#93a1b7] min-[620px]:flex">
           <Link to="/" className={topCls("home")}>

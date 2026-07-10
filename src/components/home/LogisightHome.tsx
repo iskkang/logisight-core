@@ -26,7 +26,7 @@ import { toTickerItems, aggregatePortCongestion, pickAirMoM } from "@/lib/home-v
 import { HomeNav } from "./HomeNav";
 import { HomeFooter } from "./HomeFooter";
 
-const WRAP = "mx-auto w-full max-w-[1280px] px-[18px] min-[620px]:px-7";
+const WRAP = "mx-auto w-full max-w-[1360px] px-[18px] min-[620px]:px-7";
 const NA = "데이터 수집 중";
 
 const STYLE = `
@@ -53,6 +53,35 @@ function IconRisk() {
 }
 function IconPlane() {
   return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 4.8c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" /></svg>);
+}
+
+function MiniTrend({ values }: { values: number[] }) {
+  if (values.length < 2) return <div className="h-[72px]" />;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const points = values.map((value, index) => {
+    const x = (index / (values.length - 1)) * 188 + 1;
+    const y = 66 - ((value - min) / range) * 54;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  return (
+    <svg className="h-[72px] w-full" viewBox="0 0 190 72" preserveAspectRatio="none" aria-hidden>
+      <path d="M1 66H189" stroke="#d7dee8" strokeWidth="1" />
+      <polyline points={points} fill="none" stroke="#14b8a6" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function MiniBars({ values }: { values: number[] }) {
+  const max = Math.max(...values, 1);
+  return (
+    <div className="flex h-[72px] items-end gap-[7px] border-b border-[#d7dee8] px-1">
+      {values.map((value, index) => (
+        <span key={index} className="min-w-0 flex-1 rounded-t-[2px] bg-[#14b8a6]" style={{ height: `${Math.max(18, (value / max) * 100)}%`, opacity: .68 + (index / Math.max(values.length - 1, 1)) * .32 }} />
+      ))}
+    </div>
+  );
 }
 
 /* ============================ HERO ART ============================ */
@@ -112,13 +141,13 @@ function Ticker() {
 /* ============================ HERO ============================ */
 function Hero() {
   return (
-    <section className="relative overflow-hidden bg-[#070b16]">
+    <section className="relative min-h-[605px] overflow-hidden bg-[#070b16]">
       <div className="pointer-events-none absolute inset-0">
-        <HeroArt className="absolute right-[-10px] top-[48%] hidden w-[1120px] max-w-none -translate-y-1/2 opacity-100 min-[760px]:block" />
-        <div className="absolute inset-0" style={{ background: "radial-gradient(92% 92% at 80% 42%, rgba(45,212,191,.1), transparent 62%), linear-gradient(90deg, #070b16 29%, rgba(7,11,22,.9) 43%, rgba(7,11,22,.4) 62%, transparent 82%)" }} />
+        <HeroArt className="absolute right-[2vw] top-[42%] hidden w-[1120px] max-w-none -translate-y-1/2 opacity-100 min-[760px]:block" />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(92% 92% at 78% 38%, rgba(45,212,191,.1), transparent 62%), linear-gradient(90deg, #070b16 27%, rgba(7,11,22,.86) 42%, rgba(7,11,22,.3) 60%, transparent 80%)" }} />
       </div>
       <div className={`${WRAP} relative z-[1]`}>
-        <div className="max-w-[650px] pt-14 pb-16 min-[620px]:pt-[78px] min-[620px]:pb-[100px]">
+        <div className="max-w-[650px] pt-14 pb-16 min-[620px]:pt-[28px] min-[620px]:pb-0">
           <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">LOGISIGHT · 물류를 읽는 새로운 시선</span>
           <h1 className="mt-[18px] text-[clamp(42px,5vw,64px)] font-extrabold leading-[1.04] tracking-[-0.04em] text-[#e9eef7]">내일을 읽는<br /><span className="text-[#2dd4bf]">물류 인텔리전스</span></h1>
           <p className="mt-[22px] max-w-[560px] text-[17px] leading-[1.65] text-[#a7b4c7]">과거의 흐름과 현재의 신호를 분석해<br className="hidden min-[620px]:block" /> 다음 변화를 전망합니다.</p>
@@ -174,10 +203,23 @@ function LivePanel() {
   const airSignal = computeAirModalShiftSignal(air.mom, air.routeLabel, kcci?.pct_52w ?? null, air.yearMon);
 
   const port = aggregatePortCongestion(risk);
+  const scfi = stats.find((s) => s.index_code === "SCFI") ?? null;
+  const kcciTrend = kcciSeries.filter((point) => point.value != null).slice(-16).map((point) => point.value as number);
+  const airByMonth = new Map<string, number[]>();
+  for (const row of airRates) {
+    if (row.kg100 == null) continue;
+    const values = airByMonth.get(row.year_mon) ?? [];
+    values.push(row.kg100);
+    airByMonth.set(row.year_mon, values);
+  }
+  const airTrend = [...airByMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-9)
+    .map(([, values]) => values.reduce((sum, value) => sum + value, 0) / values.length);
 
   return (
-    <section className="pt-10 pb-[14px]">
-      <div className={WRAP}>
+    <section>
+      <div className={`${WRAP} rounded-[22px] border border-white/80 bg-[#f7f9fc] py-[26px] shadow-[0_28px_70px_-42px_rgba(2,8,23,.7)]`}>
         <div className="mb-5 flex flex-wrap items-end justify-between gap-[18px]">
           <div className="flex items-center gap-2.5 text-[13px] font-bold uppercase tracking-[0.14em] text-[#1a2433]">
             <span className="inline-flex items-center gap-[7px] text-[11px] tracking-[0.14em] text-[#0d9488]">
@@ -216,6 +258,54 @@ function LivePanel() {
             unit={`${air.routeLabel} · KITA 항공운임`}
             foot={airSignal ? airSignal.basis : NA}
           />
+        </div>
+        <div className="mt-8 border-t border-[#dce3ec] pt-6">
+          <h2 className="mb-4 text-[22px] font-bold tracking-[-0.025em] text-[#152033]">이번 주 핵심 변화</h2>
+          <div className="grid grid-cols-1 gap-3.5 min-[760px]:grid-cols-3">
+            <article className="grid min-h-[138px] grid-cols-[1fr_190px] gap-4 rounded-[13px] border border-[#d4dce7] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,.04)] max-[1100px]:grid-cols-1">
+              <div>
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 flex-none place-items-center rounded-[9px] bg-[#111c2e] text-white"><IconTrend /></span>
+                  <h3 className="text-[15px] font-bold text-[#172235]">해상 운임 52주 최고치 근접</h3>
+                </div>
+                <ul className="mt-3 space-y-1.5 text-[12px] leading-[1.45] text-[#566274]">
+                  <li>• KCCI {kcci?.latest_value?.toLocaleString("en-US") ?? NA}{kcci?.change_pct != null ? `, 전주 대비 ${kcci.change_pct.toFixed(2)}%` : ""}</li>
+                  <li>• SCFI {scfi?.change_pct != null ? `${scfi.change_pct >= 0 ? "+" : ""}${scfi.change_pct.toFixed(2)}%` : NA}, 주요 항로 흐름 관찰</li>
+                </ul>
+              </div>
+              <MiniTrend values={kcciTrend} />
+            </article>
+            <article className="grid min-h-[138px] grid-cols-[1fr_170px] gap-4 rounded-[13px] border border-[#d4dce7] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,.04)] max-[1100px]:grid-cols-1">
+              <div>
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 flex-none place-items-center rounded-[9px] bg-[#111c2e] text-white"><IconPlane /></span>
+                  <h3 className="text-[15px] font-bold text-[#172235]">항공 수요 대비 공급 변화</h3>
+                </div>
+                <ul className="mt-3 space-y-1.5 text-[12px] leading-[1.45] text-[#566274]">
+                  <li>• 글로벌 항공 운임 월간 변화 {air.mom != null ? `${air.mom >= 0 ? "+" : ""}${air.mom.toFixed(1)}%` : NA}</li>
+                  <li>• 주요 노선 운임 흐름 지속 모니터링</li>
+                </ul>
+              </div>
+              <MiniBars values={airTrend} />
+            </article>
+            <article className="grid min-h-[138px] grid-cols-[1fr_180px] gap-4 rounded-[13px] border border-[#d4dce7] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,.04)] max-[1100px]:grid-cols-1">
+              <div>
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 flex-none place-items-center rounded-[9px] bg-[#111c2e] text-white">◎</span>
+                  <h3 className="text-[15px] font-bold text-[#172235]">주요 항로 리스크 모니터링</h3>
+                </div>
+                <ul className="mt-3 space-y-1.5 text-[12px] leading-[1.45] text-[#566274]">
+                  <li>• 활성 주의 신호 {alerts.length}건</li>
+                  <li>• 지정학·기상·항만 변수 추적</li>
+                </ul>
+              </div>
+              <div className="relative min-h-[82px] bg-[url('/world-map.svg')] bg-contain bg-center bg-no-repeat opacity-80">
+                <span className="absolute left-[36%] top-[50%] h-3 w-3 rounded-full border-[3px] border-white bg-[#2dd4bf] shadow-[0_0_0_2px_rgba(45,212,191,.35)]" />
+                <span className="absolute right-[23%] top-[58%] h-3 w-3 rounded-full border-[3px] border-white bg-[#2dd4bf] shadow-[0_0_0_2px_rgba(45,212,191,.35)]" />
+              </div>
+            </article>
+          </div>
+          <div className="mt-4 text-center"><Link to="/dashboard" className="text-[12px] font-bold text-[#0d9488]">전체 인사이트 보기 →</Link></div>
         </div>
       </div>
     </section>
@@ -433,13 +523,15 @@ export function LogisightHome() {
   return (
     <div className="lsg-root min-h-screen bg-[#070b16] text-[#1a2433]">
       <style>{STYLE}</style>
-      <HomeNav />
       <Ticker />
+      <HomeNav />
       <Hero />
-      <div className="relative z-[2] -mt-7 rounded-t-[28px] bg-[#e6eaf1]" style={{ boxShadow: "0 -24px 60px -34px rgba(0,0,0,.7)" }}>
+      <div className="relative z-[2] -mt-[222px]" style={{ background: "linear-gradient(to bottom, transparent 222px, #e6eaf1 222px)" }}>
         <LivePanel />
-        <Body />
-        <Insight />
+        <div className="bg-[#e6eaf1]">
+          <Body />
+          <Insight />
+        </div>
       </div>
       <HomeFooter />
     </div>
