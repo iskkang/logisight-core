@@ -143,7 +143,7 @@ function Hero() {
   return (
     <section className="relative min-h-[605px] overflow-hidden bg-[#070b16]">
       <div className="pointer-events-none absolute inset-0">
-        <HeroArt className="absolute right-[2vw] top-[42%] hidden w-[1120px] max-w-none -translate-y-1/2 opacity-100 min-[760px]:block" />
+        <HeroArt className="absolute right-[3vw] top-[40%] hidden w-[1080px] max-w-none -translate-y-1/2 opacity-100 min-[760px]:block" />
         <div className="absolute inset-0" style={{ background: "radial-gradient(92% 92% at 78% 38%, rgba(45,212,191,.1), transparent 62%), linear-gradient(90deg, #070b16 27%, rgba(7,11,22,.86) 42%, rgba(7,11,22,.3) 60%, transparent 80%)" }} />
       </div>
       <div className={`${WRAP} relative z-[1]`}>
@@ -167,9 +167,9 @@ function MarketCard({ label, icon, value, delta, unit, foot, dot }: {
   delta: { t: string; cls: string }; unit: string; foot: React.ReactNode; dot: string;
 }) {
   return (
-    <article className="group relative overflow-hidden rounded-[14px] border border-[#d4dce7] bg-[#f1f4f8] pt-5 px-[18px] pb-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-[3px] hover:border-[#c5cfdc] hover:shadow-[0_16px_34px_-20px_rgba(16,24,40,0.28)]">
+    <article className="group relative overflow-hidden rounded-[14px] border border-[#d4dce7] bg-white px-[18px] pb-3.5 pt-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-[3px] hover:border-[#c5cfdc] hover:shadow-[0_16px_34px_-20px_rgba(16,24,40,0.28)]">
       <span className="absolute bottom-0 left-0 top-0 w-[3px] bg-[#0d9488] opacity-0 transition-opacity group-hover:opacity-100" />
-      <div className="mb-3.5 flex items-center justify-between">
+      <div className="mb-2.5 flex items-center justify-between">
         <span className="text-[11px] font-bold uppercase tracking-[0.13em] text-[#0d9488]">{label}</span>
         <span className="text-[#828d9d]">{icon}</span>
       </div>
@@ -178,7 +178,7 @@ function MarketCard({ label, icon, value, delta, unit, foot, dot }: {
         <span className={`lsg-mono text-[13px] ${delta.cls}`}>{delta.t}</span>
         <span className="text-[12px] text-[#828d9d]">{unit}</span>
       </div>
-      <div className="mt-3.5 flex items-center gap-2 border-t border-[#d4dce7] pt-[11px] text-[12px] leading-snug text-[#54606f]">
+      <div className="mt-2.5 flex items-center gap-2 border-t border-[#d4dce7] pt-2.5 text-[12px] leading-snug text-[#54606f]">
         <span className={`mt-[5px] h-[7px] w-[7px] flex-none self-start rounded-full ${dot}`} />
         <span className="min-w-0">{foot}</span>
       </div>
@@ -219,11 +219,11 @@ function LivePanel() {
 
   return (
     <section>
-      <div className={`${WRAP} rounded-[22px] border border-white/80 bg-[#f7f9fc] py-[26px] shadow-[0_28px_70px_-42px_rgba(2,8,23,.7)]`}>
+      <div className={`${WRAP} rounded-[22px] border border-white/80 bg-[#fbfcfe] py-[26px] shadow-[0_28px_70px_-42px_rgba(2,8,23,.7)]`}>
         <div className="mb-5 flex flex-wrap items-end justify-between gap-[18px]">
           <div className="flex items-center gap-2.5 text-[13px] font-bold uppercase tracking-[0.14em] text-[#1a2433]">
             <span className="inline-flex items-center gap-[7px] text-[11px] tracking-[0.14em] text-[#0d9488]">
-              <span className="lsg-pulse relative h-[7px] w-[7px] rounded-full bg-[#14b8a6]" />LIVE INTELLIGENCE
+              <span className="lsg-pulse relative h-[7px] w-[7px] rounded-full bg-[#14b8a6]" />MARKET INTELLIGENCE
             </span>
             <span>· 시장 핵심 요약</span>
           </div>
@@ -259,10 +259,10 @@ function LivePanel() {
             foot={airSignal ? airSignal.basis : NA}
           />
         </div>
-        <div className="mt-8 border-t border-[#dce3ec] pt-6">
+        <div className="mt-4 border-t border-[#dce3ec] pt-4">
           <h2 className="mb-4 text-[22px] font-bold tracking-[-0.025em] text-[#152033]">이번 주 핵심 변화</h2>
           <div className="grid grid-cols-1 gap-3.5 min-[760px]:grid-cols-3">
-            <article className="grid min-h-[138px] grid-cols-[1fr_190px] gap-4 rounded-[13px] border border-[#d4dce7] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,.04)] max-[1100px]:grid-cols-1">
+            <article className="grid min-h-[138px] grid-cols-[1fr_150px] gap-4 rounded-[13px] border border-[#d4dce7] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,.04)] max-[1100px]:grid-cols-1">
               <div>
                 <div className="flex items-center gap-3">
                   <span className="grid h-10 w-10 flex-none place-items-center rounded-[9px] bg-[#111c2e] text-white"><IconTrend /></span>
@@ -275,7 +275,7 @@ function LivePanel() {
               </div>
               <MiniTrend values={kcciTrend} />
             </article>
-            <article className="grid min-h-[138px] grid-cols-[1fr_170px] gap-4 rounded-[13px] border border-[#d4dce7] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,.04)] max-[1100px]:grid-cols-1">
+            <article className="grid min-h-[138px] grid-cols-[1fr_140px] gap-4 rounded-[13px] border border-[#d4dce7] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,.04)] max-[1100px]:grid-cols-1">
               <div>
                 <div className="flex items-center gap-3">
                   <span className="grid h-10 w-10 flex-none place-items-center rounded-[9px] bg-[#111c2e] text-white"><IconPlane /></span>
@@ -288,7 +288,7 @@ function LivePanel() {
               </div>
               <MiniBars values={airTrend} />
             </article>
-            <article className="grid min-h-[138px] grid-cols-[1fr_180px] gap-4 rounded-[13px] border border-[#d4dce7] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,.04)] max-[1100px]:grid-cols-1">
+            <article className="grid min-h-[138px] grid-cols-[1fr_150px] gap-4 rounded-[13px] border border-[#d4dce7] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,.04)] max-[1100px]:grid-cols-1">
               <div>
                 <div className="flex items-center gap-3">
                   <span className="grid h-10 w-10 flex-none place-items-center rounded-[9px] bg-[#111c2e] text-white">◎</span>
