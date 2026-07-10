@@ -114,8 +114,8 @@ function Hero() {
   return (
     <section className="relative overflow-hidden bg-[#070b16]">
       <div className="pointer-events-none absolute inset-0">
-        <HeroArt className="absolute right-[-2%] top-1/2 w-[760px] max-w-[60%] -translate-y-1/2 opacity-95" />
-        <div className="absolute inset-0" style={{ background: "radial-gradient(100% 84% at 82% 42%, rgba(45,212,191,.08), transparent 58%), linear-gradient(90deg, #070b16 34%, rgba(7,11,22,.68) 54%, transparent 78%)" }} />
+        <HeroArt className="absolute right-[-10px] top-[48%] hidden w-[1120px] max-w-none -translate-y-1/2 opacity-100 min-[760px]:block" />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(92% 92% at 80% 42%, rgba(45,212,191,.1), transparent 62%), linear-gradient(90deg, #070b16 29%, rgba(7,11,22,.9) 43%, rgba(7,11,22,.4) 62%, transparent 82%)" }} />
       </div>
       <div className={`${WRAP} relative z-[1]`}>
         <div className="max-w-[650px] pt-14 pb-16 min-[620px]:pt-[78px] min-[620px]:pb-[100px]">
