@@ -143,7 +143,7 @@ function Hero() {
   return (
     <section className="relative min-h-[605px] overflow-hidden bg-[#070b16]">
       <div className="pointer-events-none absolute inset-0">
-        <HeroArt className="absolute right-[3vw] top-[40%] hidden w-[1080px] max-w-none -translate-y-1/2 opacity-100 min-[760px]:block" />
+        <HeroArt className="absolute right-[5vw] top-[34%] hidden w-[1000px] max-w-none -translate-y-1/2 scale-x-[1.16] scale-y-[0.8] opacity-100 min-[760px]:block" />
         <div className="absolute inset-0" style={{ background: "radial-gradient(92% 92% at 78% 38%, rgba(45,212,191,.1), transparent 62%), linear-gradient(90deg, #070b16 27%, rgba(7,11,22,.86) 42%, rgba(7,11,22,.3) 60%, transparent 80%)" }} />
       </div>
       <div className={`${WRAP} relative z-[1]`}>
