@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { Report, ReportsBundle } from "./reports";
@@ -36,3 +37,23 @@ export const getReports = createServerFn({ method: "GET" }).handler(
     return { weekly, monthly, archive: (archive ?? []) as unknown as Report[] };
   },
 );
+
+// 월간 영구 페이지(/reports/monthly/{YYYY-MM})용 — 해당 월 monthly 리포트 1건.
+export const getMonthlyReport = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }))
+  .handler(async ({ data }): Promise<Report | null> => {
+    const [y, m] = data.month.split("-").map(Number);
+    const start = `${data.month}-01`;
+    const end = `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}-01`;
+    const { data: row, error } = await supabasePublicServer
+      .from("reports")
+      .select(SELECT)
+      .eq("type", "monthly")
+      .gte("period_start", start)
+      .lt("period_start", end)
+      .order("period_start", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return row as unknown as Report | null;
+  });

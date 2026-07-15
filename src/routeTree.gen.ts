@@ -30,6 +30,7 @@ import { Route as ClimateRouteImport } from './routes/climate'
 import { Route as BriefingRouteImport } from './routes/briefing'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as RailIndexRouteImport } from './routes/rail.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as RailEuropeRouteImport } from './routes/rail.europe'
@@ -43,6 +44,8 @@ import { Route as AdminPoliciesRouteImport } from './routes/admin.policies'
 import { Route as AdminPartnerRatesRouteImport } from './routes/admin.partner-rates'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminForecastsRouteImport } from './routes/admin.forecasts'
+import { Route as ReportsWeeklyWeekRouteImport } from './routes/reports.weekly.$week'
+import { Route as ReportsMonthlyMonthRouteImport } from './routes/reports.monthly.$month'
 import { Route as ApiTradeBriefRouteImport } from './routes/api/trade/brief'
 import { Route as ApiCronIndexnowRouteImport } from './routes/api/cron/indexnow'
 
@@ -151,6 +154,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsIndexRoute = ReportsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ReportsRoute,
+} as any)
 const RailIndexRoute = RailIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -216,6 +224,16 @@ const AdminForecastsRoute = AdminForecastsRouteImport.update({
   path: '/forecasts',
   getParentRoute: () => AdminRoute,
 } as any)
+const ReportsWeeklyWeekRoute = ReportsWeeklyWeekRouteImport.update({
+  id: '/weekly/$week',
+  path: '/weekly/$week',
+  getParentRoute: () => ReportsRoute,
+} as any)
+const ReportsMonthlyMonthRoute = ReportsMonthlyMonthRouteImport.update({
+  id: '/monthly/$month',
+  path: '/monthly/$month',
+  getParentRoute: () => ReportsRoute,
+} as any)
 const ApiTradeBriefRoute = ApiTradeBriefRouteImport.update({
   id: '/api/trade/brief',
   path: '/api/trade/brief',
@@ -245,7 +263,7 @@ export interface FileRoutesByFullPath {
   '/rail': typeof RailRouteWithChildren
   '/rail-map': typeof RailMapRoute
   '/rates': typeof RatesRoute
-  '/reports': typeof ReportsRoute
+  '/reports': typeof ReportsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
   '/unsubscribe': typeof UnsubscribeRoute
@@ -262,8 +280,11 @@ export interface FileRoutesByFullPath {
   '/rail/europe': typeof RailEuropeRoute
   '/admin/': typeof AdminIndexRoute
   '/rail/': typeof RailIndexRoute
+  '/reports/': typeof ReportsIndexRoute
   '/api/cron/indexnow': typeof ApiCronIndexnowRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
+  '/reports/monthly/$month': typeof ReportsMonthlyMonthRoute
+  '/reports/weekly/$week': typeof ReportsWeeklyWeekRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -281,7 +302,6 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/rail-map': typeof RailMapRoute
   '/rates': typeof RatesRoute
-  '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
   '/unsubscribe': typeof UnsubscribeRoute
@@ -298,8 +318,11 @@ export interface FileRoutesByTo {
   '/rail/europe': typeof RailEuropeRoute
   '/admin': typeof AdminIndexRoute
   '/rail': typeof RailIndexRoute
+  '/reports': typeof ReportsIndexRoute
   '/api/cron/indexnow': typeof ApiCronIndexnowRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
+  '/reports/monthly/$month': typeof ReportsMonthlyMonthRoute
+  '/reports/weekly/$week': typeof ReportsWeeklyWeekRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -320,7 +343,7 @@ export interface FileRoutesById {
   '/rail': typeof RailRouteWithChildren
   '/rail-map': typeof RailMapRoute
   '/rates': typeof RatesRoute
-  '/reports': typeof ReportsRoute
+  '/reports': typeof ReportsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trade': typeof TradeRoute
   '/unsubscribe': typeof UnsubscribeRoute
@@ -337,8 +360,11 @@ export interface FileRoutesById {
   '/rail/europe': typeof RailEuropeRoute
   '/admin/': typeof AdminIndexRoute
   '/rail/': typeof RailIndexRoute
+  '/reports/': typeof ReportsIndexRoute
   '/api/cron/indexnow': typeof ApiCronIndexnowRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
+  '/reports/monthly/$month': typeof ReportsMonthlyMonthRoute
+  '/reports/weekly/$week': typeof ReportsWeeklyWeekRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -377,8 +403,11 @@ export interface FileRouteTypes {
     | '/rail/europe'
     | '/admin/'
     | '/rail/'
+    | '/reports/'
     | '/api/cron/indexnow'
     | '/api/trade/brief'
+    | '/reports/monthly/$month'
+    | '/reports/weekly/$week'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -396,7 +425,6 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/rail-map'
     | '/rates'
-    | '/reports'
     | '/sitemap.xml'
     | '/trade'
     | '/unsubscribe'
@@ -413,8 +441,11 @@ export interface FileRouteTypes {
     | '/rail/europe'
     | '/admin'
     | '/rail'
+    | '/reports'
     | '/api/cron/indexnow'
     | '/api/trade/brief'
+    | '/reports/monthly/$month'
+    | '/reports/weekly/$week'
   id:
     | '__root__'
     | '/'
@@ -451,8 +482,11 @@ export interface FileRouteTypes {
     | '/rail/europe'
     | '/admin/'
     | '/rail/'
+    | '/reports/'
     | '/api/cron/indexnow'
     | '/api/trade/brief'
+    | '/reports/monthly/$month'
+    | '/reports/weekly/$week'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -473,7 +507,7 @@ export interface RootRouteChildren {
   RailRoute: typeof RailRouteWithChildren
   RailMapRoute: typeof RailMapRoute
   RatesRoute: typeof RatesRoute
-  ReportsRoute: typeof ReportsRoute
+  ReportsRoute: typeof ReportsRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TradeRoute: typeof TradeRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
@@ -632,6 +666,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/': {
+      id: '/reports/'
+      path: '/'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof ReportsIndexRouteImport
+      parentRoute: typeof ReportsRoute
+    }
     '/rail/': {
       id: '/rail/'
       path: '/'
@@ -723,6 +764,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminForecastsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/reports/weekly/$week': {
+      id: '/reports/weekly/$week'
+      path: '/weekly/$week'
+      fullPath: '/reports/weekly/$week'
+      preLoaderRoute: typeof ReportsWeeklyWeekRouteImport
+      parentRoute: typeof ReportsRoute
+    }
+    '/reports/monthly/$month': {
+      id: '/reports/monthly/$month'
+      path: '/monthly/$month'
+      fullPath: '/reports/monthly/$month'
+      preLoaderRoute: typeof ReportsMonthlyMonthRouteImport
+      parentRoute: typeof ReportsRoute
+    }
     '/api/trade/brief': {
       id: '/api/trade/brief'
       path: '/api/trade/brief'
@@ -778,6 +833,21 @@ const RailRouteChildren: RailRouteChildren = {
 
 const RailRouteWithChildren = RailRoute._addFileChildren(RailRouteChildren)
 
+interface ReportsRouteChildren {
+  ReportsIndexRoute: typeof ReportsIndexRoute
+  ReportsMonthlyMonthRoute: typeof ReportsMonthlyMonthRoute
+  ReportsWeeklyWeekRoute: typeof ReportsWeeklyWeekRoute
+}
+
+const ReportsRouteChildren: ReportsRouteChildren = {
+  ReportsIndexRoute: ReportsIndexRoute,
+  ReportsMonthlyMonthRoute: ReportsMonthlyMonthRoute,
+  ReportsWeeklyWeekRoute: ReportsWeeklyWeekRoute,
+}
+
+const ReportsRouteWithChildren =
+  ReportsRoute._addFileChildren(ReportsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -796,7 +866,7 @@ const rootRouteChildren: RootRouteChildren = {
   RailRoute: RailRouteWithChildren,
   RailMapRoute: RailMapRoute,
   RatesRoute: RatesRoute,
-  ReportsRoute: ReportsRoute,
+  ReportsRoute: ReportsRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TradeRoute: TradeRoute,
   UnsubscribeRoute: UnsubscribeRoute,

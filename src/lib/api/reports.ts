@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { getReports } from "./reports.functions";
+import { getReports, getMonthlyReport } from "./reports.functions";
 
 export type Report = {
   id: string;
@@ -30,5 +30,12 @@ export const reportsQueryOptions = () =>
   queryOptions({
     queryKey: ["reports", "landing"],
     queryFn: () => getReports(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const monthlyReportQueryOptions = (month: string) =>
+  queryOptions({
+    queryKey: ["reports", "monthly", month],
+    queryFn: () => getMonthlyReport({ data: { month } }),
     staleTime: 5 * 60 * 1000,
   });
