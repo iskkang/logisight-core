@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import { setResponseHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
+import { PUBLIC_SWR_CACHE } from "@/lib/cache-control";
 import type { Report, ReportsBundle } from "./reports";
 
 // 마켓 리포트 카탈로그(reports 테이블, 046)를 프론트가 직접 read. 백엔드 logisight가 채운다.
@@ -12,6 +14,7 @@ const SELECT = "*";
 
 export const getReports = createServerFn({ method: "GET" }).handler(
   async (): Promise<ReportsBundle> => {
+    setResponseHeader("cache-control", PUBLIC_SWR_CACHE);
     const latest = async (type: "weekly" | "monthly"): Promise<Report | null> => {
       const { data, error } = await supabasePublicServer
         .from("reports")
@@ -42,6 +45,7 @@ export const getReports = createServerFn({ method: "GET" }).handler(
 export const getMonthlyReport = createServerFn({ method: "GET" })
   .inputValidator(z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }))
   .handler(async ({ data }): Promise<Report | null> => {
+    setResponseHeader("cache-control", PUBLIC_SWR_CACHE);
     const [y, m] = data.month.split("-").map(Number);
     const start = `${data.month}-01`;
     const end = `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}-01`;

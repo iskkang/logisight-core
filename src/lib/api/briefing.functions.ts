@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import { setResponseHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
+import { PUBLIC_SWR_CACHE } from "@/lib/cache-control";
 import type { BriefingRow, BriefingListItem, WeeklyBriefingPayload } from "./briefing";
 
 const BRIEFING_COLS = "id,title,subtitle,week_of,content,published_at";
@@ -19,6 +21,7 @@ async function withPoints(briefing: BriefingRow): Promise<WeeklyBriefingPayload>
 
 export const getLatestBriefing = createServerFn({ method: "GET" }).handler(
   async (): Promise<WeeklyBriefingPayload | null> => {
+    setResponseHeader("cache-control", PUBLIC_SWR_CACHE);
     const { data: briefing, error } = await supabasePublicServer
       .from("weekly_briefings")
       .select(BRIEFING_COLS)
@@ -34,6 +37,7 @@ export const getLatestBriefing = createServerFn({ method: "GET" }).handler(
 export const getBriefingByWeek = createServerFn({ method: "GET" })
   .inputValidator(z.object({ week: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
   .handler(async ({ data }): Promise<WeeklyBriefingPayload | null> => {
+    setResponseHeader("cache-control", PUBLIC_SWR_CACHE);
     const { data: briefing, error } = await supabasePublicServer
       .from("weekly_briefings")
       .select(BRIEFING_COLS)
@@ -47,6 +51,7 @@ export const getBriefingByWeek = createServerFn({ method: "GET" })
 // /reports 목록 + /briefing 최신 리다이렉트용 — 발행물 week_of 목록(본문 제외).
 export const listBriefingWeeks = createServerFn({ method: "GET" }).handler(
   async (): Promise<BriefingListItem[]> => {
+    setResponseHeader("cache-control", PUBLIC_SWR_CACHE);
     const { data, error } = await supabasePublicServer
       .from("weekly_briefings")
       .select("id,title,subtitle,week_of,published_at")

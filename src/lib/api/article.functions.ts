@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
+import { setResponseHeader } from "@tanstack/react-start/server";
 import { notFound } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
+import { PUBLIC_SWR_CACHE } from "@/lib/cache-control";
 import type { Article } from "./article";
 import type { NewsItem } from "./news";
 import { normalizeNewsImage } from "./news-image";
@@ -13,6 +15,7 @@ const SELECT =
 export const getArticleBySlug = createServerFn({ method: "GET" })
   .inputValidator(z.object({ slug: z.string().min(1).max(200) }))
   .handler(async ({ data }): Promise<Article> => {
+    setResponseHeader("cache-control", PUBLIC_SWR_CACHE);
     // Try slug match first
     const bySlug = await supabasePublicServer
       .from("maritime_news")
@@ -45,6 +48,7 @@ export const getRelatedArticles = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }): Promise<NewsItem[]> => {
+    setResponseHeader("cache-control", PUBLIC_SWR_CACHE);
     if (!data.category) return [];
     const { data: rows, error } = await supabasePublicServer
       .from("maritime_news")

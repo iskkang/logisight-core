@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import { setResponseHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
+import { PUBLIC_SWR_CACHE } from "@/lib/cache-control";
 import { isInternalNewsItem, type NewsItem } from "./news";
 import { estimateReadMinutes } from "./article";
 import { normalizeNewsImage } from "./news-image";
@@ -20,6 +22,7 @@ export const getLatestNews = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }): Promise<NewsItem[]> => {
+    setResponseHeader("cache-control", PUBLIC_SWR_CACHE);
     let q = supabasePublicServer
       .from("maritime_news")
       .select(SELECT)
