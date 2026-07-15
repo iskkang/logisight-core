@@ -150,10 +150,10 @@ function Hero() {
         <div className="max-w-[650px] pt-14 pb-16 min-[620px]:pt-[28px] min-[620px]:pb-0">
           <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">LOGISIGHT · 물류를 읽는 새로운 시선</span>
           <h1 className="mt-[18px] text-[clamp(42px,5vw,64px)] font-extrabold leading-[1.04] tracking-[-0.04em] text-[#e9eef7]">내일을 읽는<br /><span className="text-[#2dd4bf]">물류 인텔리전스</span></h1>
-          <p className="mt-[22px] max-w-[560px] text-[17px] leading-[1.65] text-[#a7b4c7]">과거의 흐름과 현재의 신호를 분석해<br className="hidden min-[620px]:block" /> 다음 변화를 전망합니다.</p>
+          <p className="mt-[22px] max-w-[560px] text-[17px] leading-[1.65] text-[#a7b4c7]">해외 주요 물류 뉴스를 한국어로 빠르게 전달하고,<br className="hidden min-[620px]:block" /> 운임과 시장 변화를 데이터로 분석합니다.</p>
           <div className="mt-[34px] flex flex-wrap items-center gap-3">
-            <Link to="/briefing" className="rounded-[9px] border border-[#2dd4bf] bg-[#2dd4bf] px-[22px] py-[13px] text-[14.5px] font-bold text-[#04231f] transition-transform hover:-translate-y-px hover:bg-[#5eead4]">이번 주 시장 브리핑</Link>
-            <Link to="/rates" className="rounded-[9px] border border-[#2dd4bf] bg-transparent px-[22px] py-[13px] text-[14.5px] font-semibold text-[#e9eef7] transition-transform hover:-translate-y-px hover:bg-white/5">운임 대시보드</Link>
+            <Link to="/news" className="rounded-[9px] border border-[#2dd4bf] bg-[#2dd4bf] px-[22px] py-[13px] text-[14.5px] font-bold text-[#04231f] transition-transform hover:-translate-y-px hover:bg-[#5eead4]">오늘의 글로벌 물류 뉴스</Link>
+            <Link to="/reports" className="rounded-[9px] border border-[#2dd4bf] bg-transparent px-[22px] py-[13px] text-[14.5px] font-semibold text-[#e9eef7] transition-transform hover:-translate-y-px hover:bg-white/5">이번 주 레포트 보기</Link>
           </div>
         </div>
       </div>
@@ -490,7 +490,8 @@ function Body() {
   );
 }
 
-const INSIGHTS: { em: string; k: string; h: string; p: string; to: "/trade" | "/industries" | "/port-risk" }[] = [
+const INSIGHTS: { em: string; k: string; h: string; p: string; to: "/rates" | "/trade" | "/industries" | "/port-risk" }[] = [
+  { em: "📊", k: "운임 대시보드", h: "해상·항공 운임 지수 한눈에", p: "KCCI·SCFI·KITA 기반 주간 갱신", to: "/rates" },
   { em: "↗", k: "무역 인사이트", h: "HS 챕터별 수출입 동향", p: "관세청 통계 기준 월간 갱신", to: "/trade" },
   { em: "🏭", k: "산업 인사이트", h: "주요 산업별 물동량 · 운임 동향", p: "업종별 데이터 기반 분석", to: "/industries" },
   { em: "⚠️", k: "리스크 인사이트", h: "주요 항만 disruption 이벤트 추적", p: "실시간 신호등 모니터링", to: "/port-risk" },
