@@ -5,7 +5,7 @@
 
 const SITE_URL = "https://logisight.mtlship.com";
 const SITE_NAME = "Logisight";
-const DEFAULT_IMAGE = `${SITE_URL}/og-default.png`;
+const DEFAULT_IMAGE = `${SITE_URL}/og-default.jpg`;
 
 /** 경로(또는 절대 URL)를 production 절대 URL로 변환. */
 export function abs(pathOrUrl: string): string {
@@ -18,7 +18,7 @@ export interface SeoInput {
   description: string;
   /** 페이지 자기 경로. 예: "/", "/rates", `/article/${slug}` */
   path: string;
-  /** og:image. 경로/절대 URL 모두 허용. 생략 시 /og-default.png */
+  /** og:image. 경로/절대 URL 모두 허용. 생략 시 /og-default.jpg */
   image?: string | null;
   type?: "website" | "article";
 }

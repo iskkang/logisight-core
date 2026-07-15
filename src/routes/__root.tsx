@@ -108,11 +108,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:image",
-        content: "https://logisight.mtlship.com/og-default.png",
+        content: "https://logisight.mtlship.com/og-default.jpg",
       },
       {
         name: "twitter:image",
-        content: "https://logisight.mtlship.com/og-default.png",
+        content: "https://logisight.mtlship.com/og-default.jpg",
       },
     ],
     links: [

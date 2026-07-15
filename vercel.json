@@ -2,6 +2,14 @@
   "crons": [
     { "path": "/api/cron/indexnow", "schedule": "0 6 * * *" }
   ],
+  "headers": [
+    {
+      "source": "/(logisight-hero-navigator.webp|og-default.jpg|world-map.svg|ad-mtl-truck-lcl.png|forecast-hero.png|dashboard-hero.png|dashboard-dark.png|ui.png)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ],
   "redirects": [
     { "source": "/policy", "destination": "/port-risk", "statusCode": 301 }
   ],
