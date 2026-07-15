@@ -8,7 +8,7 @@ import type { NewsItem } from "./news";
 import { normalizeNewsImage } from "./news-image";
 
 const SELECT =
-  "id,slug,title,summary,content,url,source,category,image_url,image_source,image_credit,published_at,lang,tags,is_hero,agent_type";
+  "id,slug,title,summary,content,url,source,category,image_url,image_source,image_credit,published_at,fetched_at,lang,tags,is_hero,agent_type";
 
 export const getArticleBySlug = createServerFn({ method: "GET" })
   .inputValidator(z.object({ slug: z.string().min(1).max(200) }))

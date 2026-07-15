@@ -28,6 +28,7 @@ export type Article = {
   deck?: string | null; // 부제/요약
   source?: string | null;
   published_at?: string | null;
+  registered_at?: string | null; // Logisight 등록일(포맷됨) — 있으면 상단을 Logisight 브랜드 바이라인으로
   read_minutes?: number | null;
   image_url?: string | null;
   image_caption?: string | null;
@@ -56,6 +57,8 @@ type Props = {
   related?: RelatedArticle[];
   renderRelatedLink?: (item: RelatedArticle, children: ReactNode, className: string) => ReactNode;
   breadcrumb?: ReactNode; // 기본 "홈 › 뉴스 › {category}" 대신 커스텀 breadcrumb(예: 브리핑)
+  // 하단 레포트 유도 CTA(뉴스 기사에만 전달). 있으면 공유바 뉴스레터 문구를 대체.
+  reportCta?: { heading: string; body: string; buttonLabel: string };
 };
 
 const FB_ARTICLE: Article = {
@@ -171,6 +174,12 @@ const STYLE = `
 .lsg-root .tags{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
 .lsg-root .tags a{font-size:12px;font-weight:600;color:var(--teal2);background:#ecfdf5;border:1px solid #c7ead6;border-radius:999px;padding:4px 11px}
 
+.lsg-root .reportcta{margin-top:26px;padding:22px;border-radius:14px;background:linear-gradient(135deg,#0e1626,#0c2a2a);border:1px solid #2dd4bf47}
+.lsg-root .reportcta .rc-h{font-size:17px;font-weight:800;letter-spacing:-.02em;color:#fff}
+.lsg-root .reportcta .rc-b{margin-top:8px;font-size:14px;line-height:1.6;color:#9fb2c4}
+.lsg-root .reportcta .rbtn{display:inline-flex;align-items:center;gap:6px;margin-top:16px;background:#2dd4bf;color:#04231f;font-weight:700;font-size:14px;border-radius:9px;padding:11px 18px}
+.lsg-root .reportcta .rbtn:hover{background:#5eead4}
+
 .lsg-root .sharebar{margin-top:22px;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .lsg-root .sharebar .t{font-size:13.5px;font-weight:700;color:var(--ink)}
 .lsg-root .sharebar .t span{display:block;font-size:12px;font-weight:400;color:var(--mute);margin-top:2px}
@@ -237,12 +246,17 @@ export default function LogisightArticle({
   related = FB_RELATED,
   renderRelatedLink,
   breadcrumb,
+  reportCta,
 }: Props) {
   const a = article;
   const paras = toParagraphs(a.body);
-  const metaBits = [a.published_at, a.read_minutes ? `읽는 시간 약 ${a.read_minutes}분` : null]
-    .filter(Boolean)
-    .join(" · ");
+  const readBit = a.read_minutes ? `읽는 시간 약 ${a.read_minutes}분` : null;
+  // registered_at 있으면 Logisight 등록일 중심 바이라인, 아니면 기존 출처+발행일.
+  const brand = Boolean(a.registered_at);
+  const bylineName = brand ? "Logisight" : (a.source ?? "출처");
+  const bylineDate = brand
+    ? [`등록 ${a.registered_at}`, readBit].filter(Boolean).join(" · ")
+    : [a.published_at, readBit].filter(Boolean).join(" · ");
 
   const [copied, setCopied] = useState(false);
 
@@ -316,10 +330,10 @@ export default function LogisightArticle({
 
             <div className="meta">
               <div className="src">
-                <span className="av">{initials(a.source)}</span>
+                <span className="av">{brand ? "L" : initials(a.source)}</span>
                 <div>
-                  <div className="nm">{a.source ?? "출처"}</div>
-                  {metaBits ? <div className="dt mono">{metaBits}</div> : null}
+                  <div className="nm">{bylineName}</div>
+                  {bylineDate ? <div className="dt mono">{bylineDate}</div> : null}
                 </div>
               </div>
               <div className="share">
@@ -434,9 +448,25 @@ export default function LogisightArticle({
               </div>
             )}
 
+            {reportCta && (
+              <div className="reportcta">
+                <div className="rc-h">{reportCta.heading}</div>
+                <p className="rc-b">{reportCta.body}</p>
+                <Link to="/reports" className="rbtn">
+                  {reportCta.buttonLabel} →
+                </Link>
+              </div>
+            )}
+
             <div className="sharebar">
               <div className="t">
-                이 기사가 유용했나요?<span>매주 핵심만 추린 물류 브리핑을 받아보세요.</span>
+                {reportCta ? (
+                  "이 기사 공유하기"
+                ) : (
+                  <>
+                    이 기사가 유용했나요?<span>매주 핵심만 추린 물류 브리핑을 받아보세요.</span>
+                  </>
+                )}
               </div>
               <div className="b">
                 <button type="button" className="ib" title="공유" onClick={shareArticle}>

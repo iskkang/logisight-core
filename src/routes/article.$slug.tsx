@@ -143,6 +143,7 @@ function ArticlePage() {
     deck: article.summary,
     source: article.source,
     published_at: formatPublishedAt(article.published_at),
+    registered_at: formatPublishedAt(article.fetched_at ?? null),
     read_minutes: readMin,
     image_url: article.image_url,
     image_caption: article.image_credit,
@@ -170,6 +171,11 @@ function ArticlePage() {
     <LogisightArticle
       article={articleProp}
       related={relatedProp}
+      reportCta={{
+        heading: "이 뉴스가 운임과 공급망에 미치는 영향은?",
+        body: "이번 주 Logisight 레포트에서 주요 노선 전망과 대응 포인트를 확인하세요.",
+        buttonLabel: "이번 주 레포트 보기",
+      }}
       renderRelatedLink={(item, children, className) => {
         const n = item.id ? relatedById.get(item.id) : undefined;
         return n && isInternalNewsItem(n) ? (

@@ -3,7 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { getArticleBySlug, getRelatedArticles } from "./article.functions";
 import type { NewsItem } from "./news";
 
-export type Article = NewsItem & { content: string | null };
+export type Article = NewsItem & { content: string | null; fetched_at?: string | null };
 
 export const articleQueryOptions = (slug: string) =>
   queryOptions({
