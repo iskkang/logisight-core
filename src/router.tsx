@@ -9,6 +9,10 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
+    // hover/touch로 의도를 보이면 라우트 loader를 미리 실행 → 클릭 시 데이터가 대개 준비돼
+    // 라우트 전환 시 흰 화면 깜빡임(useSuspenseQuery 재suspend)을 줄인다. CDN 캐시(배치 B)로
+    // 프리로드 요청도 저렴하다. defaultPreloadStaleTime:0이라 React Query 캐시가 신선도를 관리.
+    defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
     // SSR 쿼리 캐시 전수: 서버 loader가 ensureQueryData로 채운 React Query 캐시를
     // 직렬화(dehydrate)해 클라이언트에서 복원(hydrate)한다. 이 배선이 없으면 클라이언트는
