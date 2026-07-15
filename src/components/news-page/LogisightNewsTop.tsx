@@ -25,6 +25,7 @@ export type Pick = {
 type Props = {
   showNav?: boolean;
   deskTitle?: string;
+  intro?: string;
   date?: string;
   category?: string;
   onCategoryChange?: (c: string) => void;
@@ -73,6 +74,7 @@ const STYLE = `
 .lsgn-root .nav nav a.on::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;border-radius:2px;background:var(--teal)}
 
 .lsgn-root .bc{padding:12px 0 0;font-size:12px;color:var(--mute)}.lsgn-root .bc b{color:var(--body);font-weight:500}
+.lsgn-root .intro{margin:0 0 14px;font-size:14px;line-height:1.55;color:var(--body);max-width:680px}
 
 .lsgn-root .desk{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px 0 12px}
 .lsgn-root .desk .l{display:flex;align-items:baseline;gap:9px}
@@ -146,6 +148,7 @@ function Placeholder() {
 export default function LogisightNewsTop({
   showNav = true,
   deskTitle = "마켓 데스크",
+  intro,
   date = "",
   category,
   onCategoryChange,
@@ -178,6 +181,8 @@ export default function LogisightNewsTop({
 
       <div className="wrap">
         <div className="bc">홈 <b>›</b> 뉴스</div>
+
+        {intro ? <p className="intro">{intro}</p> : null}
 
         {/* 슬림 헤더 + 기간 세그먼트 */}
         <div className="desk">

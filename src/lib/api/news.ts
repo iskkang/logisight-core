@@ -18,6 +18,7 @@ export type NewsItem = {
   lang: string;
   tags: string[] | null;
   is_hero: boolean | null;
+  read_minutes?: number | null;
 };
 
 export function isInternalNewsItem(item: Pick<NewsItem, "slug" | "agent_type">): boolean {

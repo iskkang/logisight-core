@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
-import type { NewsItem } from "./news";
+import { isInternalNewsItem, type NewsItem } from "./news";
+import { estimateReadMinutes } from "./article";
 import { normalizeNewsImage } from "./news-image";
 
 const SELECT =
@@ -45,7 +46,11 @@ export const getLatestNews = createServerFn({ method: "GET" })
           (r.content != null && String(r.content).trim().length > 0),
       )
       .map((r) => {
+        // 읽는 시간: 내부 기사(우리 본문을 독자가 실제로 읽음)에만 표기. 외부 링크 기사는
+        // 원문 분량과 달라 오해를 주므로 null. content 삭제 전에 계산한다.
+        const readMin = isInternalNewsItem(r) ? estimateReadMinutes(r.content ?? null) : null;
         delete (r as { content?: unknown }).content;
+        (r as NewsItem).read_minutes = readMin;
         return normalizeNewsImage(r as NewsItem);
       });
   });

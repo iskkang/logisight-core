@@ -76,6 +76,7 @@ function NewsPage() {
       <HomeNav active="news" />
       <LogisightNewsTop
         showNav={false}
+        intro="글로벌 물류·해운·항공·철도·무역 뉴스를 선별해 한국어로 전달합니다."
         date={kstDateLabel()}
         category={cat ?? "전체"}
         onCategoryChange={(label) =>
@@ -128,7 +129,10 @@ function NewsPage() {
               {/* Lead story */}
               {lead && (
                 <article className="lg:col-span-7 lg:border-r lg:border-[var(--color-line)] lg:pr-10">
-                  <Exclusive item={lead} />
+                  <div className="flex items-center gap-2">
+                    <Exclusive item={lead} />
+                    {lead.is_hero && <MajorBadge />}
+                  </div>
                   <h2 className="font-serif-display mt-3 text-3xl font-black leading-[1.1] text-[var(--color-navy-900)] lg:text-[44px]">
                     <NewsItemLink
                       item={lead}
@@ -167,7 +171,7 @@ function NewsPage() {
                   {secondary.map((n) => (
                     <li key={n.id} className="grid grid-cols-3 gap-4 py-5 first:pt-0">
                       <div className="col-span-2">
-                        <KickerCat item={n} />
+                        <KickerCat item={n} showBadge />
                         <h3 className="font-serif-display mt-2 text-xl font-bold leading-snug text-[var(--color-navy-900)]">
                           <NewsItemLink
                             item={n}
@@ -267,7 +271,7 @@ function NewsPage() {
                           />
                         </NewsItemLink>
                       )}
-                      <KickerCat item={n} />
+                      <KickerCat item={n} showBadge />
                       <h3 className="font-serif-display mt-2 text-xl font-bold leading-snug text-[var(--color-navy-900)]">
                         <NewsItemLink
                           item={n}
@@ -378,15 +382,40 @@ function Exclusive({ item }: { item: NewsItem }) {
   );
 }
 
-function KickerCat({ item, small = false }: { item: NewsItem; small?: boolean }) {
-  if (!item.category) return null;
+/** is_hero 기사에만 붙는 "주요" 배지. 전용 화주-영향 필드가 없어 편집 hero 플래그를 재사용한다. */
+function MajorBadge() {
   return (
+    <span className="inline-flex items-center rounded-[4px] bg-[var(--color-cyan)] px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-[var(--color-navy-900)]">
+      주요
+    </span>
+  );
+}
+
+function KickerCat({
+  item,
+  small = false,
+  showBadge = false,
+}: {
+  item: NewsItem;
+  small?: boolean;
+  showBadge?: boolean;
+}) {
+  const cat = item.category ? (
     <p
       className={`font-bold uppercase tracking-[0.22em] ${small ? "text-[10px]" : "text-[11px]"}`}
       style={{ color: "var(--color-navy-600)" }}
     >
       {item.category}
     </p>
+  ) : null;
+  const badge = showBadge && item.is_hero ? <MajorBadge /> : null;
+  if (!cat && !badge) return null;
+  if (!badge) return cat;
+  return (
+    <div className="flex items-center gap-2">
+      {cat}
+      {badge}
+    </div>
   );
 }
 
@@ -398,6 +427,12 @@ function Byline({ item, className = "" }: { item: NewsItem; className?: string }
       <span className="font-semibold text-[var(--color-navy-900)]">By {item.source}</span>
       <span>·</span>
       <time dateTime={item.published_at ?? undefined}>{formatPublishedAt(item.published_at)}</time>
+      {item.read_minutes != null && (
+        <>
+          <span>·</span>
+          <span>{item.read_minutes}분</span>
+        </>
+      )}
     </div>
   );
 }
