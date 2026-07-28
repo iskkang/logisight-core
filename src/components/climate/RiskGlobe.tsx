@@ -601,6 +601,10 @@ export function RiskGlobe({ data, forecastQuality }: { data: ClimateRiskData; fo
     let rzTimer: number | undefined;
     const onResize = () => { window.clearTimeout(rzTimer); rzTimer = window.setTimeout(resize, 120); };
     window.addEventListener("resize", onResize);
+    // 하단 경보 스트립·패널 내용 변화 등 window resize 없이 컨테이너 크기가 바뀌는 경우 —
+    // 버퍼를 재계산하지 않으면 canvas가 CSS로 늘어나 지구본이 타원으로 왜곡된다.
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(onResize) : null;
+    if (ro && cv.parentElement) ro.observe(cv.parentElement);
 
     const reduce = prefersReduced();
     if (reduce) setSpinOn(false);
@@ -617,6 +621,7 @@ export function RiskGlobe({ data, forecastQuality }: { data: ClimateRiskData; fo
       cancelAnimationFrame(raf);
       window.clearTimeout(rzTimer);
       window.removeEventListener("resize", onResize);
+      if (ro) ro.disconnect();
       cv.removeEventListener("pointerdown", onDown);
       cv.removeEventListener("pointermove", onMove);
       cv.removeEventListener("pointerup", onUp);

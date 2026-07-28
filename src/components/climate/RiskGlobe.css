@@ -198,8 +198,10 @@
 .rg-q { font-size: 13px; font-weight: 700; color: var(--solar); }
 .rg-note .rg-a { font-size: 12px; line-height: 1.6; color: var(--mist); margin-top: 7px; }
 
-.rg-alerts { display: flex; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line); background: #0d1c30; overflow-x: auto; }
+/* height 고정: 스트립 내용(경보 0건↔N건)에 따라 지도 영역 높이가 출렁이지 않게 한다 */
+.rg-alerts { display: flex; gap: 10px; height: 88px; padding: 12px 16px; border-top: 1px solid var(--line); background: #0d1c30; overflow-x: auto; overflow-y: hidden; }
 .rg-alert { flex: 1 1 0; min-width: 260px; display: flex; gap: 10px; align-items: flex-start; background: #11233a; border: 1px solid var(--line); border-left: 3px solid var(--r); border-radius: 10px; padding: 10px 12px; }
+.rg-alert .rg-tx { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .rg-alert.warn { border-left-color: var(--a); }
 .rg-alert .rg-sev { font-family: var(--mono); font-size: 10px; font-weight: 600; padding-top: 1px; color: var(--r); }
 .rg-alert.warn .rg-sev { color: var(--a); }
