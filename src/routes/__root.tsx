@@ -10,6 +10,8 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 
+import { Analytics } from "@vercel/analytics/react";
+
 import appCss from "../styles.css?url";
 import { Navigation } from "@/components/site/Navigation";
 import { Footer } from "@/components/site/Footer";
@@ -179,6 +181,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <Analytics />
         <Scripts />
       </body>
     </html>

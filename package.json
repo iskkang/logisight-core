@@ -50,6 +50,7 @@
     "@tanstack/router-plugin": "^1.167.28",
     "@tanstack/zod-adapter": "^1.167.0",
     "@types/topojson-client": "^3.1.5",
+    "@vercel/analytics": "^2.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "d3-geo": "^3.1.1",
