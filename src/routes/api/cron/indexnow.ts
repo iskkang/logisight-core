@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 
+import { SITE_URL, SITE_HOST as HOST } from "@/lib/seo";
+
 // IndexNow 자동 핑 — 일일 cron. sitemap.xml의 <lastmod> 차분으로 신규/변경 URL만
 // Bing·Yandex·Naver 등 IndexNow 참여 엔진에 제출(구글은 IndexNow 미참여).
 // 인증: Vercel cron이 CRON_SECRET 설정 시 자동으로 Authorization: Bearer <CRON_SECRET> 헤더를 붙인다.
 // 시드: ?seed=1 이면 lastmod 무시하고 sitemap 전체 URL 제출(최초 1회 전 페이지 통지용).
 
-const HOST = "logisight.mtlship.com";
-const SITEMAP_URL = `https://${HOST}/sitemap.xml`;
+const SITEMAP_URL = `${SITE_URL}/sitemap.xml`;
 const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
 const WINDOW_MS = 26 * 60 * 60 * 1000; // 일 1회 cron 기준 여유 26시간
 const MAX_URLS = 10000;
