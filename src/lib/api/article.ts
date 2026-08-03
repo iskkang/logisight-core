@@ -29,6 +29,21 @@ export const relatedArticlesQueryOptions = (input: {
   });
 
 /**
+ * 원문으로 리다이렉트해도 되는 URL인지. 스킴 접두어(/^https?:\/\//) 검사만으로는
+ * "https://javascript:void(0);" 같은 수집 쓰레기 값이 통과해 깨진 Location이 나간다.
+ * 실제 파싱 + 호스트 형태까지 확인한다.
+ */
+export function isRedirectableUrl(url: string | null): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    return (u.protocol === "http:" || u.protocol === "https:") && u.hostname.includes(".");
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 자체 도메인의 샘플 기사 URL인지. 구 도메인(logisight.mtlship.com)으로 저장된 기존 행이
  * DB에 남아 있으므로 두 도메인을 모두 인식한다.
  */

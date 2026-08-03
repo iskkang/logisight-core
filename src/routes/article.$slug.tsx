@@ -8,6 +8,7 @@ import {
   relatedArticlesQueryOptions,
   estimateReadMinutes,
   isSampleArticleUrl,
+  isRedirectableUrl,
 } from "@/lib/api/article";
 import { formatPublishedAt, isInternalNewsItem } from "@/lib/api/news";
 import { normalizeArticleContent } from "@/lib/article-content";
@@ -26,8 +27,7 @@ export const Route = createFileRoute("/article/$slug")({
     if (
       article.agent_type === "external" &&
       !article.content?.trim() &&
-      article.url &&
-      /^https?:\/\//.test(article.url)
+      isRedirectableUrl(article.url)
     ) {
       throw redirect({ href: article.url });
     }
