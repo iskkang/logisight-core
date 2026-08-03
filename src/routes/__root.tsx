@@ -16,7 +16,9 @@ import appCss from "../styles.css?url";
 import { Navigation } from "@/components/site/Navigation";
 import { Footer } from "@/components/site/Footer";
 import LogisightLoader from "@/components/LogisightLoader";
-import { SITE_URL } from "@/lib/seo";
+import { SITE_URL, SITE_HOST } from "@/lib/seo";
+
+const GA_MEASUREMENT_ID = "G-8NG0LJGF23";
 
 // Minimal shell without IndexBar — safe to use outside QueryClientProvider
 function MinimalShell({ children }: { children: React.ReactNode }) {
@@ -165,6 +167,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           name: "Logisight",
           url: SITE_URL,
         }),
+      },
+      // GA4 — 정본 호스트에서만 로드한다. 프리뷰(*.vercel.app)·localhost 트래픽이
+      // 섞이면 유입 분석이 오염되므로, 태그 자체를 심지 않는다.
+      // SPA 라우트 이동은 GA4 향상된 측정(브라우저 방문 기록 이벤트)이 처리한다.
+      {
+        children: `if(location.hostname===${JSON.stringify(SITE_HOST)}){
+  var s=document.createElement('script');
+  s.async=true;s.src='https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}';
+  document.head.appendChild(s);
+  window.dataLayer=window.dataLayer||[];
+  window.gtag=function(){window.dataLayer.push(arguments)};
+  window.gtag('js',new Date());
+  window.gtag('config','${GA_MEASUREMENT_ID}');
+}`,
       },
     ],
   }),
