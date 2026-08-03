@@ -28,6 +28,14 @@ export const relatedArticlesQueryOptions = (input: {
     staleTime: 5 * 60 * 1000,
   });
 
+/**
+ * 자체 도메인의 샘플 기사 URL인지. 구 도메인(logisight.mtlship.com)으로 저장된 기존 행이
+ * DB에 남아 있으므로 두 도메인을 모두 인식한다.
+ */
+export function isSampleArticleUrl(url: string | null): boolean {
+  return !!url && /^https?:\/\/logisight\.(net|mtlship\.com)\/sample/.test(url);
+}
+
 export function estimateReadMinutes(content: string | null): number | null {
   if (!content) return null;
   const chars = content.replace(/\s+/g, "").length;

@@ -7,6 +7,7 @@ import {
   articleParam,
   relatedArticlesQueryOptions,
   estimateReadMinutes,
+  isSampleArticleUrl,
 } from "@/lib/api/article";
 import { formatPublishedAt, isInternalNewsItem } from "@/lib/api/news";
 import { normalizeArticleContent } from "@/lib/article-content";
@@ -134,7 +135,7 @@ function ArticlePage() {
   const isExternalSource =
     !!article.url &&
     /^https?:\/\//.test(article.url) &&
-    !article.url.includes("logisight.mtlship.com/sample");
+    !isSampleArticleUrl(article.url);
 
   // 인텔리전스 필드(summary_points·impact)는 maritime_news 에 없으므로 전달하지 않는다 → 자동 숨김.
   const articleProp: LsArticle = {
