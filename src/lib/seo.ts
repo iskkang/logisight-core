@@ -54,9 +54,10 @@ export function seoHead({ title, description, path, image, type = "website" }: S
 /* ===================== JSON-LD 스키마 빌더 (GEO) ===================== */
 // SSR HTML에 출력되는 페이지 스키마. 모든 수치는 호출부에서 실데이터로 바인딩한다.
 
+// 발행자는 Logisight — 운영 법인(MTL Shipping Agency)은 parentOrganization으로 __root에서 공시한다.
 const PUBLISHER = {
   "@type": "Organization",
-  name: "MTL Shipping Agency",
+  name: SITE_NAME,
   logo: { "@type": "ImageObject", url: `${SITE_URL}/logisight_logo.svg` },
 };
 
@@ -80,7 +81,7 @@ export function articleSchema(i: ArticleSchemaInput) {
     image: [i.image ? abs(i.image) : DEFAULT_IMAGE],
     datePublished: i.datePublished ?? undefined,
     dateModified: i.dateModified ?? i.datePublished ?? undefined,
-    author: { "@type": "Organization", name: "MTL Shipping Agency" },
+    author: { "@type": "Organization", name: SITE_NAME },
     publisher: PUBLISHER,
     mainEntityOfPage: abs(i.path),
   };

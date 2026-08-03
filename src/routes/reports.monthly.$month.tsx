@@ -18,7 +18,7 @@ export const Route = createFileRoute("/reports/monthly/$month")({
   head: ({ loaderData, params }) =>
     seoHead({
       title: `${loaderData?.title ?? "월간 리포트"} — Logisight`,
-      description: "MTL이 매월 발행하는 물류 시장 인텔리전스 리포트.",
+      description: "Logisight가 매월 발행하는 물류 시장 인텔리전스 리포트.",
       path: `/reports/monthly/${params.month}`,
     }),
   component: MonthlyReportPage,

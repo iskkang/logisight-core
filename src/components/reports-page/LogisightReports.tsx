@@ -442,7 +442,7 @@ function Cover({ r }: { r: Report }) {
         <div className="t">{seriesName(r)}</div>
         <div className="p mono">{r.period_label}</div>
       </div>
-      <div className="bot">MTL Shipping Agency</div>
+      <div className="bot">Logisight</div>
     </div>
   );
 }
@@ -778,7 +778,7 @@ export default function LogisightReports({
           <span className="eyebrow">Market Reports</span>
           <h1>마켓 리포트</h1>
           <p>
-            MTL이 매주·매월 발행하는 물류 시장 인텔리전스 리포트 — 운임·해상·항공·철도·무역을 한
+            Logisight가 매주·매월 발행하는 물류 시장 인텔리전스 리포트 — 운임·해상·항공·철도·무역을 한
             편에 정리합니다.
           </p>
           <div className="hpills">
@@ -805,7 +805,7 @@ export default function LogisightReports({
             article={{
               headline: "마켓 리포트 — 주간·월간 물류 시장 인텔리전스",
               description:
-                "MTL이 매주·매월 발행하는 물류 시장 인텔리전스 리포트 — 운임·해상·항공·철도·무역을 한 편에 정리합니다.",
+                "Logisight가 매주·매월 발행하는 물류 시장 인텔리전스 리포트 — 운임·해상·항공·철도·무역을 한 편에 정리합니다.",
               path: "/reports",
               datePublished: geo.latestIso,
               dateModified: geo.latestIso,
@@ -862,7 +862,7 @@ export default function LogisightReports({
             <div className="cols">
               <div>
                 <Wordmark />
-                <p>(주)MTL이 운영하는 물류 인텔리전스</p>
+                <p>한국 화주·포워더를 위한 물류 인텔리전스</p>
               </div>
               <div>
                 <h6>서비스</h6>
@@ -879,16 +879,17 @@ export default function LogisightReports({
                 <a href="#">무역</a>
               </div>
               <div>
-                <h6>MTL</h6>
-                <a href="#">회사소개</a>
-                <a href="#">뉴스레터 구독</a>
-                <a href="#">영업 문의</a>
+                <h6>Logisight</h6>
+                <a href="/about">소개</a>
+                <a href="#newsletter">뉴스레터 구독</a>
+                <a href="/privacy">개인정보처리방침</a>
               </div>
             </div>
             <div className="legal mono">
-              Logisight is operated by MTL Shipping Agency. · 주요 데이터 출처는{" "}
+              Logisight is operated by{" "}
+              <a href="/about" style={{ textDecoration: "underline" }}>MTL Shipping Agency</a>. · 주요 데이터 출처는{" "}
               <a href="/methodology" style={{ textDecoration: "underline" }}>데이터 방법론</a> 페이지 참조
-              <br />© 2026 MTL Shipping Agency. All rights reserved.
+              <br />© 2026 Logisight. All rights reserved.
             </div>
           </div>
         </footer>
