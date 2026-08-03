@@ -16,6 +16,7 @@ import appCss from "../styles.css?url";
 import { Navigation } from "@/components/site/Navigation";
 import { Footer } from "@/components/site/Footer";
 import LogisightLoader from "@/components/LogisightLoader";
+import { SITE_URL } from "@/lib/seo";
 
 // Minimal shell without IndexBar — safe to use outside QueryClientProvider
 function MinimalShell({ children }: { children: React.ReactNode }) {
@@ -110,11 +111,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:image",
-        content: "https://logisight.mtlship.com/og-default.jpg",
+        content: `${SITE_URL}/og-default.jpg`,
       },
       {
         name: "twitter:image",
-        content: "https://logisight.mtlship.com/og-default.jpg",
+        content: `${SITE_URL}/og-default.jpg`,
       },
     ],
     links: [
@@ -150,8 +151,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@context": "https://schema.org",
           "@type": "Organization",
           name: "Logisight",
-          url: "https://logisight.mtlship.com",
-          logo: "https://logisight.mtlship.com/logisight_logo.svg",
+          url: SITE_URL,
+          logo: `${SITE_URL}/logisight_logo.svg`,
           publisher: { "@type": "Organization", name: "MTL Shipping Agency" },
           sameAs: ["https://mtlship.com"],
         }),
@@ -162,7 +163,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@context": "https://schema.org",
           "@type": "WebSite",
           name: "Logisight",
-          url: "https://logisight.mtlship.com",
+          url: SITE_URL,
         }),
       },
     ],

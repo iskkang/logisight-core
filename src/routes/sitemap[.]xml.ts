@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
-
-const BASE_URL = "https://logisight.mtlship.com";
+import { SITE_URL as BASE_URL } from "@/lib/seo";
 
 interface SitemapEntry {
   path: string;

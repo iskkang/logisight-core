@@ -1,9 +1,14 @@
 // 전 라우트 메타 일원화 헬퍼. 입력 {title, description, path, image?, type?} →
 // title·description·canonical·og·twitter 전체 세트를 반환한다. ABS(path)는 항상
-// production 도메인(logisight.mtlship.com) 기준 — vercel.app·lovable 절대 금지.
+// production 도메인 기준 — vercel.app 절대 금지.
 // 사용: head: () => seoHead({ title, description, path: "/rates" })
-
-const SITE_URL = "https://logisight.mtlship.com";
+//
+// SITE_URL은 사이트 전역 도메인 단일 소스 — sitemap·__root·article·indexnow가 여기서 가져간다.
+// 정본은 apex(www 아님). www.logisight.net은 Vercel에서 apex로 308 리다이렉트되므로,
+// 생성되는 canonical·<loc>·IndexNow 제출 URL이 www를 타면 안 된다.
+export const SITE_URL = "https://logisight.net";
+/** 스킴 없는 호스트 — IndexNow처럼 호스트만 받는 곳에서 사용. */
+export const SITE_HOST = SITE_URL.replace(/^https?:\/\//, "");
 const SITE_NAME = "Logisight";
 const DEFAULT_IMAGE = `${SITE_URL}/og-default.jpg`;
 

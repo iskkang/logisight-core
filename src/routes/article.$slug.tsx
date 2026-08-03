@@ -7,9 +7,11 @@ import {
   articleParam,
   relatedArticlesQueryOptions,
   estimateReadMinutes,
+  isSampleArticleUrl,
 } from "@/lib/api/article";
 import { formatPublishedAt, isInternalNewsItem } from "@/lib/api/news";
 import { normalizeArticleContent } from "@/lib/article-content";
+import { SITE_URL } from "@/lib/seo";
 import LogisightArticle from "@/components/article-page/LogisightArticle";
 import type {
   Article as LsArticle,
@@ -42,7 +44,7 @@ export const Route = createFileRoute("/article/$slug")({
       "Logisight 큐레이션 물류 뉴스 상세 기사.";
     const slugParam = a?.slug && a.slug.length > 0 ? a.slug : a ? String(a.id) : params.slug;
     // canonical·og:url은 sitemap <loc>와 문자 단위로 일치해야 통합이 작동 — 동일하게 percent-인코딩
-    const url = `https://logisight.mtlship.com/article/${encodeURIComponent(slugParam)}`;
+    const url = `${SITE_URL}/article/${encodeURIComponent(slugParam)}`;
     const meta: Array<Record<string, string>> = [
       { title },
       { name: "description", content: desc },
@@ -78,7 +80,7 @@ export const Route = createFileRoute("/article/$slug")({
             name: "MTL Shipping Agency",
             logo: {
               "@type": "ImageObject",
-              url: "https://logisight.mtlship.com/logisight_logo.svg",
+              url: `${SITE_URL}/logisight_logo.svg`,
             },
           },
           mainEntityOfPage: url,
@@ -133,7 +135,7 @@ function ArticlePage() {
   const isExternalSource =
     !!article.url &&
     /^https?:\/\//.test(article.url) &&
-    !article.url.includes("logisight.mtlship.com/sample");
+    !isSampleArticleUrl(article.url);
 
   // 인텔리전스 필드(summary_points·impact)는 maritime_news 에 없으므로 전달하지 않는다 → 자동 숨김.
   const articleProp: LsArticle = {
