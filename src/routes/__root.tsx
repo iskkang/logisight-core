@@ -95,9 +95,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "MTL Shipping Agency가 운영하는 한국 화주·포워더를 위한 물류 인텔리전스 플랫폼. 운임 지수, 물류 뉴스, 유라시아 코리도어, 정책 변화를 매주 한 편의 분석으로.",
+          "한국 화주·포워더를 위한 물류 인텔리전스 플랫폼. 운임 지수, 물류 뉴스, 유라시아 코리도어, 정책 변화를 매주 한 편의 분석으로.",
       },
-      { name: "author", content: "MTL Shipping Agency" },
+      { name: "author", content: "Logisight" },
       { property: "og:title", content: "Logisight — 물류를 읽는 새로운 시선" },
       {
         property: "og:description",
@@ -155,8 +155,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           name: "Logisight",
           url: SITE_URL,
           logo: `${SITE_URL}/logisight_logo.svg`,
-          publisher: { "@type": "Organization", name: "MTL Shipping Agency" },
-          sameAs: ["https://mtlship.com"],
+          // 운영 법인은 상위 조직으로 공시한다. sameAs로 두면 Logisight와 mtlship.com을
+          // 동일 주체로 선언하는 셈이라 미디어 브랜드의 독립성이 구조화 데이터에서 사라진다.
+          parentOrganization: {
+            "@type": "Organization",
+            name: "MTL Shipping Agency",
+            url: "https://www.mtlship.com",
+          },
         }),
       },
       {

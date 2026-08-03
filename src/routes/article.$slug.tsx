@@ -73,11 +73,11 @@ export const Route = createFileRoute("/article/$slug")({
           dateModified: a.published_at ?? undefined,
           author: {
             "@type": "Organization",
-            name: a.source ?? "MTL Shipping Agency",
+            name: a.source ?? "Logisight",
           },
           publisher: {
             "@type": "Organization",
-            name: "MTL Shipping Agency",
+            name: "Logisight",
             logo: {
               "@type": "ImageObject",
               url: `${SITE_URL}/logisight_logo.svg`,

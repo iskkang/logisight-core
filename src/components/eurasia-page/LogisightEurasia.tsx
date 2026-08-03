@@ -609,7 +609,7 @@ export default function LogisightEurasia({
             <div className="cols">
               <div>
                 <Wordmark />
-                <p>(주)MTL이 운영하는 물류 인텔리전스</p>
+                <p>한국 화주·포워더를 위한 물류 인텔리전스</p>
               </div>
               <div>
                 <h6>서비스</h6>
@@ -625,10 +625,10 @@ export default function LogisightEurasia({
                 <a href="#">무역</a>
               </div>
               <div>
-                <h6>MTL</h6>
-                <a href="#">회사소개</a>
-                <a href="#">뉴스레터 구독</a>
-                <a href="#">영업 문의</a>
+                <h6>Logisight</h6>
+                <a href="/about">소개</a>
+                <a href="#newsletter">뉴스레터 구독</a>
+                <a href="/privacy">개인정보처리방침</a>
               </div>
             </div>
             <div className="news">
@@ -647,9 +647,10 @@ export default function LogisightEurasia({
               </div>
             </div>
             <div className="legal mono">
-              Logisight is operated by MTL Shipping Agency. · 주요 데이터 출처는{" "}
+              Logisight is operated by{" "}
+              <a href="/about" style={{ textDecoration: "underline" }}>MTL Shipping Agency</a>. · 주요 데이터 출처는{" "}
               <a href="/methodology" style={{ textDecoration: "underline" }}>데이터 방법론</a> 페이지 참조
-              <br />© 2026 MTL Shipping Agency. All rights reserved.
+              <br />© 2026 Logisight. All rights reserved.
             </div>
           </div>
         </footer>

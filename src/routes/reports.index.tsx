@@ -19,7 +19,7 @@ export const Route = createFileRoute("/reports/")({
     seoHead({
       title: "마켓 리포트 — Logisight",
       description:
-        "MTL이 매주·매월 발행하는 물류 시장 인텔리전스 리포트 — 운임·해상·항공·철도·무역을 한 편에 정리합니다.",
+        "Logisight가 매주·매월 발행하는 물류 시장 인텔리전스 리포트 — 운임·해상·항공·철도·무역을 한 편에 정리합니다.",
       path: "/reports",
     }),
   component: ReportsPage,

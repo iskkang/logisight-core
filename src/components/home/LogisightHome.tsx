@@ -459,15 +459,6 @@ function Sidebar() {
         <small className="mt-2.5 block text-[11px] text-[#5d6b80]">주 1회 발송 · 언제든 구독 해지 가능</small>
       </div>
 
-      <a href="mailto:sales@mtlship.com" className="block overflow-hidden rounded-[14px] border border-[#d4dce7] bg-[#f1f4f8] transition-shadow hover:shadow-[0_14px_28px_-20px_rgba(16,24,40,0.28)]">
-        <div className="flex items-center justify-between border-b border-[#d4dce7] px-3.5 py-2 text-[10px] uppercase tracking-[0.1em] text-[#828d9d]"><span>Sponsored · 광고</span><span>MTL Shipping Agency</span></div>
-        <img
-          src="/ad-mtl-truck-lcl.png"
-          alt="MTL Truck LCL 서비스 — 빠른 출발, 신뢰성 있는 배송, 소형 화물에 적합"
-          className="block h-auto w-full"
-          loading="lazy"
-        />
-      </a>
     </aside>
   );
 }

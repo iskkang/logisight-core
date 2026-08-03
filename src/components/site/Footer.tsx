@@ -1,4 +1,5 @@
-// 다크 네이비 푸터 — 브랜드+칩 / 서비스·뉴스·MTL 링크 / 뉴스레터 밴드 / © 라인.
+// 다크 네이비 푸터 — 브랜드+칩 / 서비스·뉴스·Logisight 링크 / 뉴스레터 밴드 / © 라인.
+// 소유 공시(운영 주체)는 숨기지 않되 링크 칼럼이 아니라 하단 한 줄 + /about에서 다룬다.
 // 프로토타입(Logisight 인터랙티브 프로토타입) AppFooter 구성.
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -14,7 +15,7 @@ export function Footer() {
             <img src="/logisight_logo.svg" alt="Logisight" className="h-8 w-auto" />
           </Link>
           <p className="mt-2.5 max-w-[280px] text-[12.5px] leading-relaxed text-white/65">
-            MTL Shipping Agency가 운영하는 한국 화주·포워더를 위한 물류 인텔리전스.
+            한국 화주·포워더를 위한 물류 인텔리전스.
           </p>
           <div className="mt-3.5 flex flex-wrap gap-2">
             {["유라시아 코리도어 전문", "공공데이터 기반"].map((t) => (
@@ -46,14 +47,10 @@ export function Footer() {
           ))}
         </FooterCol>
 
-        <FooterCol title="MTL">
-          <li>
-            <a href="https://www.mtlship.com" target="_blank" rel="noopener noreferrer" className={linkCls}>
-              회사소개
-            </a>
-          </li>
+        <FooterCol title="Logisight">
+          <li><Link to="/about" className={linkCls}>소개</Link></li>
           <li><a href="#newsletter" className={linkCls}>뉴스레터 구독</a></li>
-          <li><a href="mailto:sales@mtlship.com" className={linkCls}>영업 문의</a></li>
+          <li><Link to="/privacy" className={linkCls}>개인정보처리방침</Link></li>
         </FooterCol>
       </div>
 
@@ -77,7 +74,11 @@ export function Footer() {
 
       <div className="mx-auto mt-2 flex max-w-[1540px] flex-col gap-1 px-4 pb-6 pt-5 lg:px-12">
         <span className="text-[11.5px] text-white/60">
-          Logisight is operated by MTL Shipping Agency.
+          Logisight is operated by{" "}
+          <Link to="/about" className="underline transition-colors hover:text-white/80">
+            MTL Shipping Agency
+          </Link>
+          .
         </span>
         <span className="text-[11.5px] text-white/50">
           주요 데이터 출처는{" "}
@@ -87,7 +88,7 @@ export function Footer() {
           페이지를 참조하세요.
         </span>
         <span className="text-[11.5px] text-white/50">
-          © 2026 MTL Shipping Agency. All rights reserved.
+          © 2026 Logisight. All rights reserved.
         </span>
       </div>
     </footer>
