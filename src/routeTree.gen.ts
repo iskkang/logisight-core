@@ -47,6 +47,7 @@ import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminForecastsRouteImport } from './routes/admin.forecasts'
 import { Route as ReportsWeeklyWeekRouteImport } from './routes/reports.weekly.$week'
 import { Route as ReportsMonthlyMonthRouteImport } from './routes/reports.monthly.$month'
+import { Route as ApiWebhooksResendRouteImport } from './routes/api/webhooks/resend'
 import { Route as ApiTradeBriefRouteImport } from './routes/api/trade/brief'
 import { Route as ApiCronIndexnowRouteImport } from './routes/api/cron/indexnow'
 
@@ -240,6 +241,11 @@ const ReportsMonthlyMonthRoute = ReportsMonthlyMonthRouteImport.update({
   path: '/monthly/$month',
   getParentRoute: () => ReportsRoute,
 } as any)
+const ApiWebhooksResendRoute = ApiWebhooksResendRouteImport.update({
+  id: '/api/webhooks/resend',
+  path: '/api/webhooks/resend',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTradeBriefRoute = ApiTradeBriefRouteImport.update({
   id: '/api/trade/brief',
   path: '/api/trade/brief',
@@ -290,6 +296,7 @@ export interface FileRoutesByFullPath {
   '/reports/': typeof ReportsIndexRoute
   '/api/cron/indexnow': typeof ApiCronIndexnowRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
+  '/api/webhooks/resend': typeof ApiWebhooksResendRoute
   '/reports/monthly/$month': typeof ReportsMonthlyMonthRoute
   '/reports/weekly/$week': typeof ReportsWeeklyWeekRoute
 }
@@ -329,6 +336,7 @@ export interface FileRoutesByTo {
   '/reports': typeof ReportsIndexRoute
   '/api/cron/indexnow': typeof ApiCronIndexnowRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
+  '/api/webhooks/resend': typeof ApiWebhooksResendRoute
   '/reports/monthly/$month': typeof ReportsMonthlyMonthRoute
   '/reports/weekly/$week': typeof ReportsWeeklyWeekRoute
 }
@@ -372,6 +380,7 @@ export interface FileRoutesById {
   '/reports/': typeof ReportsIndexRoute
   '/api/cron/indexnow': typeof ApiCronIndexnowRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
+  '/api/webhooks/resend': typeof ApiWebhooksResendRoute
   '/reports/monthly/$month': typeof ReportsMonthlyMonthRoute
   '/reports/weekly/$week': typeof ReportsWeeklyWeekRoute
 }
@@ -416,6 +425,7 @@ export interface FileRouteTypes {
     | '/reports/'
     | '/api/cron/indexnow'
     | '/api/trade/brief'
+    | '/api/webhooks/resend'
     | '/reports/monthly/$month'
     | '/reports/weekly/$week'
   fileRoutesByTo: FileRoutesByTo
@@ -455,6 +465,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/api/cron/indexnow'
     | '/api/trade/brief'
+    | '/api/webhooks/resend'
     | '/reports/monthly/$month'
     | '/reports/weekly/$week'
   id:
@@ -497,6 +508,7 @@ export interface FileRouteTypes {
     | '/reports/'
     | '/api/cron/indexnow'
     | '/api/trade/brief'
+    | '/api/webhooks/resend'
     | '/reports/monthly/$month'
     | '/reports/weekly/$week'
   fileRoutesById: FileRoutesById
@@ -528,6 +540,7 @@ export interface RootRouteChildren {
   Index1520RoutesRoute: typeof Index1520RoutesRoute
   ApiCronIndexnowRoute: typeof ApiCronIndexnowRoute
   ApiTradeBriefRoute: typeof ApiTradeBriefRoute
+  ApiWebhooksResendRoute: typeof ApiWebhooksResendRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -798,6 +811,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsMonthlyMonthRouteImport
       parentRoute: typeof ReportsRoute
     }
+    '/api/webhooks/resend': {
+      id: '/api/webhooks/resend'
+      path: '/api/webhooks/resend'
+      fullPath: '/api/webhooks/resend'
+      preLoaderRoute: typeof ApiWebhooksResendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/trade/brief': {
       id: '/api/trade/brief'
       path: '/api/trade/brief'
@@ -895,6 +915,7 @@ const rootRouteChildren: RootRouteChildren = {
   Index1520RoutesRoute: Index1520RoutesRoute,
   ApiCronIndexnowRoute: ApiCronIndexnowRoute,
   ApiTradeBriefRoute: ApiTradeBriefRoute,
+  ApiWebhooksResendRoute: ApiWebhooksResendRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

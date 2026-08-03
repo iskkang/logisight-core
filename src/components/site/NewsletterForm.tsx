@@ -2,6 +2,7 @@ import { useState } from "react";
 import { z } from "zod";
 
 import { supabase } from "@/integrations/supabase/client";
+import { trackEvent } from "@/lib/analytics";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,9 @@ export function NewsletterForm({ compact = false }: { compact?: boolean }) {
     setConsent(false);
     setStatus({ kind: "idle" });
     setOpen(true);
+    // 퍼널 1단계. 이게 없으면 낮은 전환율이 "폼을 안 열어서"인지
+    // "열었다 이탈해서"인지 구분되지 않는다.
+    trackEvent("newsletter_modal_open");
   }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -89,6 +93,9 @@ export function NewsletterForm({ compact = false }: { compact?: boolean }) {
       return;
     }
     setEmail("");
+    // 퍼널 2단계 = 전환. GA4에서 주요 이벤트로 등록하면 세션→구독 전환율과
+    // 유입 경로별 전환이 함께 나온다.
+    trackEvent("sign_up", { method: "newsletter" });
     setStatus({ kind: "success", message: "구독해 주셔서 감사합니다." });
   }
 
