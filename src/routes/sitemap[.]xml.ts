@@ -40,6 +40,10 @@ export const Route = createFileRoute("/sitemap.xml")({
           const { data } = await supabasePublicServer
             .from("maritime_news")
             .select("id,slug,published_at")
+            // 본문 없는 외부 기사는 우리 페이지가 아니다 — 원문으로 리다이렉트되거나
+            // 원문 URL이 깨져 있어 크롤러가 리다이렉트·빈 페이지를 받는다. sitemap에서 제외.
+            // (agent_type NULL 행은 neq가 걸러내므로 is.null 절을 따로 둔다)
+            .or("agent_type.is.null,agent_type.neq.external,content.not.is.null")
             .order("published_at", { ascending: false, nullsFirst: false })
             .limit(500);
           for (const row of data ?? []) {
