@@ -18,6 +18,8 @@ export type Report = {
   web_url: string | null; // null → "웹으로 보기" 숨김
   cover_url: string | null;
   published_at: string | null;
+  /** 발행 언어. 일본판과 테이블을 공유하므로 목록·상세 조회에서 반드시 건다. */
+  lang: string;
 };
 
 export type ReportsBundle = {
