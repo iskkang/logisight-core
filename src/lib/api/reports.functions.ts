@@ -12,6 +12,10 @@ import type { Report, ReportsBundle } from "./reports";
 // 컴포넌트가 type/region으로 폴백한다. 적용+권역 발행 후 자동으로 매트릭스가 채워진다.
 const SELECT = "*";
 
+// reports 테이블은 일본판(jpn.logisight.net)과 공유한다. lang으로 명시적으로 거르지 않으면
+// 일본어 리포트가 한국 사이트 목록에 섞인다(migration 20260804000002).
+const LANG = "ko";
+
 export const getReports = createServerFn({ method: "GET" }).handler(
   async (): Promise<ReportsBundle> => {
     setResponseHeader("cache-control", PUBLIC_SWR_CACHE);
@@ -20,6 +24,7 @@ export const getReports = createServerFn({ method: "GET" }).handler(
         .from("reports")
         .select(SELECT)
         .eq("type", type)
+        .eq("lang", LANG)
         .order("period_start", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -32,6 +37,7 @@ export const getReports = createServerFn({ method: "GET" }).handler(
     const { data: archive, error } = await supabasePublicServer
       .from("reports")
       .select(SELECT)
+      .eq("lang", LANG)
       .order("period_start", { ascending: false })
       // 권역 리포트가 주차당 ~3행 추가되므로 매트릭스에 충분한 주차가 보이도록 상향.
       .limit(60);
@@ -53,6 +59,7 @@ export const getMonthlyReport = createServerFn({ method: "GET" })
       .from("reports")
       .select(SELECT)
       .eq("type", "monthly")
+      .eq("lang", LANG)
       .gte("period_start", start)
       .lt("period_start", end)
       .order("period_start", { ascending: false })
