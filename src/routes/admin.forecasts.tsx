@@ -1,8 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
+import type { Session, SupabaseClient } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
+
+// forecasts는 생성된 Database 타입에 없다. 캐스팅하지 않으면 컬럼명이 never로
+// 좁혀져 .eq("lang", …)이 타입 오류가 된다(lib/api/forecasts.functions.ts와 같다).
+const sbAny = supabase as unknown as SupabaseClient;
 import {
   saveForecastDraft,
   publishForecast,
@@ -91,9 +95,11 @@ function AdminForecastsPage() {
 
   useEffect(() => {
     if (!session) return;
-    supabase
+    sbAny
       .from("forecasts")
       .select(SELECT)
+      // 한국어 행만. lang을 걸지 않으면 일본어 전망이 이 검수 화면에 섞인다.
+      .eq("lang", "ko")
       // 운임 전망 검수 화면 — climate(기후 영향 초안)는 별도 파이프라인 소관이라 제외(모듈 혼입 방지).
       .in("module", ["rates", "eurasia", "trade", "policy"])
       .order("created_at", { ascending: false })
