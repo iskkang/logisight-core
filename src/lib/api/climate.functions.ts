@@ -37,6 +37,8 @@ export const getClimateRisk = createServerFn({ method: "GET" }).handler(
         .select(
           "id,metric_ref,statement,impact_note,basis,confidence,confidence_reason,data_quality_flags,published_at",
         )
+        // 한국어 행만. 기상 영향 전망도 forecasts를 일본판과 공유한다.
+        .eq("lang", "ko")
         .eq("module", "climate")
         .eq("status", "published")
         .order("published_at", { ascending: false })

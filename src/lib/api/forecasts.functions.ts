@@ -1,11 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import ws from "ws";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { Forecast } from "./forecasts";
 
 // "*" so new scoring columns (direction/composite/factor_scores/…) flow through when present,
 // and the query never 400s if the scoring migration hasn't been applied yet (resilient).
+// forecasts는 생성된 Database 타입에 없다. 캐스팅하지 않으면 컬럼명이 never로
+// 좁혀져 .eq("lang", …)이 타입 오류가 된다.
+const sbPublic = supabasePublicServer as unknown as SupabaseClient;
+
 const SELECT = "*";
 
 // 운임 전망 페이지가 다루는 모듈. climate(기후 영향 초안)는 globe/기후 페이지 소관 —
@@ -27,9 +32,12 @@ async function serviceClient() {
 // Public read — only published/resolved (RLS also enforces this).
 export const getPublishedForecasts = createServerFn({ method: "GET" }).handler(
   async (): Promise<Forecast[]> => {
-    const { data, error } = await supabasePublicServer
+    const { data, error } = await sbPublic
       .from("forecasts")
       .select(SELECT)
+      // 한국어 행만. forecasts는 일본판과 같은 테이블을 쓴다 — lang을 걸지 않으면
+      // 일본어 전망이 한국 사이트에 그대로 섞여 나온다(2026-08 발생).
+      .eq("lang", "ko")
       .in("status", ["published", "resolved"])
       .in("module", [...RATE_MODULES])
       .order("published_at", { ascending: false, nullsFirst: false })
@@ -137,6 +145,7 @@ export const getForecastSeriesBatch = createServerFn({ method: "GET" }).handler(
     const { data: rows, error } = await sb
       .from("forecasts")
       .select("id,metric_ref,cadence,published_at,horizon_date")
+      .eq("lang", "ko")
       .in("status", ["published", "resolved"])
       .in("module", [...RATE_MODULES])
       .limit(100);
@@ -169,7 +178,8 @@ export const saveForecastDraft = createServerFn({ method: "POST" })
       const { error } = await sb.from("forecasts").update(fields).eq("id", id);
       if (error) throw new Error(error.message);
     } else {
-      const { error } = await sb.from("forecasts").insert(fields);
+      // lang을 넣지 않으면 기본값에 기대게 된다. 어느 사이트 것인지는 쓰는 쪽이 정한다.
+      const { error } = await sb.from("forecasts").insert({ ...fields, lang: "ko" });
       if (error) throw new Error(error.message);
     }
     return { ok: true };
