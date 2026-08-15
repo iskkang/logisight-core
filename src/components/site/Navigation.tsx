@@ -6,17 +6,11 @@ import { useDarkMode } from "@/hooks/useDarkMode";
 
 // 프로토타입 메뉴 구조 — 상단 GNB 3개 + 대시보드 하위 서브메뉴 7개.
 // 홈은 로고/홈 버튼(→/), 대시보드 진입 시 서브 GNB가 나타난다.
-// 방법론·소개를 GNB 에 올린다 ★
-// 8개 지수의 출처·단위·갱신주기, "인과를 단정하지 않는다", "결측 ≠ 0", "전망 적중률 전수
-// 공개" —— 이게 이 사이트가 다른 물류 매체와 갈리는 지점인데 푸터 링크에만 있었다.
-// 읽히지 않는 원칙은 원칙이 아니다.
 const GNB = [
   { to: "/", label: "홈" },
   { to: "/news", label: "뉴스" },
   { to: "/dashboard", label: "인사이트" },
   { to: "/reports", label: "리포트" },
-  { to: "/methodology", label: "방법론" },
-  { to: "/about", label: "소개" },
 ] as const;
 
 const SUB_GNB = [
@@ -50,10 +44,6 @@ export function Navigation() {
     if (to === "/") return pathname === "/";
     if (to === "/news") return pathname === "/news" || pathname.startsWith("/article");
     if (to === "/reports") return pathname === "/reports" || pathname.startsWith("/reports/");
-    // 방법론·소개는 대시보드 영역이 아니다. 아래 inDash 폴백에 걸리면 대시보드에 있는 동안
-    // 이 둘까지 활성으로 보인다.
-    if (to === "/methodology") return pathname === "/methodology";
-    if (to === "/about") return pathname === "/about";
     return inDash;
   };
 

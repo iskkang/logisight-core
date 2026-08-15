@@ -34,7 +34,7 @@ const linkCls = "underline transition-colors hover:text-[var(--color-navy-600)]"
 function AboutPage() {
   return (
     <div className="min-h-screen bg-[#070b16] text-[#c7d2e0]">
-      <HomeNav active="about" />
+      <HomeNav />
       <main className="mx-auto w-full max-w-[920px] px-4 pb-20 pt-10 min-[640px]:px-7">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#93a1b7]">
         Logisight

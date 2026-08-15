@@ -267,6 +267,12 @@ function SiteShell({ children }: { children: React.ReactNode }) {
       "/briefing",
       "/faq",
       "/methodology",
+      // 아래 넷도 자체 HomeNav/HomeFooter 를 갖는다. 빠져 있어서 밝은 버전 Navigation·
+      // Footer 가 위에 한 겹 더 붙어 나왔다(헤더 두 개·푸터 두 개).
+      "/about",
+      "/privacy",
+      "/glossary",
+      "/asia",
     ].includes(pathname) ||
     pathname.startsWith("/article/") ||
     pathname.startsWith("/rail") // /rail 허브는 자체 HomeNav/Footer를 가짐 → 글로벌 Navigation 중복 방지

@@ -17,14 +17,13 @@ const SUB_GNB = [
   { to: "/climate", label: "기상" },
 ] as const;
 
-// 방법론·소개를 상단 내비에 올린다 ★
-// 8개 지수의 출처·단위·갱신주기 표, "인과를 단정하지 않는다", "결측 ≠ 0",
-// "전망 적중률 전수 공개" —— 이 사이트가 다른 물류 매체와 갈리는 지점인데 푸터에만 있었다.
-// 읽히지 않는 원칙은 원칙이 아니다.
-export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insight" | "reports" | "methodology" | "about" }) {
+// 상단 내비는 콘텐츠 축(홈·뉴스·인사이트·리포트)만 둔다.
+// 방법론·소개는 푸터에 있다 —— 한때 상단에 올렸다가 뺐다. 매번 보는 자리에 둘 물건이
+// 아니라 필요할 때 찾아가는 참조 문서다.
+export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insight" | "reports" }) {
   const [open, setOpen] = useState(false);
   const underline = <span className="absolute -bottom-0.5 left-0 right-0 h-0.5 rounded bg-[#2dd4bf]" />;
-  const topCls = (key: "home" | "news" | "insight" | "reports" | "methodology" | "about") =>
+  const topCls = (key: "home" | "news" | "insight" | "reports") =>
     key === active ? "relative py-1 text-white" : "py-1 text-[#93a1b7] transition-colors hover:text-white";
   return (
     <header className="sticky top-0 z-50 border-b border-[#78a0cd1c] bg-[#070b16cc] backdrop-blur-[14px] backdrop-saturate-150">
@@ -57,12 +56,6 @@ export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insig
           <Link to="/reports" className={topCls("reports")}>
             리포트{active === "reports" && underline}
           </Link>
-          <Link to="/methodology" className={topCls("methodology")}>
-            방법론{active === "methodology" && underline}
-          </Link>
-          <Link to="/about" className={topCls("about")}>
-            소개{active === "about" && underline}
-          </Link>
         </nav>
         <button
           type="button"
@@ -91,8 +84,6 @@ export function HomeNav({ active = "home" }: { active?: "home" | "news" | "insig
             </>
           )}
           <Link to="/reports" onClick={() => setOpen(false)} className={`block rounded-md px-3 py-2 text-[15px] ${active === "reports" ? "text-white" : "text-[#93a1b7]"}`}>리포트</Link>
-          <Link to="/methodology" onClick={() => setOpen(false)} className={`block rounded-md px-3 py-2 text-[15px] ${active === "methodology" ? "text-white" : "text-[#93a1b7]"}`}>방법론</Link>
-          <Link to="/about" onClick={() => setOpen(false)} className={`block rounded-md px-3 py-2 text-[15px] ${active === "about" ? "text-white" : "text-[#93a1b7]"}`}>소개</Link>
         </nav>
       )}
     </header>

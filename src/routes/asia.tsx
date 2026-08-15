@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
+import { HomeFooter } from "@/components/home/HomeFooter";
+import { HomeNav } from "@/components/home/HomeNav";
 import { DataMeta } from "@/components/ui/DataMeta";
 import { asiaThroughputQueryOptions } from "@/lib/api/asia";
 import { ASIA_COUNTRIES, toCsv } from "@/lib/asia-table";
@@ -74,9 +76,11 @@ function AsiaPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1100px] px-4 py-8">
-      <h1 className="text-[22px] font-bold text-[#1a2433]">동아시아 컨테이너 물동량 (원자료)</h1>
-      <p className="mt-2 max-w-[720px] text-[13px] leading-relaxed text-[#5b6672]">
+    <div className="min-h-screen bg-[#070b16] text-[#c7d2e0]">
+      <HomeNav />
+      <main className="mx-auto w-full max-w-[1100px] px-4 py-10">
+      <h1 className="text-[22px] font-bold text-[#e9eef7]">동아시아 컨테이너 물동량 (원자료)</h1>
+      <p className="mt-2 max-w-[720px] text-[13px] leading-relaxed text-[#93a1b7]">
         한국·일본·대만·홍콩의 월별 컨테이너 처리량(TEU)과 전년 대비 증감입니다. 각국 공식
         통계에서 직접 수집하며, <b>확보되지 않은 달은 0으로 채우지 않고 비워 둡니다.</b>
         <br />
@@ -91,8 +95,8 @@ function AsiaPage() {
             onClick={() => navigate({ search: { months: m } })}
             className={`rounded border px-2.5 py-1 text-[12px] ${
               m === months
-                ? "border-[#1a2433] bg-[#1a2433] text-white"
-                : "border-[#d8dee6] bg-white text-[#5b6672] hover:border-[#9aa5b1]"
+                ? "border-[#2dd4bf] bg-[#2dd4bf] text-[#070b16]"
+                : "border-[#1d2740] bg-[#0d1424] text-[#93a1b7] hover:border-[#2dd4bf]"
             }`}
           >
             최근 {m}개월
@@ -101,7 +105,7 @@ function AsiaPage() {
         <button
           type="button"
           onClick={downloadCsv}
-          className="ml-auto rounded border border-[#d8dee6] bg-white px-2.5 py-1 text-[12px] text-[#5b6672] hover:border-[#9aa5b1]"
+          className="ml-auto rounded border border-[#1d2740] bg-[#0d1424] px-2.5 py-1 text-[12px] text-[#93a1b7] transition-colors hover:border-[#2dd4bf] hover:text-[#2dd4bf]"
         >
           CSV 내려받기
         </button>
@@ -110,27 +114,27 @@ function AsiaPage() {
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[680px] border-collapse text-[13px]">
           <thead>
-            <tr className="border-b border-[#d8dee6] text-[12px] text-[#5b6672]">
+            <tr className="border-b border-[#1d2740] text-[12px] text-[#93a1b7]">
               <th className="px-2 py-2 text-left font-semibold">연월</th>
               {ASIA_COUNTRIES.map((c) => (
                 <th key={c.code} className="px-2 py-2 text-right font-semibold">
                   {c.label}
-                  <span className="ml-1 font-normal text-[#9aa5b1]">{c.code}</span>
+                  <span className="ml-1 font-normal text-[#5d6b80]">{c.code}</span>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody className="lsg-mono">
             {rows.map((r) => (
-              <tr key={r.period} className="border-b border-[#eef1f5]">
-                <td className="px-2 py-1.5 text-left text-[#1a2433]">{r.period}</td>
+              <tr key={r.period} className="border-b border-[#141c30]">
+                <td className="px-2 py-1.5 text-left text-[#e9eef7]">{r.period}</td>
                 {ASIA_COUNTRIES.map((c) => {
                   const cell = r.cells[c.code];
                   return (
                     <td key={c.code} className="px-2 py-1.5 text-right tabular-nums">
                       {cell ? (
                         <>
-                          <span className="text-[#1a2433]">{fmt(cell.teu)}</span>
+                          <span className="text-[#e9eef7]">{fmt(cell.teu)}</span>
                           {cell.yoyPct != null ? (
                             <span
                               className={`ml-1.5 text-[11px] ${cell.yoyPct >= 0 ? "text-[#0f766e]" : "text-[#b91c1c]"}`}
@@ -147,7 +151,7 @@ function AsiaPage() {
                           ) : null}
                         </>
                       ) : (
-                        <span className="text-[11px] text-[#9aa5b1]">데이터 확보 중</span>
+                        <span className="text-[11px] text-[#5d6b80]">데이터 확보 중</span>
                       )}
                     </td>
                   );
@@ -178,6 +182,8 @@ function AsiaPage() {
         </li>
         <li>합계 열은 두지 않습니다 —— 한 나라라도 비면 합계가 그 달만 작아집니다.</li>
       </ul>
-    </main>
+      </main>
+      <HomeFooter />
+    </div>
   );
 }
