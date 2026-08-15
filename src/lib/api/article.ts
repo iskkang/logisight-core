@@ -3,7 +3,9 @@ import { queryOptions } from "@tanstack/react-query";
 import { getArticleBySlug, getRelatedArticles } from "./article.functions";
 import type { NewsItem } from "./news";
 
-// generated_by = 본문을 쓴 모델명. 사람이 쓴 기사와 표기 시작 이전 기사는 null.
+// generated_by = 바이라인 표기값('Logisight AI'). 모델명이 아니다 —— 독자에게 필요한 건
+// 책임 주체지 어느 모델을 썼는지가 아니고, 모델을 바꿀 때마다 지난 기사 표기가 제각각이
+// 된다. 사람이 쓴 기사와 표기 시작 이전 기사는 null.
 export type Article = NewsItem & {
   content: string | null;
   fetched_at?: string | null;
