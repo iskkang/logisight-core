@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { requireAdminRoute } from "@/lib/admin-guard";
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/admin/policies")({
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
+  beforeLoad: requireAdminRoute,
   component: AdminPoliciesPage,
 });
 
@@ -52,6 +54,9 @@ function AdminPoliciesPage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // 서버함수가 호출자 토큰으로 admin 역할을 확인한다(lib/api/require-admin.ts).
+  const token = session?.access_token ?? "";
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -102,6 +107,7 @@ function AdminPoliciesPage() {
     try {
       await upsertPolicy({
         data: {
+          token,
           ...(draft.id ? { id: draft.id } : {}),
           title_ko: draft.title_ko,
           region: draft.region || null,

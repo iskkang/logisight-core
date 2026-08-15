@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { requireAdminRoute } from "@/lib/admin-guard";
 import { useEffect, useRef, useState } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/admin/forecasts")({
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
+  beforeLoad: requireAdminRoute,
   component: AdminForecastsPage,
 });
 
@@ -86,6 +88,9 @@ function AdminForecastsPage() {
 
   const editorRef = useRef<HTMLDivElement>(null);
 
+  // 서버함수가 호출자 토큰으로 admin 역할을 확인한다(lib/api/require-admin.ts).
+  const token = session?.access_token ?? "";
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) navigate({ to: "/admin/login" });
@@ -141,6 +146,7 @@ function AdminForecastsPage() {
     try {
       await saveForecastDraft({
         data: {
+          token,
           ...(draft.id ? { id: draft.id } : {}),
           module: draft.module,
           statement: draft.statement.trim(),
@@ -168,7 +174,7 @@ function AdminForecastsPage() {
   async function handlePublish(id: string) {
     if (!confirm("발행하면 본문은 수정·삭제할 수 없습니다 (무효 조건만 예외). 발행할까요?")) return;
     try {
-      await publishForecast({ data: { id } });
+      await publishForecast({ data: { token, id } });
       toast("발행됨");
       refresh();
     } catch (e) {
@@ -182,7 +188,7 @@ function AdminForecastsPage() {
       return;
     }
     try {
-      await annotateForecast({ data: { id, outcome_note: annotateNote.trim() } });
+      await annotateForecast({ data: { token, id, outcome_note: annotateNote.trim() } });
       toast("복기 저장됨");
       setAnnotatingId(null);
       setAnnotateNote("");
@@ -198,7 +204,7 @@ function AdminForecastsPage() {
       return;
     }
     try {
-      await resolveForecast({ data: { id, outcome, outcome_note: outcomeNote || null } });
+      await resolveForecast({ data: { token, id, outcome, outcome_note: outcomeNote || null } });
       toast("판정 확정");
       setResolvingId(null);
       setOutcomeNote("");

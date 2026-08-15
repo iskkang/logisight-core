@@ -4,6 +4,7 @@ import ws from "ws";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { Forecast } from "./forecasts";
+import { requireAdmin } from "./require-admin";
 
 // "*" so new scoring columns (direction/composite/factor_scores/…) flow through when present,
 // and the query never 400s if the scoring migration hasn't been applied yet (resilient).
@@ -157,6 +158,7 @@ export const getForecastSeriesBatch = createServerFn({ method: "GET" }).handler(
 );
 
 const DraftSchema = z.object({
+  token: z.string(),
   id: z.string().uuid().optional(),
   module: z.enum(["rates", "eurasia", "trade", "policy"]),
   statement: z.string().min(1).max(4000),
@@ -172,8 +174,10 @@ const DraftSchema = z.object({
 export const saveForecastDraft = createServerFn({ method: "POST" })
   .inputValidator(DraftSchema)
   .handler(async ({ data }) => {
+    await requireAdmin(data.token);
     const sb = await serviceClient();
-    const { id, ...fields } = data;
+    // token 은 인가용 입력이지 컬럼이 아니다 — ...fields 로 흘러들어가면 insert 가 깨진다.
+    const { id, token: _token, ...fields } = data;
     if (id) {
       const { error } = await sb.from("forecasts").update(fields).eq("id", id);
       if (error) throw new Error(error.message);
@@ -186,8 +190,9 @@ export const saveForecastDraft = createServerFn({ method: "POST" })
   });
 
 export const publishForecast = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.string().uuid() }))
+  .inputValidator(z.object({ token: z.string(), id: z.string().uuid() }))
   .handler(async ({ data }) => {
+    await requireAdmin(data.token);
     const sb = await serviceClient();
     const { error } = await sb
       .from("forecasts")
@@ -200,12 +205,14 @@ export const publishForecast = createServerFn({ method: "POST" })
 export const resolveForecast = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
+      token: z.string(),
       id: z.string().uuid(),
       outcome: z.enum(["hit", "partial", "miss"]),
       outcome_note: z.string().max(4000).nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
+    await requireAdmin(data.token);
     if (data.outcome !== "hit" && !data.outcome_note?.trim()) {
       throw new Error("miss·partial 판정에는 복기(outcome_note)가 필수입니다.");
     }
@@ -228,9 +235,10 @@ export const resolveForecast = createServerFn({ method: "POST" })
 // immutability trigger permits outcome_note changes post-publish.
 export const annotateForecast = createServerFn({ method: "POST" })
   .inputValidator(
-    z.object({ id: z.string().uuid(), outcome_note: z.string().min(1).max(4000) }),
+    z.object({ token: z.string(), id: z.string().uuid(), outcome_note: z.string().min(1).max(4000) }),
   )
   .handler(async ({ data }) => {
+    await requireAdmin(data.token);
     const sb = await serviceClient();
     const { error } = await sb
       .from("forecasts")

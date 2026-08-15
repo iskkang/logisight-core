@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { requireAdminRoute } from "@/lib/admin-guard";
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/admin/routes")({
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
+  beforeLoad: requireAdminRoute,
   component: AdminRoutesPage,
 });
 
@@ -58,6 +60,9 @@ function AdminRoutesPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+
+  // 서버함수가 호출자 토큰으로 admin 역할을 확인한다(lib/api/require-admin.ts).
+  const token = session?.access_token ?? "";
 
   // Auth gate
   useEffect(() => {
@@ -123,7 +128,7 @@ function AdminRoutesPage() {
     setSyncing(true);
     setSyncResult(null);
     try {
-      const result = await triggerMtlLinkSync();
+      const result = await triggerMtlLinkSync({ data: { token } });
       setSyncResult(result);
     } catch (err) {
       setSyncResult({ ok: false, tcr_upserted: 0, fesco_upserted: 0, snapshot_date: "", error: String(err) });

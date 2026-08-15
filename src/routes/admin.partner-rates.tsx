@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { requireAdminRoute } from "@/lib/admin-guard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/admin/partner-rates")({
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
+  beforeLoad: requireAdminRoute,
   component: AdminPartnerRates,
 });
 
@@ -30,8 +32,10 @@ function AdminPartnerRates() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
-  const { data: dests = [] } = useQuery(kitaDestsQueryOptions());
-  const { data: history = [] } = useQuery(rateSheetsHistoryQueryOptions());
+  // 서버함수가 호출자 토큰으로 admin 역할을 확인한다(lib/api/require-admin.ts).
+  const token = session?.access_token ?? "";
+  const { data: dests = [] } = useQuery(kitaDestsQueryOptions(token));
+  const { data: history = [] } = useQuery(rateSheetsHistoryQueryOptions(token));
   const [busy, setBusy] = useState(false);
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [sheet, setSheet] = useState<ExtractedSheet["sheet"] | null>(null);
@@ -60,9 +64,9 @@ function AdminPartnerRates() {
       });
       const ext: "png" | "jpg" | "webp" = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
       const media: "image/png" | "image/jpeg" | "image/webp" = file.type === "image/png" ? "image/png" : file.type === "image/webp" ? "image/webp" : "image/jpeg";
-      const up = await uploadRateImage({ data: { imageBase64: base64, ext } });
+      const up = await uploadRateImage({ data: { token, imageBase64: base64, ext } });
       setImagePath(up.path);
-      const ex = await extractRateSheet({ data: { imageBase64: base64, mediaType: media } });
+      const ex = await extractRateSheet({ data: { token, imageBase64: base64, mediaType: media } });
       setSheet(ex.sheet);
       setRows(ex.rows.map((r) => ({ ...r, kita_dest: null })));
       setMsg(`추출 완료: ${ex.rows.length}행. 확인·보정 후 저장하세요.`);
@@ -75,6 +79,7 @@ function AdminPartnerRates() {
     setBusy(true); setMsg("저장 중…");
     try {
       const res = await saveRateSheet({ data: {
+        token,
         sheet: { ...sheet, valid_from: null, image_path: imagePath, status },
         rows,
       } });
@@ -109,7 +114,7 @@ function AdminPartnerRates() {
   async function openPreview(path: string | null) {
     if (!path) { setMsg("이미지 경로가 없습니다."); return; }
     try {
-      const { url } = await getRateSheetImageUrl({ data: { path } });
+      const { url } = await getRateSheetImageUrl({ data: { token, path } });
       setPreviewUrl(url);
     } catch (e) { setMsg("미리보기 실패: " + (e as Error).message); }
   }
@@ -118,7 +123,7 @@ function AdminPartnerRates() {
     if (!window.confirm("이 업로드를 삭제할까요? (행·이미지 모두 삭제)")) return;
     setBusy(true);
     try {
-      await deleteRateSheet({ data: { id, image_path } });
+      await deleteRateSheet({ data: { token, id, image_path } });
       setMsg("삭제됨.");
       qc.invalidateQueries({ queryKey: ["rate_sheets", "history"] });
     } catch (e) { setMsg("삭제 실패: " + (e as Error).message); }

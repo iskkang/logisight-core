@@ -3,6 +3,7 @@ import { z } from "zod";
 import ws from "ws";
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { PolicyRow } from "./policies";
+import { requireAdmin } from "./require-admin";
 
 export const getPolicies = createServerFn({ method: "GET" }).handler(
   async (): Promise<PolicyRow[]> => {
@@ -20,6 +21,7 @@ export const getPolicies = createServerFn({ method: "GET" }).handler(
 );
 
 const PolicySchema = z.object({
+  token: z.string(),
   id: z.string().uuid().optional(),
   title_ko: z.string().min(1).max(500),
   title_en: z.string().nullable().optional(),
@@ -39,6 +41,7 @@ const PolicySchema = z.object({
 export const upsertPolicy = createServerFn({ method: "POST" })
   .inputValidator(PolicySchema)
   .handler(async ({ data }) => {
+    await requireAdmin(data.token);
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(
       process.env["SUPABASE_URL"]!,
@@ -48,7 +51,9 @@ export const upsertPolicy = createServerFn({ method: "POST" })
         realtime: { transport: ws },
       },
     );
-    const { error } = await supabase.from("policies").upsert(data);
+    // token 은 인가용 입력이지 컬럼이 아니다 — 그대로 넘기면 upsert 가 깨진다.
+    const { token: _token, ...fields } = data;
+    const { error } = await supabase.from("policies").upsert(fields);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

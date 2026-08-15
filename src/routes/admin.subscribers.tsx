@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { requireAdminRoute } from "@/lib/admin-guard";
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/admin/subscribers")({
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
+  beforeLoad: requireAdminRoute,
   component: AdminSubscribersPage,
 });
 

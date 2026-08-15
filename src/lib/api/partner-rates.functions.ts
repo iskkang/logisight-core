@@ -2,8 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import ws from "ws";
 import { numUSD, parseTransit, normRouteType, isExpired } from "./partner-rates.normalize";
+import { requireAdmin } from "./require-admin";
 
 const ExtractInput = z.object({
+  token: z.string(),
   imageBase64: z.string(),
   mediaType: z.enum(["image/png", "image/jpeg", "image/webp"]),
 });
@@ -61,12 +63,13 @@ const PROMPT = `이 이미지는 해상 FCL 운임표다. 모든 데이터 행�
 - sheet.valid_until은 "VALID TILL MM/DD/YYYY"를 YYYY-MM-DD로. sheet.notes는 하단 각주(AMS·FREETIME·국내부대비 등)를 한 문자열로.
 - 보이지 않거나 불명확하면 null. 추정·창작 금지.`;
 
-// 주의(서버측 인증): 이 레포의 admin 서버함수(policies/forecasts 등)는 모두 서버측 인증 검사가
-// 없고 클라이언트 라우트 가드에만 의존한다. extractRateSheet은 유료 Anthropic 호출이라 비용 노출이
-// 더 크다 — 외부 노출 환경에서는 호출자 세션 검증 추가를 후속 과제로 권장.
+// 서버측 인가: 아래 관리자 함수는 전부 requireAdmin(호출자 토큰 → has_role) 을 통과해야 한다.
+// 라우트 가드는 브라우저 렌더 뒤에야 도는 화면 가드일 뿐 엔드포인트를 막지 못한다.
+// extractRateSheet 은 유료 Anthropic 호출이라 인가 없이 열려 있으면 데이터가 아니라 요금이 샌다.
 export const extractRateSheet = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => ExtractInput.parse(d))
   .handler(async ({ data }): Promise<ExtractedSheet> => {
+    await requireAdmin(data.token);
     const Anthropic = (await import("@anthropic-ai/sdk")).default;
     const client = new Anthropic({ apiKey: process.env["ANTHROPIC_API_KEY"]! });
     const req: any = {
@@ -99,8 +102,9 @@ async function serviceClient() {
 }
 
 export const uploadRateImage = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ imageBase64: z.string(), ext: z.enum(["png", "jpg", "webp"]) }).parse(d))
+  .inputValidator((d: unknown) => z.object({ token: z.string(), imageBase64: z.string(), ext: z.enum(["png", "jpg", "webp"]) }).parse(d))
   .handler(async ({ data }): Promise<{ path: string }> => {
+    await requireAdmin(data.token);
     const sb = await serviceClient();
     const bytes = Buffer.from(data.imageBase64, "base64");
     const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${data.ext}`;
@@ -113,6 +117,7 @@ export const uploadRateImage = createServerFn({ method: "POST" })
   });
 
 const SaveInput = z.object({
+  token: z.string(),
   sheet: z.object({
     source: z.string().nullable(), title: z.string().nullable(),
     valid_from: z.string().nullable(), valid_until: z.string().nullable(),
@@ -132,6 +137,7 @@ const SaveInput = z.object({
 export const saveRateSheet = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => SaveInput.parse(d))
   .handler(async ({ data }): Promise<{ sheetId: string; rows: number }> => {
+    await requireAdmin(data.token);
     // 비트랜잭션: rows insert 실패 시 sheet 행이 고아로 남을 수 있음(자식 0개). 단독 관리자·수동
     // 재시도 Phase 1에서는 수용. 빈도가 늘면 Postgres RPC로 묶을 것(후속 과제).
     const sb = await serviceClient();
@@ -152,12 +158,16 @@ export const saveRateSheet = createServerFn({ method: "POST" })
     return { sheetId: sheet.id, rows: rows.length };
   });
 
-export const listKitaDests = createServerFn({ method: "GET" }).handler(async (): Promise<string[]> => {
-  const sb = await serviceClient();
-  const { data, error } = await sb.from("kita_sea_rates").select("dest");
-  if (error) throw new Error(error.message);
-  return [...new Set((data ?? []).map((r: { dest: string }) => r.dest))].sort((a, b) => a.localeCompare(b));
-});
+// 관리자 전용. GET 이면 토큰이 쿼리스트링에 실려 로그·리퍼러에 남는다 — POST 로 받는다.
+export const listKitaDests = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ token: z.string() }).parse(d))
+  .handler(async ({ data }): Promise<string[]> => {
+    await requireAdmin(data.token);
+    const sb = await serviceClient();
+    const { data: rows, error } = await sb.from("kita_sea_rates").select("dest");
+    if (error) throw new Error(error.message);
+    return [...new Set((rows ?? []).map((r: { dest: string }) => r.dest))].sort((a, b) => a.localeCompare(b));
+  });
 
 export const getPublishedPartnerRates = createServerFn({ method: "GET" }).handler(async () => {
   const sb = await serviceClient();
@@ -181,7 +191,10 @@ export type RateSheetHistory = {
 };
 
 // 업로드 이력(관리자 — draft·published 전부, 최신순)
-export const listRateSheets = createServerFn({ method: "GET" }).handler(async (): Promise<RateSheetHistory[]> => {
+export const listRateSheets = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ token: z.string() }).parse(d))
+  .handler(async ({ data }): Promise<RateSheetHistory[]> => {
+  await requireAdmin(data.token);
   const sb = await serviceClient();
   const { data: sheets, error } = await sb.from("rate_sheets")
     .select("id,source,title,valid_until,status,image_path,created_at")
@@ -198,8 +211,9 @@ export const listRateSheets = createServerFn({ method: "GET" }).handler(async ()
 
 // 미리보기용 서명 URL(비공개 버킷)
 export const getRateSheetImageUrl = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ path: z.string() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ token: z.string(), path: z.string() }).parse(d))
   .handler(async ({ data }): Promise<{ url: string }> => {
+    await requireAdmin(data.token);
     const sb = await serviceClient();
     const { data: signed, error } = await sb.storage.from("rate-sheets").createSignedUrl(data.path, 3600);
     if (error || !signed) throw new Error(error?.message ?? "서명 URL 생성 실패");
@@ -208,8 +222,9 @@ export const getRateSheetImageUrl = createServerFn({ method: "POST" })
 
 // 삭제(시트 + partner_rates cascade + 스토리지 이미지)
 export const deleteRateSheet = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ id: z.string(), image_path: z.string().nullable() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ token: z.string(), id: z.string(), image_path: z.string().nullable() }).parse(d))
   .handler(async ({ data }): Promise<{ ok: true }> => {
+    await requireAdmin(data.token);
     const sb = await serviceClient();
     if (data.image_path) await sb.storage.from("rate-sheets").remove([data.image_path]);
     const { error } = await sb.from("rate_sheets").delete().eq("id", data.id);

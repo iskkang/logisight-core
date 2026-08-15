@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireAdmin } from "./require-admin";
 
 const MTL_LINK_BASE    = (process.env.MTL_LINK_URL    ?? "https://link.mtlship.com").replace(/\/$/, "")
 const MTL_LINK_API_KEY = process.env.MTL_LINK_API_KEY ?? ""
@@ -228,4 +230,10 @@ async function runMtlLinkSync(): Promise<SyncResult> {
   }
 }
 
-export const triggerMtlLinkSync = createServerFn({ method: "POST" }).handler(runMtlLinkSync)
+// 외부 동기화를 돌리는 쓰기 작업이다 — 관리자만.
+export const triggerMtlLinkSync = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ token: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    await requireAdmin(data.token)
+    return runMtlLinkSync()
+  })
