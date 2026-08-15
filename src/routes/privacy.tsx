@@ -69,7 +69,7 @@ function PrivacyPage() {
           국외에 저장·처리될 수 있습니다.
         </p>
         <ul className="list-disc space-y-1 pl-5">
-          <li>이메일 발송: Resend (newsletter@mtlb.co.kr 발신)</li>
+          <li>이메일 발송: Resend (newsletter@logisight.net 발신)</li>
           <li>데이터 보관(호스팅): Supabase</li>
         </ul>
       </Section>
@@ -91,7 +91,7 @@ function PrivacyPage() {
 
       <Section title="8. 문의처">
         <p>
-          개인정보 관련 문의: <a className="underline text-[var(--color-navy-900)]" href="mailto:newsletter@mtlb.co.kr">newsletter@mtlb.co.kr</a>
+          개인정보 관련 문의: <a className="underline text-[#2dd4bf]" href="mailto:newsletter@logisight.net">newsletter@logisight.net</a>
         </p>
       </Section>
       </main>
