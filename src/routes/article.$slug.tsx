@@ -11,6 +11,7 @@ import {
   isRedirectableUrl,
 } from "@/lib/api/article";
 import { formatPublishedAt, isInternalNewsItem } from "@/lib/api/news";
+import { buildImageCredit } from "@/lib/image-credit";
 import { normalizeArticleContent } from "@/lib/article-content";
 import { SITE_URL } from "@/lib/seo";
 import LogisightArticle from "@/components/article-page/LogisightArticle";
@@ -131,6 +132,12 @@ function ArticlePage() {
     imageCredit: article.image_credit,
   });
   const hasContent = normalizedContent.length > 0;
+  // 이미지 크레딧 — 원문 이미지는 "사진 ⓒ 매체" + 원문 링크, Unsplash 는 utm 링크.
+  const imageCredit = buildImageCredit({
+    imageCredit: article.image_credit,
+    imageSource: article.image_source,
+    articleUrl: article.url,
+  });
   const readMin = estimateReadMinutes(normalizedContent);
   const isExternalSource =
     !!article.url && /^https?:\/\//.test(article.url) && !isSampleArticleUrl(article.url);
@@ -148,7 +155,8 @@ function ArticlePage() {
     generated_by: article.generated_by ?? null,
     read_minutes: readMin,
     image_url: article.image_url,
-    image_caption: article.image_credit,
+    image_caption: imageCredit?.text ?? null,
+    image_caption_url: imageCredit?.href ?? null,
     contentNode: hasContent ? (
       <ReactMarkdown>{normalizedContent}</ReactMarkdown>
     ) : (

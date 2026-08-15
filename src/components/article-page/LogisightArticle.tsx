@@ -40,6 +40,8 @@ export type Article = {
   read_minutes?: number | null;
   image_url?: string | null;
   image_caption?: string | null;
+  /** 크레딧 링크(원문 기사 · Unsplash). 없으면 평문으로 표시. */
+  image_caption_url?: string | null;
   contentNode?: ReactNode; // 본문 React 노드(마크다운 렌더 등, 우선)
   contentHtml?: string | null; // 본문 HTML
   body?: string | string[] | null; // 본문 평문/배열(대안). 첫 문단=lead
@@ -392,7 +394,17 @@ export default function LogisightArticle({
             {a.image_url ? (
               <figure>
                 <img src={a.image_url} alt="" />
-                {a.image_caption ? <figcaption>{a.image_caption}</figcaption> : null}
+                {a.image_caption ? (
+                  <figcaption>
+                    {a.image_caption_url ? (
+                      <a href={a.image_caption_url} target="_blank" rel="noopener noreferrer nofollow">
+                        {a.image_caption}
+                      </a>
+                    ) : (
+                      a.image_caption
+                    )}
+                  </figcaption>
+                ) : null}
               </figure>
             ) : a.show_placeholder ? (
               <figure>
@@ -433,7 +445,17 @@ export default function LogisightArticle({
                     </g>
                   </svg>
                 </div>
-                {a.image_caption ? <figcaption>{a.image_caption}</figcaption> : null}
+                {a.image_caption ? (
+                  <figcaption>
+                    {a.image_caption_url ? (
+                      <a href={a.image_caption_url} target="_blank" rel="noopener noreferrer nofollow">
+                        {a.image_caption}
+                      </a>
+                    ) : (
+                      a.image_caption
+                    )}
+                  </figcaption>
+                ) : null}
               </figure>
             ) : null}
 
