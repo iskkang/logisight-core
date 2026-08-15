@@ -11,6 +11,7 @@ export const Route = createFileRoute("/about")({
       description:
         "Logisight는 운임 지수·물류 뉴스·정책 변화를 매주 한 편의 분석으로 정리하는 물류 인텔리전스 매체입니다.",
       path: "/about",
+      jaPath: "/about",
     }),
   component: AboutPage,
 });

@@ -10,6 +10,8 @@ export const SITE_URL = "https://logisight.net";
 /** 스킴 없는 호스트 — IndexNow처럼 호스트만 받는 곳에서 사용. */
 export const SITE_HOST = SITE_URL.replace(/^https?:\/\//, "");
 const SITE_NAME = "Logisight";
+/** 일본판 도메인. hreflang 상호 선언에만 쓴다. */
+export const JA_SITE_URL = "https://jpn.logisight.net";
 const DEFAULT_IMAGE = `${SITE_URL}/og-default.jpg`;
 
 /** 경로(또는 절대 URL)를 production 절대 URL로 변환. */
@@ -26,10 +28,21 @@ export interface SeoInput {
   /** og:image. 경로/절대 URL 모두 허용. 생략 시 /og-default.jpg */
   image?: string | null;
   type?: "website" | "article";
+  /**
+   * 같은 내용을 다루는 일본판 경로. 넘기면 hreflang 3종(ko·ja·x-default)을 낸다.
+   *
+   * ★ 상호 선언이 아니면 무효다.
+   * 일본판(logisight-jp)은 예전부터 ko/ja/x-default 를 선언하고 있었는데 이쪽에는
+   * hreflang 코드가 한 줄도 없었다. Google 은 서로를 가리키지 않는 hreflang 을 무시하므로
+   * 일본판의 선언이 전부 무효였다. 양쪽이 같은 짝을 가리켜야 성립한다.
+   *
+   * 대응 페이지가 실제로 있는 라우트에만 넘긴다. 없는 곳을 가리키면 안 하느니만 못하다.
+   */
+  jaPath?: string;
 }
 
 /** TanStack Router head()가 반환할 { meta, links } 세트. 라우트별 head에서 펼쳐 사용. */
-export function seoHead({ title, description, path, image, type = "website" }: SeoInput) {
+export function seoHead({ title, description, path, image, type = "website", jaPath }: SeoInput) {
   const url = abs(path);
   const img = image ? abs(image) : DEFAULT_IMAGE;
   return {
@@ -47,8 +60,24 @@ export function seoHead({ title, description, path, image, type = "website" }: S
       { name: "twitter:description", content: description },
       { name: "twitter:image", content: img },
     ] as Array<Record<string, string>>,
-    links: [{ rel: "canonical", href: url }] as Array<Record<string, string>>,
+    links: buildLinks(url, jaPath),
   };
+}
+
+/** canonical + (짝이 있으면) hreflang 3종. */
+function buildLinks(url: string, jaPath?: string): Array<Record<string, string>> {
+  const links: Array<Record<string, string>> = [{ rel: "canonical", href: url }];
+  if (!jaPath) return links;
+  const ja = `${JA_SITE_URL}${jaPath.startsWith("/") ? jaPath : `/${jaPath}`}`;
+  // 키가 그대로 속성으로 나가므로 규격대로 소문자 hreflang 을 쓴다.
+  links.push(
+    { rel: "alternate", hreflang: "ko", href: url },
+    { rel: "alternate", hreflang: "ja", href: ja },
+    // x-default 는 한국(이 사이트)이다. 일본판도 같은 곳을 가리키도록 맞춰 뒀다 ——
+    // 양쪽이 서로 다른 x-default 를 내면 그 자체가 모순이라 무시된다.
+    { rel: "alternate", hreflang: "x-default", href: url },
+  );
+  return links;
 }
 
 /* ===================== JSON-LD 스키마 빌더 (GEO) ===================== */

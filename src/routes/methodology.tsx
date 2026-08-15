@@ -35,6 +35,7 @@ export const Route = createFileRoute("/methodology")({
       description:
         "Logisight가 사용하는 운임 지수(KCCI·SCFI·CCFI·WCI·FBX·BDI·NYFI·ERAI)와 교역·항만·환율 데이터의 출처·단위·갱신주기, 그리고 추정·정합·상관 표현 원칙과 데이터 부재·극저가 레인 처리 정책.",
       path: "/methodology",
+      jaPath: "/methodology",
     }),
   component: MethodologyPage,
 });

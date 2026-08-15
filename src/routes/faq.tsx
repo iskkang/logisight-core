@@ -121,6 +121,7 @@ export const Route = createFileRoute("/faq")({
       description:
         "운임 지수(KCCI·SCFI), 유라시아 철도(ERAI), 무역·산업, 정책·리스크, 기후, 시장 전망과 데이터 방법론에 대한 자주 묻는 질문.",
       path: "/faq",
+      jaPath: "/faq",
     }),
   component: FaqPage,
 });

@@ -14,6 +14,7 @@ export const Route = createFileRoute("/rail/americas")({
       title: "미주 철도 코리도어 — Logisight",
       description: "북미 인터모달 철도 코리도 상태 지도(Watch/Delayed/Normal).",
       path: "/rail/americas",
+      jaPath: "/rail/americas",
     }),
   component: RailAmericasMap,
 });

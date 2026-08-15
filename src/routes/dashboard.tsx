@@ -53,6 +53,7 @@ export const Route = createFileRoute("/dashboard")({
       title: "종합 Control Tower — Logisight",
       description: "오늘의 핵심 변화, 주요 노선 현황, 운임 상승 현황, 정책·장애 요약.",
       path: "/dashboard",
+      jaPath: "/dashboard",
     }),
   component: LogisightControlTower,
 });

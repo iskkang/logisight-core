@@ -26,6 +26,7 @@ export const Route = createFileRoute("/forecasts")({
       description:
         "한국발 해상 운임 지수·노선의 향후 2~4주 방향을 정량 모델로 채점하고 에디터가 검수해 발행하는 AI 전망. 판정일 실측으로 사후 적중을 매깁니다.",
       path: "/forecasts",
+      jaPath: "/forecasts",
     }),
   validateSearch: (s: Record<string, unknown>): Search => ({
     cadence: s.cadence === "weekly" || s.cadence === "monthly" ? s.cadence : undefined,

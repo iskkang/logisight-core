@@ -31,6 +31,7 @@ export const Route = createFileRoute("/")({
       description:
         "운임 지수와 물류 뉴스, 정책 변화. 흩어진 정보를 매주 한 편의 분석으로 정리합니다.",
       path: "/",
+      jaPath: "/",
     }),
   component: LogisightHome,
 });

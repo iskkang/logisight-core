@@ -15,6 +15,7 @@ export const Route = createFileRoute("/port-risk")({
       title: "포트 리스크 인텔리전스 — Logisight",
       description: "항만 혼잡, 해상 병목, 초크포인트와 규제 이벤트 리스크 모니터.",
       path: "/port-risk",
+      jaPath: "/port-risk",
     }),
   component: LogisightPort,
 });

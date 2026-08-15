@@ -32,6 +32,7 @@ export const Route = createFileRoute("/rates")({
       description:
         "저장된 KITA 해상·항공 운임과 글로벌 스팟 지수를 결합해 권역별 운임의 수준·추세·이상치를 한눈에 판단합니다.",
       path: "/rates",
+      jaPath: "/rates",
     }),
   component: LogisightRates,
 });

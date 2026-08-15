@@ -16,6 +16,7 @@ export const Route = createFileRoute("/climate")({
       title: "세계 기후 예측 — Logisight",
       description: SUBTITLE,
       path: "/climate",
+      jaPath: "/climate",
     }),
   component: LogisightClimate,
 });
