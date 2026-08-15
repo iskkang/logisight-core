@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
+import { HomeNav } from "@/components/home/HomeNav";
+import { HomeFooter } from "@/components/home/HomeFooter";
 import { seoHead } from "@/lib/seo";
 
 // 소개 — 무엇을 발행하는지, 누가 운영하는지, 어떻게 만드는지.
@@ -19,8 +21,8 @@ export const Route = createFileRoute("/about")({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-7">
-      <h2 className="text-base font-bold text-[var(--color-ink)]">{title}</h2>
-      <div className="mt-2 space-y-2 text-sm leading-relaxed text-[var(--color-ink-muted)]">
+      <h2 className="text-base font-bold text-[#e9eef7]">{title}</h2>
+      <div className="mt-2 space-y-2 text-sm leading-relaxed text-[#93a1b7]">
         {children}
       </div>
     </section>
@@ -31,13 +33,15 @@ const linkCls = "underline transition-colors hover:text-[var(--color-navy-600)]"
 
 function AboutPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12 lg:px-6">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
+    <div className="min-h-screen bg-[#070b16] text-[#c7d2e0]">
+      <HomeNav active="about" />
+      <main className="mx-auto w-full max-w-[920px] px-4 pb-20 pt-10 min-[640px]:px-7">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#93a1b7]">
         Logisight
       </p>
-      <h1 className="mt-1 text-2xl font-bold text-[var(--color-ink)]">소개</h1>
+      <h1 className="mt-1 text-2xl font-bold text-[#e9eef7]">소개</h1>
 
-      <p className="mt-6 text-sm leading-relaxed text-[var(--color-ink-muted)]">
+      <p className="mt-6 text-sm leading-relaxed text-[#93a1b7]">
         Logisight는 운임 지수, 물류 뉴스, 정책 변화, 유라시아 코리도어 동향을 매주 한 편의 분석으로
         정리하는 물류 인텔리전스 매체입니다. 한국 화주·포워더가 의사결정에 쓸 수 있는 형태로 흩어진
         정보를 모읍니다.
@@ -82,7 +86,7 @@ function AboutPage() {
       <Section title="운영 주체">
         <p>
           Logisight는{" "}
-          <strong className="font-semibold text-[var(--color-ink)]">MTL Shipping Agency</strong>가
+          <strong className="font-semibold text-[#e9eef7]">MTL Shipping Agency</strong>가
           운영합니다. 유라시아 철도 회랑 등 일부 지표는 운영사가 보유한 실적 데이터를 익명 집계해
           산출하며, 해당 지표에는 출처를 별도로 표기합니다.
         </p>
@@ -107,6 +111,8 @@ function AboutPage() {
           을 참조하세요.
         </p>
       </Section>
+      </main>
+      <HomeFooter />
     </div>
   );
 }

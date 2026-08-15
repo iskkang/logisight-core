@@ -22,7 +22,18 @@ export function HomeFooter() {
         <div className="grid grid-cols-1 gap-[30px] border-b border-[#78a0cd1c] pb-[30px] min-[980px]:grid-cols-[1.6fr_1fr_1fr_1fr]">
           <div>
             <Wordmark />
-            <p className="mb-3.5 mt-2.5 max-w-[240px] leading-[1.55] text-[#93a1b7]">한국 화주·포워더를 위한 물류 인텔리전스</p>
+            <p className="mb-3.5 mt-2.5 max-w-[240px] leading-[1.55] text-[#93a1b7]">새로운 시각의 물류 인텔리전스</p>
+            {/* 일본판. hreflang(ko↔ja)이 검색엔진에 관계를 알린다면 이 링크는 사람이 건너갈
+                길이다. rel=alternate + hrefLang 으로 관계를 함께 밝힌다. */}
+            <a
+              href="https://jpn.logisight.net"
+              rel="alternate noopener"
+              hrefLang="ja"
+              className="inline-flex items-center gap-1.5 text-[12.5px] text-[#5d6b80] transition-colors hover:text-[#2dd4bf]"
+            >
+              <span className="rounded-[3px] border border-current px-1 py-px text-[10px] leading-none">JP</span>
+              ロジサイト
+            </a>
           </div>
           <Col title="서비스">
             <Link to="/rates" className={itemCls}>운임 대시보드</Link>

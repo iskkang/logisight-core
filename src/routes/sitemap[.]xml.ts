@@ -46,6 +46,8 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/about", changefreq: "monthly", priority: "0.5" },
           { path: "/methodology", changefreq: "monthly", priority: "0.5" },
           { path: "/faq", changefreq: "monthly", priority: "0.5" },
+          // "FEU 뜻"·"SCFI란" 같은 검색어 대상. 내용이 정적이라 갱신 빈도는 낮게 잡는다.
+          { path: "/glossary", changefreq: "monthly", priority: "0.6" },
           { path: "/privacy", changefreq: "yearly", priority: "0.3" },
         ];
 

@@ -22,6 +22,7 @@ import { Route as PolicyRouteImport } from './routes/policy'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as MethodologyRouteImport } from './routes/methodology'
 import { Route as IndustriesRouteImport } from './routes/industries'
+import { Route as GlossaryRouteImport } from './routes/glossary'
 import { Route as ForecastsRouteImport } from './routes/forecasts'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as EurasiaRouteImport } from './routes/eurasia'
@@ -115,6 +116,11 @@ const MethodologyRoute = MethodologyRouteImport.update({
 const IndustriesRoute = IndustriesRouteImport.update({
   id: '/industries',
   path: '/industries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GlossaryRoute = GlossaryRouteImport.update({
+  id: '/glossary',
+  path: '/glossary',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForecastsRoute = ForecastsRouteImport.update({
@@ -274,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/eurasia': typeof EurasiaRoute
   '/faq': typeof FaqRoute
   '/forecasts': typeof ForecastsRoute
+  '/glossary': typeof GlossaryRoute
   '/industries': typeof IndustriesRoute
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
@@ -317,6 +324,7 @@ export interface FileRoutesByTo {
   '/eurasia': typeof EurasiaRoute
   '/faq': typeof FaqRoute
   '/forecasts': typeof ForecastsRoute
+  '/glossary': typeof GlossaryRoute
   '/industries': typeof IndustriesRoute
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
@@ -360,6 +368,7 @@ export interface FileRoutesById {
   '/eurasia': typeof EurasiaRoute
   '/faq': typeof FaqRoute
   '/forecasts': typeof ForecastsRoute
+  '/glossary': typeof GlossaryRoute
   '/industries': typeof IndustriesRoute
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
@@ -406,6 +415,7 @@ export interface FileRouteTypes {
     | '/eurasia'
     | '/faq'
     | '/forecasts'
+    | '/glossary'
     | '/industries'
     | '/methodology'
     | '/news'
@@ -449,6 +459,7 @@ export interface FileRouteTypes {
     | '/eurasia'
     | '/faq'
     | '/forecasts'
+    | '/glossary'
     | '/industries'
     | '/methodology'
     | '/news'
@@ -491,6 +502,7 @@ export interface FileRouteTypes {
     | '/eurasia'
     | '/faq'
     | '/forecasts'
+    | '/glossary'
     | '/industries'
     | '/methodology'
     | '/news'
@@ -536,6 +548,7 @@ export interface RootRouteChildren {
   EurasiaRoute: typeof EurasiaRoute
   FaqRoute: typeof FaqRoute
   ForecastsRoute: typeof ForecastsRoute
+  GlossaryRoute: typeof GlossaryRoute
   IndustriesRoute: typeof IndustriesRoute
   MethodologyRoute: typeof MethodologyRoute
   NewsRoute: typeof NewsRoute
@@ -647,6 +660,13 @@ declare module '@tanstack/react-router' {
       path: '/industries'
       fullPath: '/industries'
       preLoaderRoute: typeof IndustriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/glossary': {
+      id: '/glossary'
+      path: '/glossary'
+      fullPath: '/glossary'
+      preLoaderRoute: typeof GlossaryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forecasts': {
@@ -919,6 +939,7 @@ const rootRouteChildren: RootRouteChildren = {
   EurasiaRoute: EurasiaRoute,
   FaqRoute: FaqRoute,
   ForecastsRoute: ForecastsRoute,
+  GlossaryRoute: GlossaryRoute,
   IndustriesRoute: IndustriesRoute,
   MethodologyRoute: MethodologyRoute,
   NewsRoute: NewsRoute,

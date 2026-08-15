@@ -5,7 +5,7 @@ import { HomeFooter } from "@/components/home/HomeFooter";
 import { seoHead } from "@/lib/seo";
 import { INDEX_SOURCE, DATASET_SOURCE } from "@/lib/dataSources";
 
-// 데이터 방법론 — 출처·단위·갱신주기·표현 원칙을 한곳에 정리한 레퍼런스 페이지.
+// 데이터 방법론 — 출처·단위·갱신주기를 한곳에 정리한 레퍼런스 페이지.
 // 각 데이터 페이지 하단에서 "데이터 방법론 보기"로 링크한다. 실시간 수치는 각 페이지에서 확인.
 
 const INDEX_META: { code: string; unit: string; cadence: string }[] = [
@@ -33,7 +33,7 @@ export const Route = createFileRoute("/methodology")({
     seoHead({
       title: "데이터 방법론 — Logisight",
       description:
-        "Logisight가 사용하는 운임 지수(KCCI·SCFI·CCFI·WCI·FBX·BDI·NYFI·ERAI)와 교역·항만·환율 데이터의 출처·단위·갱신주기, 그리고 추정·정합·상관 표현 원칙과 데이터 부재·극저가 레인 처리 정책.",
+        "Logisight가 사용하는 운임 지수(KCCI·SCFI·CCFI·WCI·FBX·BDI·NYFI·ERAI)와 교역·항만·환율 데이터의 출처·단위·갱신주기, 그리고 데이터 부재·극저가 레인 처리 정책.",
       path: "/methodology",
       jaPath: "/methodology",
     }),
@@ -72,7 +72,7 @@ function MethodologyPage() {
           데이터 방법론
         </h1>
         <p className="mt-3 max-w-[640px] text-[14px] leading-[1.7] text-[#93a1b7]">
-          Logisight가 표시하는 지수·교역·항만·환율 데이터의 출처·단위·갱신주기와 표현 원칙을 정리했습니다.
+          Logisight가 표시하는 지수·교역·항만·환율 데이터의 출처·단위·갱신주기를 정리했습니다.
           실시간 수치는 각 데이터 페이지에서 확인하세요.
         </p>
 
@@ -128,19 +128,6 @@ function MethodologyPage() {
               </tbody>
             </table>
           </div>
-        </Section>
-
-        <Section title="표현 원칙 (추정·정합·상관)">
-          <ul className="space-y-2.5 text-[14px] leading-[1.7] text-[#a9b6c9]">
-            <li>
-              방법론이 확정되지 않은 영역에서는 인과 단정을 피합니다. <b className="text-[#e9eef7]">“~때문에”</b> 같은
-              단정 대신 <b className="text-[#e9eef7]">“~와 정합”, “~추정”, “~상관”</b> 표현을 사용합니다.
-            </li>
-            <li>
-              지수 간 <b className="text-[#e9eef7]">선행·후행 단정은 사용하지 않습니다</b>(방법론 미확정). 상관·정합·추정
-              관점으로만 제공합니다.
-            </li>
-          </ul>
         </Section>
 
         <Section title="데이터가 없을 때">

@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { HomeNav } from "@/components/home/HomeNav";
+import { HomeFooter } from "@/components/home/HomeFooter";
 import { seoHead } from "@/lib/seo";
 
 // 개인정보처리방침 — 뉴스레터 구독 시 수집하는 개인정보 기준의 표준 방침.
@@ -18,20 +20,22 @@ export const Route = createFileRoute("/privacy")({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-7">
-      <h2 className="text-base font-bold text-[var(--color-ink)]">{title}</h2>
-      <div className="mt-2 space-y-2 text-sm leading-relaxed text-[var(--color-ink-muted)]">{children}</div>
+      <h2 className="text-base font-bold text-[#e9eef7]">{title}</h2>
+      <div className="mt-2 space-y-2 text-sm leading-relaxed text-[#93a1b7]">{children}</div>
     </section>
   );
 }
 
 function PrivacyPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12 lg:px-6">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">Logisight</p>
-      <h1 className="mt-1 text-2xl font-bold text-[var(--color-ink)]">개인정보처리방침</h1>
-      <p className="mt-2 text-xs text-[var(--color-ink-muted)]">시행일: 2026-06-29</p>
+    <div className="min-h-screen bg-[#070b16] text-[#c7d2e0]">
+      <HomeNav />
+      <main className="mx-auto w-full max-w-[920px] px-4 pb-20 pt-10 min-[640px]:px-7">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#93a1b7]">Logisight</p>
+      <h1 className="mt-1 text-2xl font-bold text-[#e9eef7]">개인정보처리방침</h1>
+      <p className="mt-2 text-xs text-[#93a1b7]">시행일: 2026-06-29</p>
 
-      <p className="mt-6 text-sm leading-relaxed text-[var(--color-ink-muted)]">
+      <p className="mt-6 text-sm leading-relaxed text-[#93a1b7]">
         MTL Shipping Agency(이하 “회사”)는 Logisight 뉴스레터 서비스 제공을 위해 아래와 같이 개인정보를
         수집·이용하며, 「개인정보 보호법」 및 「정보통신망 이용촉진 및 정보보호 등에 관한 법률」을 준수합니다.
       </p>
@@ -90,6 +94,8 @@ function PrivacyPage() {
           개인정보 관련 문의: <a className="underline text-[var(--color-navy-900)]" href="mailto:newsletter@mtlb.co.kr">newsletter@mtlb.co.kr</a>
         </p>
       </Section>
+      </main>
+      <HomeFooter />
     </div>
   );
 }
