@@ -21,6 +21,7 @@ import {
   heatmapMoM,
   type PortLatest,
 } from "@/lib/rates-search";
+import { MetricTerm } from "@/components/ui/MetricTerm";
 import { interpretPercentile } from "@/lib/tools/interpret";
 import {
   freightIndicesHistoryQueryOptions,
@@ -583,11 +584,11 @@ export function LogisightRates() {
               </div>
               {/* 2. 52주 백분위 (KCCI 지수 기준) */}
               <div className="rounded-[12px] border border-[#d8dfe9] bg-white px-4 py-[15px]">
-                <div className="text-[11.5px] font-medium text-[#828d9d]">52주 백분위</div>
+                <div className="text-[11.5px] font-medium text-[#828d9d]"><MetricTerm term="52주 백분위" /></div>
                 {mode === "sea" && kcciPct != null ? (
                   <>
                     <div className="mt-[7px] text-[23px] font-extrabold tracking-[-0.02em] text-[#1a2433] lsg-mono">{Math.round(kcciPct)}%</div>
-                    <div className="mt-[5px] text-[11.5px] text-[#d97706]">KCCI 지수 기준 · 최근 1년 내 위치</div>
+                    <div className="mt-[5px] text-[11.5px] text-[#d97706]"><MetricTerm term="KCCI" /> 지수 기준 · 최근 1년 내 위치</div>
                     <div className="mt-2.5 h-[6px] overflow-hidden rounded-[4px] bg-[#e2e8f1]"><i className="block h-full rounded-[4px]" style={{ width: `${kcciPct}%`, background: "linear-gradient(90deg,#0d9488,#2dd4bf)" }} /></div>
                   </>
                 ) : <div className="mt-[7px] text-[15px] font-semibold text-[#828d9d]">데이터 수집 중</div>}
@@ -604,7 +605,7 @@ export function LogisightRates() {
                 {regionAvg && regionAvg.total > 0 ? (
                   <>
                     <div className={`mt-[7px] text-[23px] font-extrabold tracking-[-0.02em] ${regionAvg.up > regionAvg.total / 2 ? "text-[#16a34a]" : regionAvg.up < regionAvg.total / 2 ? "text-[#dc2626]" : "text-[#1a2433]"}`}>{regionAvg.up > regionAvg.total / 2 ? "상승 우세" : regionAvg.up < regionAvg.total / 2 ? "하락 우세" : "혼조"}</div>
-                    <div className="mt-[5px] text-[11.5px] text-[#828d9d]">{regionAvg.total}개 레인 중 {regionAvg.up}개 상승 · MoM 기준</div>
+                    <div className="mt-[5px] text-[11.5px] text-[#828d9d]">{regionAvg.total}개 레인 중 {regionAvg.up}개 상승 · <MetricTerm term="MoM" /> 기준</div>
                   </>
                 ) : <div className="mt-[7px] text-[15px] font-semibold text-[#828d9d]">데이터 수집 중</div>}
               </div>
