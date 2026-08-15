@@ -261,15 +261,22 @@ export default function LogisightArticle({
   const readBit = a.read_minutes ? `읽는 시간 약 ${a.read_minutes}분` : null;
   // registered_at 있으면 Logisight 등록일 중심 바이라인, 아니면 기존 출처+발행일.
   const brand = Boolean(a.registered_at);
-  // 사람이 쓰지 않은 기사는 바이라인에서 그렇게 밝힌다.
+  // 「AI가 썼다」가 아니라 「원문을 정리했다」로 적는다. 그게 실제로 한 일이다.
   //
-  // 배지는 붙이지 않는다. 「초안」이라는 말도 쓰지 않는다 —— 발행한 글을 초안이라고
+  // 생성 프롬프트(generators/web/lib/news-pipeline.js)가 시키는 것은
+  // 「원문 기사에서 확인되는 사실만 사용」·「전체 번역·장문 복제 금지」·
+  // 「출처에 없는 수치나 사실을 만들지 마라」다. 창작이 아니라 정리다.
+  //
+  // 그리고 이쪽이 독자에게 더 많은 것을 알려준다. 「AI가 썼다」는 출처를 말해주지
+  // 않지만, 「원문 X를 정리」는 어디서 온 사실인지까지 말한다. 표기의 목적이
+  // 출처를 밝히는 것이라면 이쪽이 목적에 더 맞는다.
+  //
+  // 배지는 붙이지 않고 「초안」이라는 말도 쓰지 않는다 —— 발행한 글을 초안이라
   // 부르면 사실과 다르고, 전망 화면의 「AI 초안 · 에디터 검수」는 사람이 검수를
-  // 거치기 때문에 쓰는 말이라 여기에 가져오면 검수를 한 것처럼 읽힌다.
-  // 필요한 것은 딱 하나, 누가 썼는지다. 그건 이름 한 줄로 끝난다.
+  // 거치기 때문에 쓰는 말이라 여기 가져오면 검수한 것처럼 읽힌다.
   const byAi = Boolean(a.generated_by);
   const bylineName = byAi
-    ? `Logisight AI${a.source ? ` · 원문: ${a.source}` : ""}`
+    ? `Logisight AI 정리${a.source ? ` · 원문 ${a.source}` : ""}`
     : brand
       ? "Logisight"
       : (a.source ?? "출처");
