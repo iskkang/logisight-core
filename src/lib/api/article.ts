@@ -3,7 +3,12 @@ import { queryOptions } from "@tanstack/react-query";
 import { getArticleBySlug, getRelatedArticles } from "./article.functions";
 import type { NewsItem } from "./news";
 
-export type Article = NewsItem & { content: string | null; fetched_at?: string | null };
+// generated_by = 본문을 쓴 모델명. 사람이 쓴 기사와 표기 시작 이전 기사는 null.
+export type Article = NewsItem & {
+  content: string | null;
+  fetched_at?: string | null;
+  generated_by?: string | null;
+};
 
 export const articleQueryOptions = (slug: string) =>
   queryOptions({
@@ -17,14 +22,10 @@ export function articleParam(item: { slug: string | null; id: number }): string 
   return item.slug && item.slug.length > 0 ? item.slug : String(item.id);
 }
 
-export const relatedArticlesQueryOptions = (input: {
-  id: number;
-  category: string | null;
-}) =>
+export const relatedArticlesQueryOptions = (input: { id: number; category: string | null }) =>
   queryOptions({
     queryKey: ["maritime_news", "related", input],
-    queryFn: () =>
-      getRelatedArticles({ data: { id: input.id, category: input.category } }),
+    queryFn: () => getRelatedArticles({ data: { id: input.id, category: input.category } }),
     staleTime: 5 * 60 * 1000,
   });
 

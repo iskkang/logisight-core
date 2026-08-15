@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { setResponseHeader } from "@tanstack/react-start/server";
 import { notFound } from "@tanstack/react-router";
 import { z } from "zod";
@@ -9,15 +10,20 @@ import type { Article } from "./article";
 import type { NewsItem } from "./news";
 import { normalizeNewsImage } from "./news-image";
 
+// generated_by 는 생성된 Database 형에 아직 없다(마이그레이션
+// 20260814000001_maritime_news_generated_by.sql 적용 후 형을 다시 뽑으면 사라진다).
+// climate.functions.ts·forecasts.functions.ts 와 같은 방식으로 캐스팅해 쓴다.
+const sb = supabasePublicServer as unknown as SupabaseClient;
+
 const SELECT =
-  "id,slug,title,summary,content,url,source,category,image_url,image_source,image_credit,published_at,fetched_at,lang,tags,is_hero,agent_type";
+  "id,slug,title,summary,content,url,source,category,image_url,image_source,image_credit,published_at,fetched_at,lang,tags,is_hero,agent_type,generated_by";
 
 export const getArticleBySlug = createServerFn({ method: "GET" })
   .inputValidator(z.object({ slug: z.string().min(1).max(200) }))
   .handler(async ({ data }): Promise<Article> => {
     setResponseHeader("cache-control", PUBLIC_SWR_CACHE);
     // Try slug match first
-    const bySlug = await supabasePublicServer
+    const bySlug = await sb
       .from("maritime_news")
       .select(SELECT)
       .eq("slug", data.slug)
@@ -28,11 +34,7 @@ export const getArticleBySlug = createServerFn({ method: "GET" })
     // Fallback: numeric id (for legacy rows without slug)
     if (/^\d+$/.test(data.slug)) {
       const id = Number(data.slug);
-      const byId = await supabasePublicServer
-        .from("maritime_news")
-        .select(SELECT)
-        .eq("id", id)
-        .maybeSingle();
+      const byId = await sb.from("maritime_news").select(SELECT).eq("id", id).maybeSingle();
       if (byId.error) throw new Error(byId.error.message);
       if (byId.data) return normalizeNewsImage(byId.data as Article);
     }
@@ -50,7 +52,7 @@ export const getRelatedArticles = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<NewsItem[]> => {
     setResponseHeader("cache-control", PUBLIC_SWR_CACHE);
     if (!data.category) return [];
-    const { data: rows, error } = await supabasePublicServer
+    const { data: rows, error } = await sb
       .from("maritime_news")
       .select(SELECT)
       .eq("category", data.category)

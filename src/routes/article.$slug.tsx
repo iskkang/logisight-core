@@ -133,9 +133,7 @@ function ArticlePage() {
   const hasContent = normalizedContent.length > 0;
   const readMin = estimateReadMinutes(normalizedContent);
   const isExternalSource =
-    !!article.url &&
-    /^https?:\/\//.test(article.url) &&
-    !isSampleArticleUrl(article.url);
+    !!article.url && /^https?:\/\//.test(article.url) && !isSampleArticleUrl(article.url);
 
   // 인텔리전스 필드(summary_points·impact)는 maritime_news 에 없으므로 전달하지 않는다 → 자동 숨김.
   const articleProp: LsArticle = {
@@ -146,6 +144,8 @@ function ArticlePage() {
     source: article.source,
     published_at: formatPublishedAt(article.published_at),
     registered_at: formatPublishedAt(article.fetched_at ?? null),
+    // 사람이 쓰지 않은 기사는 바이라인에서 밝힌다. null 이면 기존 표시 그대로.
+    generated_by: article.generated_by ?? null,
     read_minutes: readMin,
     image_url: article.image_url,
     image_caption: article.image_credit,

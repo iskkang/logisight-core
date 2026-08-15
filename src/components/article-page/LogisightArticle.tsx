@@ -29,6 +29,14 @@ export type Article = {
   source?: string | null;
   published_at?: string | null;
   registered_at?: string | null; // Logisight 등록일(포맷됨) — 있으면 상단을 Logisight 브랜드 바이라인으로
+  /**
+   * 본문을 쓴 모델명. 사람이 쓴 기사와 표기 시작 이전 기사는 null.
+   *
+   * 예전에는 모델이 스스로 붙인 고지("본 기사는 …작성됐습니다")를 발행 직전에 정규식으로
+   * 지웠다. 그 코드를 없애고, 표기를 이 값으로 한다. null 인 기존 기사는 손대지 않는다 ——
+   * 확실하지 않은 것을 소급해서 단정하면 표기 자체를 못 믿게 된다.
+   */
+  generated_by?: string | null;
   read_minutes?: number | null;
   image_url?: string | null;
   image_caption?: string | null;
@@ -253,7 +261,18 @@ export default function LogisightArticle({
   const readBit = a.read_minutes ? `읽는 시간 약 ${a.read_minutes}분` : null;
   // registered_at 있으면 Logisight 등록일 중심 바이라인, 아니면 기존 출처+발행일.
   const brand = Boolean(a.registered_at);
-  const bylineName = brand ? "Logisight" : (a.source ?? "출처");
+  // 사람이 쓰지 않은 기사는 바이라인에서 그렇게 밝힌다.
+  //
+  // 배지는 붙이지 않는다. 「초안」이라는 말도 쓰지 않는다 —— 발행한 글을 초안이라고
+  // 부르면 사실과 다르고, 전망 화면의 「AI 초안 · 에디터 검수」는 사람이 검수를
+  // 거치기 때문에 쓰는 말이라 여기에 가져오면 검수를 한 것처럼 읽힌다.
+  // 필요한 것은 딱 하나, 누가 썼는지다. 그건 이름 한 줄로 끝난다.
+  const byAi = Boolean(a.generated_by);
+  const bylineName = byAi
+    ? `Logisight AI${a.source ? ` · 원문: ${a.source}` : ""}`
+    : brand
+      ? "Logisight"
+      : (a.source ?? "출처");
   const bylineDate = brand
     ? [`등록 ${a.registered_at}`, readBit].filter(Boolean).join(" · ")
     : [a.published_at, readBit].filter(Boolean).join(" · ");
