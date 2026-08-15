@@ -27,14 +27,16 @@ export const getAsiaThroughput = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => z.object({ months: z.number().int().min(1).max(MAX_MONTHS) }).parse(d))
   .handler(async ({ data }): Promise<AsiaRow[]> => {
     const periods = recentPeriods(new Date(), data.months);
-    const oldest = periods[periods.length - 1];
+    // 전년비를 계산하려면 표에 보이는 구간보다 12개월 더 읽어야 한다.
+    const withLookback = recentPeriods(new Date(), data.months + 12);
+    const oldest = withLookback[withLookback.length - 1];
 
     // 연 경계를 넘는 (year, month) 범위라 or 로 나눠 건다.
     const { data: rows, error } = await sb
       .from("port_throughput")
-      .select("country,port_code,year,month,teu,is_preliminary")
+      .select("country,port_code,year,month,teu,is_preliminary,yoy_pct")
       .or(`year.gt.${oldest.year},and(year.eq.${oldest.year},month.gte.${oldest.month})`)
-      .limit(5000);
+      .limit(8000);
     if (error) throw new Error(error.message);
 
     return trimEmptyLeading(buildAsiaTable((rows ?? []) as ThroughputRow[], periods));

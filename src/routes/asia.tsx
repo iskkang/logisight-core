@@ -7,10 +7,18 @@ import { asiaThroughputQueryOptions } from "@/lib/api/asia";
 import { ASIA_COUNTRIES, toCsv } from "@/lib/asia-table";
 import { seoHead } from "@/lib/seo";
 
-// 동아시아 컨테이너 물동량 — 표 하나 + CSV. PHASE 2 EA-5.
+// 동아시아 컨테이너 물동량 — 월간 리포트의 원자료 부록. PHASE 2 EA-5.
 //
-// 의도적으로 하지 않는 것: 차트·지도·AI 해설. 이 페이지가 파는 것은 "한 표에 모여 있다"는
-// 사실이지 시각화가 아니다. 축이 다 차기 전에 꾸미면 빈 칸이 디자인 문제로 보인다.
+// ■ 이 페이지는 목적지가 아니다 ★
+// 처음에는 독립 페이지로 만들었는데, "동아시아 물동량 표"를 검색해서 찾아오는 사람은 없다.
+// 한국 물동량이 필요하면 해수부로 가고 홍콩이 필요하면 HKMPB 로 간다. 어디에도 없는 표라는
+// 사실은 수요의 근거가 아니다 —— 없는 표는 대개 아무도 원하지 않아서 없다.
+//
+// 그래서 독자가 이미 있는 곳(월간 리포트)에 해석을 싣고, 이 페이지는 그 원자료와 CSV 를
+// 놓아두는 부록으로 둔다. noindex 로 색인에서 빼고 메뉴에도 걸지 않는다.
+// 리포트에서 "원자료 보기"로 들어오는 사람과 CSV 를 받으러 오는 사람에게만 필요하다.
+//
+// 의도적으로 하지 않는 것: 차트·지도·AI 해설. 해석은 리포트가 한다.
 //
 // 화면 상태는 URL 쿼리로만 둔다(?months=). localStorage 를 쓰지 않는다 —— 링크를 공유하면
 // 같은 화면이 나와야 한다.
@@ -33,13 +41,16 @@ export const Route = createFileRoute("/asia")({
   loader: async ({ context, deps }) => {
     await context.queryClient.ensureQueryData(asiaThroughputQueryOptions(deps.months));
   },
-  head: () =>
-    seoHead({
-      title: "동아시아 컨테이너 물동량 — 한·일·대·홍·베 월별 TEU",
+  head: () => {
+    const base = seoHead({
+      title: "동아시아 컨테이너 물동량 (원자료) — Logisight",
       description:
-        "한국·일본·대만·홍콩·베트남의 월별 컨테이너 물동량을 하나의 표로. 각국 공식 통계 원본에서 수집하며, 확보되지 않은 달은 채우지 않고 비워 둔다.",
+        "한국·일본·대만·홍콩의 월별 컨테이너 물동량 원자료와 CSV. 월간 리포트의 부록입니다.",
       path: "/asia",
-    }),
+    });
+    // 부록이라 색인하지 않는다. 해석은 리포트에 있고, 여기 있는 것은 숫자뿐이다.
+    return { ...base, meta: [...base.meta, { name: "robots", content: "noindex,nofollow" }] };
+  },
   component: AsiaPage,
 });
 
@@ -64,10 +75,12 @@ function AsiaPage() {
 
   return (
     <main className="mx-auto w-full max-w-[1100px] px-4 py-8">
-      <h1 className="text-[22px] font-bold text-[#1a2433]">동아시아 컨테이너 물동량</h1>
+      <h1 className="text-[22px] font-bold text-[#1a2433]">동아시아 컨테이너 물동량 (원자료)</h1>
       <p className="mt-2 max-w-[720px] text-[13px] leading-relaxed text-[#5b6672]">
-        한국·일본·대만·홍콩·베트남의 월별 컨테이너 처리량(TEU)입니다. 각국 공식 통계에서 직접
-        수집하며, <b>확보되지 않은 달은 0으로 채우지 않고 비워 둡니다.</b>
+        한국·일본·대만·홍콩의 월별 컨테이너 처리량(TEU)과 전년 대비 증감입니다. 각국 공식
+        통계에서 직접 수집하며, <b>확보되지 않은 달은 0으로 채우지 않고 비워 둡니다.</b>
+        <br />
+        해석은 월간 리포트에 싣습니다. 이 페이지는 그 원자료와 CSV 를 놓아두는 부록입니다.
       </p>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -118,6 +131,15 @@ function AsiaPage() {
                       {cell ? (
                         <>
                           <span className="text-[#1a2433]">{fmt(cell.teu)}</span>
+                          {cell.yoyPct != null ? (
+                            <span
+                              className={`ml-1.5 text-[11px] ${cell.yoyPct >= 0 ? "text-[#0f766e]" : "text-[#b91c1c]"}`}
+                              title={cell.yoyFromSource ? "출처 공표 전년비" : "본 표 시계열로 계산한 전년비"}
+                            >
+                              {cell.yoyPct >= 0 ? "▲" : "▼"}
+                              {Math.abs(cell.yoyPct).toFixed(1)}%
+                            </span>
+                          ) : null}
                           {cell.preliminary ? (
                             <span className="ml-1 text-[10px] text-[#c2410c]" title="잠정치 — 이후 정정될 수 있다">
                               잠정
@@ -141,7 +163,7 @@ function AsiaPage() {
         source={ASIA_COUNTRIES.filter((c) => c.source !== "—").map((c) => `${c.code} ${c.source}`).join(" · ")}
         cadence="월간"
         unit="TEU"
-        method="각국 공식 통계의 전국(또는 전 지역) 합계. 항만별 계열은 섞지 않는다."
+        method="각국 공식 통계의 전국·전 지역 합계(일본만 주요 6항). 국가마다 계열 하나만 쓰고 섞지 않는다."
       />
 
       <ul className="mt-3 space-y-1 text-[11px] leading-relaxed text-[#828d9d]">
@@ -151,9 +173,10 @@ function AsiaPage() {
           </li>
         ))}
         <li>
-          일본은 전국 확보 통계(JP_ALL)를 씁니다. 더 최근인 주요 6항 속보는 집계 범위가 달라
-          같은 열에 섞지 않습니다.
+          전년 대비는 출처가 공표하면 그 값을, 아니면 이 표의 시계열로 계산합니다(값에 마우스를
+          올리면 어느 쪽인지 나옵니다).
         </li>
+        <li>합계 열은 두지 않습니다 —— 한 나라라도 비면 합계가 그 달만 작아집니다.</li>
       </ul>
     </main>
   );
