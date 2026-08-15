@@ -13,8 +13,8 @@ const arr = (v: unknown): string[] =>
 
 type Search = {
   cadence?: "weekly" | "monthly";
-  dir: string[];
-  series: string[];
+  dir?: string[];
+  series?: string[];
   sel?: string;
   mod?: string;
 };
@@ -28,13 +28,21 @@ export const Route = createFileRoute("/forecasts")({
       path: "/forecasts",
       jaPath: "/forecasts",
     }),
-  validateSearch: (s: Record<string, unknown>): Search => ({
-    cadence: s.cadence === "weekly" || s.cadence === "monthly" ? s.cadence : undefined,
-    dir: arr(s.dir),
-    series: arr(s.series),
-    sel: typeof s.sel === "string" ? s.sel : undefined,
-    mod: typeof s.mod === "string" ? s.mod : undefined,
-  }),
+  // 빈 값은 아예 넣지 않는다 ★
+  // 예전에는 dir·series 에 항상 [] 를 돌려줬다. URL 에 없는 값을 만들어내니 라우터가
+  // 정규화하려고 /forecasts → /forecasts?dir=…&series=… 로 307 리다이렉트했고,
+  // sitemap 에 실린 맨 주소가 매번 한 홉을 더 태웠다(/asia 에서 겪은 것과 같은 유형).
+  validateSearch: (s: Record<string, unknown>): Search => {
+    const dir = arr(s.dir);
+    const series = arr(s.series);
+    return {
+      ...(s.cadence === "weekly" || s.cadence === "monthly" ? { cadence: s.cadence } : {}),
+      ...(dir.length > 0 ? { dir } : {}),
+      ...(series.length > 0 ? { series } : {}),
+      ...(typeof s.sel === "string" ? { sel: s.sel } : {}),
+      ...(typeof s.mod === "string" ? { mod: s.mod } : {}),
+    };
+  },
   loader: async ({ context }) => {
     await Promise.all([
       context.queryClient.ensureQueryData(publishedForecastsQueryOptions()),

@@ -33,7 +33,6 @@ const FONT = "Pretendard, system-ui, sans-serif";
 const STYLE = `
 .lsgf-root{font-family:"Pretendard","Pretendard Variable",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
 .lsg-mono{font-feature-settings:"tnum" 1;letter-spacing:0}
-.lsg-ls{background:linear-gradient(95deg,#fff 35%,#2dd4bf);-webkit-background-clip:text;background-clip:text;color:transparent}
 @media (prefers-reduced-motion:reduce){.lsgf-root [data-anim]{display:none}}
 `;
 
@@ -439,12 +438,14 @@ export function LogisightForecast() {
   const geo = buildForecastsGeo(forecasts);
 
   const open = search.mod ? allOpen.filter((f) => f.module === search.mod) : allOpen;
-  const filter: ForecastFilter = { cadence: search.cadence, dir: search.dir, series: search.series };
+  // dir·series 는 값이 있을 때만 URL 에 실린다(라우트의 validateSearch 참조).
+  const filter: ForecastFilter = { cadence: search.cadence, dir: search.dir ?? [], series: search.series ?? [] };
   const filtered = applyFilter(open, filter).sort((a, b) => displayOrderOf(a) - displayOrderOf(b));
   const selectedId = search.sel ?? filtered[0]?.id ?? null;
   const selected = open.find((f) => f.id === selectedId) ?? filtered[0] ?? null;
 
-  const dirSeg = search.dir.length === 1 ? (search.dir[0] === "up" ? "상승" : search.dir[0] === "flat" ? "보합" : search.dir[0] === "down" ? "하락" : "전체 방향") : "전체 방향";
+  const dirs = search.dir ?? [];
+  const dirSeg = dirs.length === 1 ? (dirs[0] === "up" ? "상승" : dirs[0] === "flat" ? "보합" : dirs[0] === "down" ? "하락" : "전체 방향") : "전체 방향";
   const cadSeg = search.cadence === "weekly" ? "주간" : search.cadence === "monthly" ? "월간" : "전체";
 
   const setDir = (v: string) => navigate({ search: (p: ForecastSearch) => ({ ...p, dir: v === "상승" ? ["up"] : v === "보합" ? ["flat"] : v === "하락" ? ["down"] : [] }), replace: true });

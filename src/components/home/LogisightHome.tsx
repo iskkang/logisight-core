@@ -37,7 +37,6 @@ const STYLE = `
 .lsg-track{animation:lsg-slide 38s linear infinite}
 .lsg-ticker:hover .lsg-track{animation-play-state:paused}
 .lsg-pulse::after{content:"";position:absolute;inset:-4px;border-radius:9999px;background:#14b8a6;opacity:.35;animation:lsg-pulse 2s ease-out infinite}
-.lsg-ls{background:linear-gradient(95deg,#fff 35%,#2dd4bf);-webkit-background-clip:text;background-clip:text;color:transparent}
 @media (prefers-reduced-motion:reduce){.lsg-track,.lsg-pulse::after{animation:none}}
 `;
 

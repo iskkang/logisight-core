@@ -62,7 +62,6 @@ const STYLE = `
 .lsgn-root a{color:inherit;text-decoration:none}
 .lsgn-root button{font:inherit;background:none;border:none;cursor:pointer;color:inherit}
 /* 공유 Wordmark(HomeNav·HomeFooter)의 's'는 .lsgn-root 밖이라 전역 규칙이 필요하다. */
-.lsg-ls{background:linear-gradient(95deg,#fff 35%,#2dd4bf);-webkit-background-clip:text;background-clip:text;color:transparent}
 
 .lsgn-root .nav{position:sticky;top:0;z-index:50;background:#070b16d1;backdrop-filter:blur(14px) saturate(1.5);border-bottom:1px solid var(--lineD)}
 .lsgn-root .nav .row{display:flex;align-items:center;gap:36px;height:60px}

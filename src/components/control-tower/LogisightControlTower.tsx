@@ -46,7 +46,6 @@ const CARD = "rounded-[14px] border border-[#d8dfe9] bg-[#f4f7fb] shadow-[0_1px_
 const STYLE = `
 .lsgct-root{font-family:"Pretendard","Pretendard Variable",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
 .lsg-mono{font-feature-settings:"tnum" 1;letter-spacing:0}
-.lsg-ls{background:linear-gradient(95deg,#fff 35%,#2dd4bf);-webkit-background-clip:text;background-clip:text;color:transparent}
 @media (prefers-reduced-motion:reduce){.lsgct-root [data-anim]{display:none}}
 `;
 

@@ -28,7 +28,6 @@ const STYLE = `
   font-family:"Pretendard","Pretendard Variable",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;letter-spacing:-.01em;min-height:100vh}
 .lsgi-root .mono{font-feature-settings:"tnum" 1;letter-spacing:0}
-.lsg-ls{background:linear-gradient(95deg,#fff 35%,#2dd4bf);-webkit-background-clip:text;background-clip:text;color:transparent}
 .lsgi-root .iwrap{max-width:1240px;margin:0 auto;padding:0 28px}
 @media(max-width:640px){.lsgi-root .iwrap{padding:0 16px}}
 .lsgi-root .up{color:var(--up)}.lsgi-root .down{color:var(--down)}.lsgi-root .bl{color:var(--blue)}

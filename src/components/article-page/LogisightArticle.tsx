@@ -133,7 +133,6 @@ const STYLE = `
 .lsg-root button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
 .lsg-root .read{max-width:760px;margin:0 auto;padding:0 24px}
 /* 공유 Wordmark(HomeNav·HomeFooter)의 's'는 .lsg-root 밖이라 전역 규칙이 필요하다. */
-.lsg-ls{background:linear-gradient(95deg,#fff 35%,#2dd4bf);-webkit-background-clip:text;background-clip:text;color:transparent}
 
 .lsg-root .bc{padding-top:22px;font-size:12px;color:var(--mute)}.lsg-root .bc b{color:var(--body);font-weight:500}
 .lsg-root .bc a{color:var(--body)}.lsg-root .bc a:hover{color:var(--ink);text-decoration:underline}
