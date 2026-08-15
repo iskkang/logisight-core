@@ -79,11 +79,12 @@ export type HormuzRisk = {
   gulfShipWowPct: number | null;
   gulfShipSpark: (number | null)[];
   crossingDate: string;
-  crossingCount: number;
-  eastbound: number;
-  westbound: number;
-  tankerCount: number;
-  bulkCount: number;
+  // 수집 실패 시 null —— 0 은 "0척이 통과했다"는 관측이지 "모른다"가 아니다.
+  crossingCount: number | null;
+  eastbound: number | null;
+  westbound: number | null;
+  tankerCount: number | null;
+  bulkCount: number | null;
   totalDwt: number | null;
   macro: MacroRiskRow[];
   news: NewsRiskRow[];

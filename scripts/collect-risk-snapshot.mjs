@@ -310,12 +310,16 @@ async function getHormuzRisk() {
   const crossings = crossingResult.ok
     ? parseHormuzCrossings(crossingResult.data, crossingDate)
     : {
+        // 수집 실패는 "0척"이 아니라 "모름"이다 ★
+        // 예전엔 여기서 0 을 채웠고, 화면에는 "호르무즈 통항 0척"으로 나갔다.
+        // 호르무즈가 0척이라는 건 그 자체로 대형 뉴스다 —— fetch 실패가 만들어낼 값이 아니다.
+        // 바로 위 gulf 폴백은 처음부터 null 을 쓰고 있었다. 이쪽만 어긋나 있었다.
         crossingDate,
-        crossingCount: 0,
-        eastbound: 0,
-        westbound: 0,
-        tankerCount: 0,
-        bulkCount: 0,
+        crossingCount: null,
+        eastbound: null,
+        westbound: null,
+        tankerCount: null,
+        bulkCount: null,
         totalDwt: null,
       };
   const macro = macroResult.ok ? parseMacroIndex(macroResult.data) : [];

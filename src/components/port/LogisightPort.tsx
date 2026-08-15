@@ -216,7 +216,7 @@ export function LogisightPort() {
           <div className="mb-1.5 mt-4 flex flex-wrap gap-2.5">
             <Pill c="bg-[#ef4444]">항만 지연 70%+ <b className="lsg-mono font-semibold text-[#dc2626]">{delayedPorts === 0 ? "없음" : `${delayedPorts}곳`}</b></Pill>
             <Pill c="bg-[#ef4444]">주요 해협 변동 <b className="lsg-mono font-semibold text-[#dc2626]">{topChoke ? `${topChoke.name} ${fmtPct(topChoke.wowPct)}` : NA}</b></Pill>
-            <Pill c="bg-[#16a34a]">호르무즈 통항 <b className="lsg-mono font-semibold text-[#1a2433]">{hormuz.crossingCount}척</b></Pill>
+            <Pill c="bg-[#16a34a]">호르무즈 통항 <b className="lsg-mono font-semibold text-[#1a2433]">{hormuz.crossingCount == null ? NA : `${hormuz.crossingCount}척`}</b></Pill>
             <Pill c="bg-[#16a34a]">DB 이벤트 <b className="lsg-mono font-semibold text-[#1a2433]">{policies.length}건 · 예정 {upcoming30}건</b></Pill>
           </div>
 
@@ -249,8 +249,8 @@ export function LogisightPort() {
               />
               <KpiCard
                 lab="호르무즈 일별 통항"
-                val={`${hormuz.crossingCount}척`}
-                sub={`${hormuz.crossingDate} · 유조선 ${hormuz.tankerCount} · 벌크 ${hormuz.bulkCount}`}
+                val={hormuz.crossingCount == null ? NA : `${hormuz.crossingCount}척`}
+                sub={`${hormuz.crossingDate} · 유조선 ${fmtNum(hormuz.tankerCount)} · 벌크 ${fmtNum(hormuz.bulkCount)}`}
               />
             </div>
             <DataMeta className="mt-3" source={`${DATASET_SOURCE.portcast}(항만 혼잡) · ${DATASET_SOURCE.econdb}(해협 TEU) · ${DATASET_SOURCE.shipfinder}(호르무즈)`} cadence="주간·일간" method="항만 median 대기일 · 해협 통과 TEU · 통항 매크로" />
@@ -298,9 +298,9 @@ export function LogisightPort() {
                 <DataMeta className="mt-2" source={DATASET_SOURCE.shipfinder} cadence="일간" unit="척" method="Persian Gulf 선박 수 · Strait of Hormuz 통항" />
                 <div className="my-[18px] grid grid-cols-1 gap-x-[18px] gap-y-3.5 min-[640px]:grid-cols-2">
                   <div><div className="text-[11px] text-[#828d9d]">Gulf 선박 수</div><div className="mt-[3px] lsg-mono text-[19px] font-bold text-[#0d9488]">{fmtNum(hormuz.gulfShipCount)}</div><div className="mt-0.5 lsg-mono text-[11px] text-[#828d9d]">7일 변화 {fmtPct(hormuz.gulfShipWowPct)}</div></div>
-                  <div><div className="text-[11px] text-[#828d9d]">통항 기준일</div><div className="mt-[3px] lsg-mono text-[19px] font-bold text-[#1a2433]">{hormuz.crossingDate}</div><div className="mt-0.5 lsg-mono text-[11px] text-[#828d9d]">{hormuz.crossingCount}척 · DWT {fmtNum(hormuz.totalDwt)}</div></div>
-                  <div><div className="text-[11px] text-[#828d9d]">방향 (in / out)</div><div className="mt-[3px] lsg-mono text-[19px] font-bold text-[#1a2433]">{hormuz.eastbound} / {hormuz.westbound}척</div></div>
-                  <div><div className="text-[11px] text-[#828d9d]">유조선 / 벌크</div><div className="mt-[3px] lsg-mono text-[19px] font-bold text-[#1a2433]">{hormuz.tankerCount} / {hormuz.bulkCount}척</div></div>
+                  <div><div className="text-[11px] text-[#828d9d]">통항 기준일</div><div className="mt-[3px] lsg-mono text-[19px] font-bold text-[#1a2433]">{hormuz.crossingDate}</div><div className="mt-0.5 lsg-mono text-[11px] text-[#828d9d]">{fmtNum(hormuz.crossingCount)}척 · DWT {fmtNum(hormuz.totalDwt)}</div></div>
+                  <div><div className="text-[11px] text-[#828d9d]">방향 (in / out)</div><div className="mt-[3px] lsg-mono text-[19px] font-bold text-[#1a2433]">{fmtNum(hormuz.eastbound)} / {fmtNum(hormuz.westbound)}척</div></div>
+                  <div><div className="text-[11px] text-[#828d9d]">유조선 / 벌크</div><div className="mt-[3px] lsg-mono text-[19px] font-bold text-[#1a2433]">{fmtNum(hormuz.tankerCount)} / {fmtNum(hormuz.bulkCount)}척</div></div>
                 </div>
                 {hormuz.macro.length > 0 && (
                   <div className="grid grid-cols-1 gap-2.5 min-[640px]:grid-cols-2">
