@@ -21,6 +21,7 @@ import {
   heatmapMoM,
   type PortLatest,
 } from "@/lib/rates-search";
+import { interpretPercentile } from "@/lib/tools/interpret";
 import {
   freightIndicesHistoryQueryOptions,
   kitaAirRatesQueryOptions,
@@ -401,6 +402,17 @@ export function LogisightRates() {
     [scoped, chartPorts, metric, mode],
   );
 
+  // 숫자 앞에 해석 한 문장 —— 지금 값이 자기 이력 안에서 어디쯤인지만 말한다.
+  // 왜 그런지는 말하지 않는다(방법론 원칙). lib/tools/interpret.ts 참조.
+  const scfiReading = useMemo(() => {
+    const rows = history
+      .filter((item) => item.index_code === "SCFI" && item.value != null)
+      .sort((a, b) => a.week_date.localeCompare(b.week_date));
+    if (rows.length === 0) return null;
+    const values = rows.map((r) => r.value as number);
+    return interpretPercentile(values[values.length - 1], values, "상하이발 컨테이너 운임(SCFI 종합)");
+  }, [history]);
+
   // 글로벌 지수 추이 — 최신 주 기준 최근 6개월
   const trendData = useMemo(() => {
     const codes = ["SCFI", "KCCI", "BDI", "WCI"];
@@ -506,6 +518,15 @@ export function LogisightRates() {
           <div className="pt-[26px] text-[12.5px] text-[#828d9d]">
             <Link to="/" className="hover:text-[#0d9488]">홈</Link> <b className="font-medium text-[#54606f]">›</b> 인사이트 <b className="font-medium text-[#54606f]">›</b> 운임
           </div>
+
+          {scfiReading ? (
+            <p className="mt-3 rounded-[10px] border border-[#d8dfe9] bg-white px-3.5 py-2.5 text-[13px] leading-relaxed text-[#1a2433]">
+              {scfiReading.sentence}
+              <span className="ml-1.5 text-[11px] text-[#828d9d]">
+                최근 {scfiReading.sampleSize}주 관측 기준 · 백분위 {scfiReading.percentile}
+              </span>
+            </p>
+          ) : null}
 
           {/* GEO: 보이지 않는 Article JSON-LD만 유지 (시각 요소 없음) */}
           <GeoArticleSchema
