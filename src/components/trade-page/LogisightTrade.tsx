@@ -2,6 +2,7 @@
 // 데이터/집계 로직은 기존 /trade 와 동일(관세청 수출입무역통계 bundle + freight_indices). 표현만 샘플 디자인.
 // 더미 수치는 전부 실데이터로 대체하고, 없으면 "데이터 수집 중".
 // 상단 브리핑은 백엔드 생성·캐시를 우선 읽고, 실패 시 규칙 기반 요약(실데이터 파생)으로 대체.
+import { MetricTerm } from "@/components/ui/MetricTerm";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -391,7 +392,7 @@ function BriefBand({ model, indexStats }: { model: TradeModel; indexStats: Index
   const s = model.snapshot;
   const balPos = (s.balanceUsd ?? 0) >= 0;
   const tiles: { k: string; v: ReactNode; d: ReactNode; bar?: { w: string; c: string } }[] = [
-    { k: "전체 교역액", v: <span className="lsg-mono">{moneyUsd(model.totalTrade)}</span>, d: <><span className={`lsg-mono ${(s.totalYoY ?? 0) >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>YoY {fmtPct(s.totalYoY)}</span><span className="lsg-mono text-[#828d9d]">MoM {fmtPct(mom)}</span></> },
+    { k: "전체 교역액", v: <span className="lsg-mono">{moneyUsd(model.totalTrade)}</span>, d: <><span className={`lsg-mono ${(s.totalYoY ?? 0) >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}><MetricTerm term="YoY" /> {fmtPct(s.totalYoY)}</span><span className="lsg-mono text-[#828d9d]"><MetricTerm term="MoM" /> {fmtPct(mom)}</span></> },
     { k: "무역수지", v: <span className={`lsg-mono ${balPos ? "text-[#16a34a]" : "text-[#dc2626]"}`}>{moneyUsd(s.balanceUsd)}</span>, d: <span className={balPos ? "text-[#16a34a]" : "text-[#dc2626]"}>{balPos ? "흑자" : "적자"} · 전년比 {fmtPct(s.balanceYoY)}</span>, bar: s.exportUsd && s.importUsd ? { w: `${Math.min(100, Math.round((s.exportUsd / (s.exportUsd + s.importUsd)) * 100))}%`, c: balPos ? "#16a34a" : "#dc2626" } : undefined },
     { k: "수출 / 수입", v: <span className="lsg-mono text-[20px]">{moneyUsd(s.exportUsd)} <span className="font-semibold text-[#828d9d]">/ {moneyUsd(s.importUsd)}</span></span>, d: <><span className={`lsg-mono ${(s.exportYoY ?? 0) >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>수출 {fmtPct(s.exportYoY)}</span><span className={`lsg-mono ${(s.importYoY ?? 0) >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>수입 {fmtPct(s.importYoY)}</span></> },
     { k: "교역 집중도 (상위 3국)", v: <span className="lsg-mono">{concentration != null ? `${concentration}%` : "수집 중"}</span>, d: <span className="text-[#828d9d]">{top3.length ? top3.map((c) => c.name).join("·") + " 비중" : "집계 중"}</span>, bar: concentration != null ? { w: `${concentration}%`, c: "#3b82f6" } : undefined },

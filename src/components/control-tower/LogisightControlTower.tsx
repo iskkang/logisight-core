@@ -6,6 +6,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { DIR_META, FACTOR_LABEL, baseIndexCaption, sentences } from "@/components/forecasts/forecastUtils";
+import { MetricTerm } from "@/components/ui/MetricTerm";
 import { alertCandidatesQueryOptions, type AlertCandidate } from "@/lib/api/alerts";
 import {
   iataJetFuelQueryOptions,
@@ -455,7 +456,7 @@ function Sidebar({ alerts, stats, asOf, disruptions, railBrief }: {
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-[#d8dfe9] bg-[#d8dfe9]">
             {indexRows.map((x) => (
               <div key={x.index_code} className="bg-[#f4f7fb] px-3.5 py-[13px]">
-                <div className="text-[11px] font-semibold text-[#828d9d]">{x.index_code}</div>
+                <div className="text-[11px] font-semibold text-[#828d9d]"><MetricTerm term={x.index_code} /></div>
                 <div className="mt-[3px] lsg-mono text-[17px] font-bold text-[#1a2433]">{formatNumber(x.latest_value, x.index_code === "SCFI" || x.index_code === "CCFI" ? 2 : 0)}</div>
                 <div className={`mt-0.5 lsg-mono text-[11.5px] ${trendColor(x.change_pct)}`}>{trendSym(x.change_pct)} {pctText(x.change_pct)}</div>
               </div>

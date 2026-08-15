@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { HomeFooter } from "@/components/home/HomeFooter";
 import { HomeNav } from "@/components/home/HomeNav";
+import { MetricTerm } from "@/components/ui/MetricTerm";
 import { DataMeta } from "@/components/ui/DataMeta";
 import { asiaThroughputQueryOptions } from "@/lib/api/asia";
 import { ASIA_COUNTRIES, toCsv } from "@/lib/asia-table";
@@ -81,7 +82,8 @@ function AsiaPage() {
       <main className="mx-auto w-full max-w-[1100px] px-4 py-10">
       <h1 className="text-[22px] font-bold text-[#e9eef7]">동아시아 컨테이너 물동량 (원자료)</h1>
       <p className="mt-2 max-w-[720px] text-[13px] leading-relaxed text-[#93a1b7]">
-        한국·일본·대만·홍콩의 월별 컨테이너 처리량(TEU)과 전년 대비 증감입니다. 각국 공식
+        한국·일본·대만·홍콩의 월별 컨테이너 처리량(<MetricTerm term="TEU" />)과{" "}
+        <MetricTerm term="전년 대비" /> 증감입니다. 각국 공식
         통계에서 직접 수집하며, <b>확보되지 않은 달은 0으로 채우지 않고 비워 둡니다.</b>
         <br />
         해석은 월간 리포트에 싣습니다. 이 페이지는 그 원자료와 CSV 를 놓아두는 부록입니다.
