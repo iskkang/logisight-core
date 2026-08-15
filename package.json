@@ -13,7 +13,8 @@
     "collect:risk-snapshot": "node scripts/collect-risk-snapshot.mjs",
     "collect:exchange-rate": "node scripts/collect-exchange-rate.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:types": "supabase gen types typescript --project-id hmgbvqczmyjixkqbruzp > src/integrations/supabase/types.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",

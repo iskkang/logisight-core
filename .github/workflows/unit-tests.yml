@@ -1,0 +1,32 @@
+name: Unit Tests
+
+# push·PR 마다 vitest 를 돌린다.
+#
+# ■ 왜 이제야 만드나
+# core 에는 테스트 파일이 16개(96 케이스) 있고 package.json 에 "test": "vitest run" 도
+# 있는데, 이 저장소의 워크플로는 collect-risk-snapshot·daily-exchange-rate 둘뿐이었다.
+# 즉 아무도 돌리지 않았다 —— 깨져도 아무도 몰랐다.
+# jp 저장소에는 같은 목적의 unit-tests.yml 이 이미 있었다. 그쪽 형태를 그대로 따른다.
+#
+# ■ Secrets 를 싣지 않는다
+# 여기 있는 테스트는 전부 순수 로직(seo·analytics·rates-search·partner-rates.normalize
+# ·webhook-signature 등)이라 자격증명이 필요 없다. 자격증명이 필요한 검증은 각자의
+# 수집 워크플로가 담당하고, 그쪽은 자격증명 누락 자체를 실패로 처리한다.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test

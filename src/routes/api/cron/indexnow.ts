@@ -31,8 +31,17 @@ export const Route = createFileRoute("/api/cron/indexnow")({
     handlers: {
       GET: async ({ request }) => {
         // 1) 인증
-        const auth = request.headers.get("authorization");
-        if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+        //
+        // ★ 비밀값이 없으면 통과가 아니라 거절이다.
+        // 예전에는 `Bearer ${process.env.CRON_SECRET}` 과 통째로 비교했다. CRON_SECRET
+        // 이 배포 환경에 안 잡혀 있으면 그 문자열이 "Bearer undefined" 가 되고,
+        // 그 헤더를 그대로 보내면 아무나 통과했다. 설정 누락이 곧 인증 해제였다.
+        const secret = process.env.CRON_SECRET;
+        if (!secret) {
+          console.error("[indexnow] CRON_SECRET 미설정 — 요청을 거절한다");
+          return new Response("Unauthorized", { status: 401 });
+        }
+        if (request.headers.get("authorization") !== `Bearer ${secret}`) {
           return new Response("Unauthorized", { status: 401 });
         }
 
