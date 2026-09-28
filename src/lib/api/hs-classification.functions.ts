@@ -35,26 +35,6 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
         followUpQuestions: [
           "현재 상품 설명으로 공식 EU CN 후보를 충분히 좁히지 못했습니다. 제품의 주요 기능, 성분/재질, 형태를 더 구체적으로 입력해 주세요.",
         ],
-        customs: {
-        duty: {
-          status: thirdCountryDuty || preference ? "available" : "pending",
-          thirdCountryRate: thirdCountryDuty?.ratePercent ?? null,
-          preferentialRate: preference?.ratePercent ?? null,
-          notes: thirdCountryDuty || preference
-            ? customsMeasures.filter((item) => item.measureType === "THIRD_COUNTRY_DUTY" || item.measureType === "PREFERENCE").map((item) => item.rateText ? `${item.title}: ${item.rateText}` : item.title)
-            : ["TARIC/Access2Markets 관세·원산지별 협정세율 레코드가 아직 Logisight DB에 적재되지 않았습니다. 수치를 추정하지 않습니다."],
-          sources: customsMeasures.filter((item) => item.measureType === "THIRD_COUNTRY_DUTY" || item.measureType === "PREFERENCE").map((item) => item.sourceUrl),
-        },
-        regulation: {
-          status: regulationItems.length > 0 ? "guidance" : "pending",
-          items: regulationItems,
-        },
-        landedCost: {
-          status: "needs_values",
-          formula: "과세가격(CIF 등 적용 관세평가액) × 관세율 + 수입 VAT/국가세 + 물류·통관비",
-          missingInputs: ["상품가격", "운임", "보험료", "EU 도착국", "수량", ...(thirdCountryDuty || preference ? [] : ["적용 관세율/FTA 세율"])],
-        },
-      },
       warnings: [
           "공식 CN 데이터에서 확인되지 않은 코드는 생성하지 않았습니다.",
           "현재 결과는 세관의 확정 분류가 아닙니다.",
@@ -108,6 +88,12 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
         { title: "CosIng / ingredient restrictions", detail: "전성분(INCI)을 기준으로 금지·제한 성분, 색소·보존제·UV filter 및 기타 성분 요건을 별도로 확인해야 합니다.", url: "https://single-market-economy.ec.europa.eu/sectors/cosmetics/cosing_en" },
       ] : []),
     ];
+
+    const appliedDutyRate = preference?.ratePercent ?? thirdCountryDuty?.ratePercent ?? null;
+    const customsValue = data.productValue != null ? data.productValue + (data.freight ?? 0) + (data.insurance ?? 0) : null;
+    const dutyAmount = customsValue != null && appliedDutyRate != null ? customsValue * appliedDutyRate / 100 : null;
+    const vatAmount = customsValue != null && dutyAmount != null && data.vatRate != null ? (customsValue + dutyAmount) * data.vatRate / 100 : null;
+    const estimatedTotal = customsValue != null && dutyAmount != null && vatAmount != null ? customsValue + dutyAmount + vatAmount : null;
 
     return {
       status: "candidate",
@@ -167,6 +153,32 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
       })),
       missingInformation: analysis.missingInformation,
       followUpQuestions: analysis.followUpQuestions,
+      customs: {
+        duty: {
+          status: thirdCountryDuty || preference ? "available" : "pending",
+          thirdCountryRate: thirdCountryDuty?.ratePercent ?? null,
+          preferentialRate: preference?.ratePercent ?? null,
+          notes: thirdCountryDuty || preference
+            ? customsMeasures.filter((item) => item.measureType === "THIRD_COUNTRY_DUTY" || item.measureType === "PREFERENCE").map((item) => item.rateText ? `${item.title}: ${item.rateText}` : item.title)
+            : ["공식 TARIC/Access2Markets 관세 레코드가 아직 적재되지 않았습니다. 수치를 추정하지 않습니다."],
+          sources: customsMeasures.filter((item) => item.measureType === "THIRD_COUNTRY_DUTY" || item.measureType === "PREFERENCE").map((item) => item.sourceUrl),
+        },
+        regulation: { status: regulationItems.length > 0 ? "guidance" : "pending", items: regulationItems },
+        landedCost: {
+          status: estimatedTotal != null ? "ready" : "needs_values",
+          formula: "관세평가액(상품가+운임+보험료) + 관세 + 수입 VAT",
+          missingInputs: [
+            ...(data.productValue == null ? ["상품가격"] : []),
+            ...(data.destinationCountry == null ? ["EU 도착국"] : []),
+            ...(data.vatRate == null ? ["도착국 VAT율"] : []),
+            ...(appliedDutyRate == null ? ["적용 관세율/FTA 세율"] : []),
+          ],
+          customsValue,
+          dutyAmount,
+          vatAmount,
+          estimatedTotal,
+        },
+      },
       warnings: [
         ...(analysis.missingInformation.length > 0
           ? ["분류에 영향을 줄 수 있는 정보가 일부 부족합니다. 아래 추가질문에 답하면 후보를 더 좁힐 수 있습니다."]
