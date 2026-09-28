@@ -13,28 +13,6 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<HsClassificationResult> => {
     const analysis = await analyzeProductForEuCn(data);
 
-    if (analysis.missingInformation.length > 0) {
-      const fallback = buildInsufficientInformationResult({
-        ...data,
-        material: data.material ?? analysis.material ?? undefined,
-        composition: data.composition ?? analysis.composition ?? undefined,
-        intendedUse: data.intendedUse ?? analysis.intendedUse ?? undefined,
-        form: data.form ?? analysis.form ?? undefined,
-      });
-      return {
-        ...fallback,
-        missingInformation: analysis.missingInformation,
-        followUpQuestions: analysis.followUpQuestions,
-        normalizedProduct: {
-          name: analysis.normalizedName,
-          material: analysis.material,
-          composition: analysis.composition,
-          intendedUse: analysis.intendedUse,
-          form: analysis.form,
-        },
-      };
-    }
-
     const officialCandidates = await searchOfficialEuNomenclatureByConcepts(
       analysis.searchConceptsEs,
       5,
@@ -80,12 +58,18 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
           `후보 코드는 공식 ${candidate.sourceVersion} 데이터에서 조회되었습니다.`,
           "후보 순서는 현재 검색 관련도 기반이며 CLASS/BTI 검증 전에는 확정 분류가 아닙니다.",
         ],
-        confidence: Math.max(0.35, 0.65 - index * 0.07),
+        confidence: Math.max(
+          0.25,
+          (analysis.missingInformation.length > 0 ? 0.52 : 0.65) - index * 0.07,
+        ),
         sourceStatus: "officially_verified",
       })),
-      missingInformation: [],
-      followUpQuestions: [],
+      missingInformation: analysis.missingInformation,
+      followUpQuestions: analysis.followUpQuestions,
       warnings: [
+        ...(analysis.missingInformation.length > 0
+          ? ["분류에 영향을 줄 수 있는 정보가 일부 부족하므로 후보 신뢰도를 낮게 표시했습니다."]
+          : []),
         "officially_verified는 코드가 공식 CN 데이터에 존재한다는 의미이며, 해당 상품의 최종 세관 분류가 확정됐다는 뜻은 아닙니다.",
         "다음 단계에서 CLASS/BTI 및 분류규정 검증을 추가해야 합니다.",
       ],
