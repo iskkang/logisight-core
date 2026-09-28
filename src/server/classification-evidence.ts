@@ -1,4 +1,4 @@
-import { supabasePublicServer } from "@/server/supabase-public";
+import { supabasePublicServer } from "@/integrations/supabase/public.server";
 
 export type StoredClassificationEvidence = {
   sourceType: "CLASS" | "EBTI" | "CN_EXPLANATORY_NOTE" | "CLASSIFICATION_REGULATION" | "CCC_CONCLUSION" | "CJEU";
