@@ -40,7 +40,12 @@ export const hsClassificationResultSchema = z.object({
   missingInformation: z.array(z.string()),
   followUpQuestions: z.array(z.string()),
   warnings: z.array(z.string()),
-  methodology: z.literal("AI candidate generation; official nomenclature verification pending"),
+  customs: z.object({
+    duty: z.object({ status: z.enum(["available","pending"]), thirdCountryRate: z.number().nullable(), preferentialRate: z.number().nullable(), notes: z.array(z.string()), sources: z.array(z.string().url()) }),
+    regulation: z.object({ status: z.enum(["available","guidance","pending"]), items: z.array(z.object({ title:z.string(), detail:z.string(), url:z.string().url() })) }),
+    landedCost: z.object({ status: z.enum(["ready","needs_values","pending"]), formula: z.string(), missingInputs: z.array(z.string()) }),
+  }).optional(),
+  methodology: z.string(),
 });
 
 export type HsClassificationResult = z.infer<typeof hsClassificationResultSchema>;
