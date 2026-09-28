@@ -11,7 +11,20 @@ export type StoredClassificationEvidence = {
   decisionDate: string | null;
 };
 
-export async function findEuClassificationEvidence(cnCode: string): Promise<StoredClassificationEvidence[]> {
+function evidenceTokens(value: string) {
+  return new Set(value.toLowerCase().replace(/[^a-z0-9%]+/g, " ").split(/\s+/).filter((token) => token.length >= 3));
+}
+
+function evidenceSimilarity(productText: string, evidenceText: string) {
+  const product = evidenceTokens(productText);
+  const evidence = evidenceTokens(evidenceText);
+  if (!product.size || !evidence.size) return 0;
+  let matches = 0;
+  for (const token of product) if (evidence.has(token)) matches += 1;
+  return matches / Math.min(product.size, evidence.size);
+}
+
+export async function findEuClassificationEvidence(cnCode: string, productText = ""): Promise<StoredClassificationEvidence[]> {
   const prefixes = [cnCode, cnCode.slice(0, 6), cnCode.slice(0, 4)];
   const { data, error } = await supabasePublicServer
     .from("customs_classification_evidence")
@@ -26,7 +39,14 @@ export async function findEuClassificationEvidence(cnCode: string): Promise<Stor
 
   if (error) throw new Error(`Classification evidence lookup failed: ${error.message}`);
   const rank: Record<string, number> = { CLASSIFICATION_REGULATION: 1, CJEU: 2, CCC_CONCLUSION: 3, CN_EXPLANATORY_NOTE: 4, EBTI: 5, CLASS: 6 };
-  return (data ?? []).sort((a,b) => (rank[a.source_type] ?? 99) - (rank[b.source_type] ?? 99)).map((row) => ({
+  const relevant = (data ?? []).filter((row) => {
+    if (!productText.trim()) return false;
+    const evidenceText = [row.product_description, row.decision_summary, row.legal_basis].filter(Boolean).join(" ");
+    const score = evidenceSimilarity(productText, evidenceText);
+    if (row.source_type === "EBTI" || row.source_type === "CLASS") return score >= 0.18;
+    return score >= 0.28;
+  });
+  return relevant.sort((a,b) => (rank[a.source_type] ?? 99) - (rank[b.source_type] ?? 99)).map((row) => ({
     sourceType: row.source_type,
     sourceId: row.source_id,
     title: row.title,
