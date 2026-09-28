@@ -89,6 +89,12 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
       ] : []),
     ];
 
+    const appliedDutyRate = preference?.ratePercent ?? thirdCountryDuty?.ratePercent ?? null;
+    const customsValue = data.productValue != null ? data.productValue + (data.freight ?? 0) + (data.insurance ?? 0) : null;
+    const dutyAmount = customsValue != null && appliedDutyRate != null ? customsValue * appliedDutyRate / 100 : null;
+    const vatAmount = customsValue != null && dutyAmount != null && data.vatRate != null ? (customsValue + dutyAmount) * data.vatRate / 100 : null;
+    const estimatedTotal = customsValue != null && dutyAmount != null && vatAmount != null ? customsValue + dutyAmount + vatAmount : null;
+
     return {
       status: "candidate",
       normalizedProduct: {
@@ -159,9 +165,18 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
         },
         regulation: { status: regulationItems.length > 0 ? "guidance" : "pending", items: regulationItems },
         landedCost: {
-          status: "needs_values",
-          formula: "관세평가액 + 관세 + 수입 VAT + 기타 통관/물류비",
-          missingInputs: ["상품가격", "운임", "보험료", "EU 도착국", "수량", ...(thirdCountryDuty || preference ? [] : ["적용 관세율/FTA 세율"])],
+          status: estimatedTotal != null ? "ready" : "needs_values",
+          formula: "관세평가액(상품가+운임+보험료) + 관세 + 수입 VAT",
+          missingInputs: [
+            ...(data.productValue == null ? ["상품가격"] : []),
+            ...(data.destinationCountry == null ? ["EU 도착국"] : []),
+            ...(data.vatRate == null ? ["도착국 VAT율"] : []),
+            ...(appliedDutyRate == null ? ["적용 관세율/FTA 세율"] : []),
+          ],
+          customsValue,
+          dutyAmount,
+          vatAmount,
+          estimatedTotal,
         },
       },
       warnings: [
