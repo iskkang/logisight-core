@@ -143,8 +143,9 @@ def find_columns(rows: list[tuple[object, ...]]) -> tuple[int, int, int]:
         for desc_col in range(width):
             if desc_col == code_col:
                 continue
-            text_hits = sum(1 for r in sample if desc_col < len(r) and len(str(r[desc_col] or "").strip()) >= 5)
-            if text_hits >= hits // 2:
+            values = [str(r[desc_col] or "").strip() for r in sample if desc_col < len(r) and str(r[desc_col] or "").strip()]
+            text_hits = sum(1 for value in values if len(value) >= 5 and re.search(r"[A-Za-zÀ-ÿ]", value) and not re.fullmatch(r"[\\d\\s./_-]+", value))
+            if text_hits >= max(20, hits // 2):
                 return 0, code_col, desc_col
     raise RuntimeError("Could not identify CN code/description columns; refusing to ingest")
 
@@ -167,6 +168,8 @@ def parse_workbook(path: str) -> list[dict[str, object]]:
             description = str(row[desc_col] or "").strip()
             if not CODE_RE.fullmatch(code) or len(description) < 2:
                 continue
+            if not re.search(r"[A-Za-zÀ-ÿ]", description) or re.fullmatch(r"[\\d\\s./_-]+", description):
+                continue
             candidates.append({
                 "market": "EU", "nomenclature": "CN", "code": code,
                 "parent_code": code[:6], "description": description, "level": 8,
@@ -184,6 +187,9 @@ def parse_workbook(path: str) -> list[dict[str, object]]:
         raise RuntimeError(f"Parsed only {len(rows)} unique CN8 rows; refusing suspicious dataset")
     if any(not CODE_RE.fullmatch(str(row["code"])) for row in rows):
         raise RuntimeError("Invalid CN8 code detected")
+    textual = sum(1 for row in rows if re.search(r"[A-Za-zÀ-ÿ]", str(row["description"])) and not re.fullmatch(r"[\\d\\s./_-]+", str(row["description"])))
+    if textual < int(len(rows) * 0.98):
+        raise RuntimeError(f"Only {textual}/{len(rows)} rows have textual descriptions; refusing to ingest")
     return rows
 
 
