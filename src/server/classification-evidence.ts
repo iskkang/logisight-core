@@ -23,7 +23,8 @@ export async function findEuClassificationEvidence(cnCode: string): Promise<Stor
     .limit(20);
 
   if (error) throw new Error(`Classification evidence lookup failed: ${error.message}`);
-  return (data ?? []).map((row) => ({
+  const rank: Record<string, number> = { CLASSIFICATION_REGULATION: 1, CJEU: 2, CCC_CONCLUSION: 3, CN_EXPLANATORY_NOTE: 4, EBTI: 5, CLASS: 6 };
+  return (data ?? []).sort((a,b) => (rank[a.source_type] ?? 99) - (rank[b.source_type] ?? 99)).map((row) => ({
     sourceType: row.source_type,
     sourceId: row.source_id,
     title: row.title,
