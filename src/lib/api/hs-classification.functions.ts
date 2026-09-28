@@ -7,6 +7,7 @@ import {
 } from "@/server/hs-classification";
 import { analyzeProductForEuCn, rankOfficialEuCnCandidates } from "@/server/openai-hs";
 import { searchOfficialEuNomenclatureByHeadings } from "@/server/customs-nomenclature";
+import { findEuClassificationEvidence } from "@/server/classification-evidence";
 
 export const classifyHsProduct = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => hsClassificationInputSchema.parse(input))
@@ -64,6 +65,15 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
       };
     }
 
+    const evidenceByCode = new Map(
+      await Promise.all(
+        rankedCandidates.map(async (candidate) => [
+          candidate.code,
+          await findEuClassificationEvidence(candidate.code),
+        ] as const),
+      ),
+    );
+
     return {
       status: "candidate",
       normalizedProduct: {
@@ -92,20 +102,32 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
             status: "matched",
             note: `${candidate.code}가 현재 Logisight에 적재된 공식 CN 데이터에 존재함을 확인했습니다.`,
           },
-          {
-            type: "CLASS",
+          ...(evidenceByCode.get(candidate.code) ?? []).map((item) => ({
+            type: item.sourceType === "EBTI" ? "EBTI" as const : "CLASS" as const,
+            title: item.title,
+            url: item.sourceUrl,
+            status: "matched" as const,
+            note: [
+              item.decisionDate ? `결정일 ${item.decisionDate}.` : "",
+              item.productDescription ?? "",
+              item.decisionSummary ?? "",
+              item.legalBasis ? `법적 근거: ${item.legalBasis}` : "",
+            ].filter(Boolean).join(" "),
+          })),
+          ...((evidenceByCode.get(candidate.code) ?? []).some((item) => item.sourceType !== "EBTI") ? [] : [{
+            type: "CLASS" as const,
             title: "EU Classification Information System (CLASS)",
             url: "https://webgate.ec.europa.eu/class-public-ui-web/",
-            status: "manual_lookup_required",
-            note: `${candidate.code} 관련 CN 해설서·분류규정·위원회 결론·EU 법원 판례를 공식 CLASS에서 추가 확인해야 합니다.`,
-          },
-          {
-            type: "EBTI",
+            status: "manual_lookup_required" as const,
+            note: `${candidate.code} 관련 저장된 CLASS 근거가 아직 없습니다. 공식 CLASS에서 추가 확인이 필요합니다.`,
+          }]),
+          ...((evidenceByCode.get(candidate.code) ?? []).some((item) => item.sourceType === "EBTI") ? [] : [{
+            type: "EBTI" as const,
             title: "European Binding Tariff Information (EBTI)",
             url: "https://ec.europa.eu/taxation_customs/dds2/ebti/ebti_home.jsp",
-            status: "manual_lookup_required",
-            note: `${candidate.code}와 유사 상품의 공개 BTI 결정례를 추가 확인해야 합니다. BTI 사례가 없다는 사실만으로 후보를 배제하지 않습니다.`,
-          },
+            status: "manual_lookup_required" as const,
+            note: `${candidate.code}와 매칭된 저장 BTI 결정례가 아직 없습니다. 사례 부재 자체는 분류 반대 근거가 아닙니다.`,
+          }]),
         ],
       })),
       missingInformation: analysis.missingInformation,
