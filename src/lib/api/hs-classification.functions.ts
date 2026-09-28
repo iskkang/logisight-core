@@ -5,7 +5,7 @@ import {
   hsClassificationInputSchema,
   type HsClassificationResult,
 } from "@/server/hs-classification";
-import { analyzeProductForEuCn } from "@/server/openai-hs";
+import { analyzeProductForEuCn, rankOfficialEuCnCandidates } from "@/server/openai-hs";
 import { searchOfficialEuNomenclatureByHeadings } from "@/server/customs-nomenclature";
 
 export const classifyHsProduct = createServerFn({ method: "POST" })
@@ -41,6 +41,29 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
       };
     }
 
+    const ranking = await rankOfficialEuCnCandidates(data, analysis, officialCandidates);
+    const rankedCandidates = ranking.selectedCodes
+      .map((code) => officialCandidates.find((candidate) => candidate.code === code))
+      .filter((candidate): candidate is (typeof officialCandidates)[number] => Boolean(candidate));
+
+    if (ranking.abstain || rankedCandidates.length === 0) {
+      return {
+        status: "needs_information",
+        normalizedProduct: {
+          name: analysis.normalizedName,
+          material: analysis.material,
+          composition: analysis.composition,
+          intendedUse: analysis.intendedUse,
+          form: analysis.form,
+        },
+        candidates: [],
+        missingInformation: analysis.missingInformation,
+        followUpQuestions: analysis.followUpQuestions,
+        warnings: [...ranking.rationaleKo, "공식 CN 후보 범위 안에서도 현재 정보만으로 방어 가능한 shortlist를 만들지 않았습니다."],
+        methodology: "AI HS4 scope; official CN8 retrieval; constrained candidate ranking; abstained",
+      };
+    }
+
     return {
       status: "candidate",
       normalizedProduct: {
@@ -50,11 +73,11 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
         intendedUse: analysis.intendedUse,
         form: analysis.form,
       },
-      candidates: officialCandidates.slice(0, 8).map((candidate) => ({
+      candidates: rankedCandidates.map((candidate) => ({
         hs6: candidate.code.slice(0, 6),
         heading: `${candidate.code} — ${candidate.description}`,
         rationale: [
-          "OpenAI는 제품 특성과 검색 개념만 구조화했습니다.",
+          ...ranking.rationaleKo,
           `후보 코드는 공식 ${candidate.sourceVersion} 데이터에서 조회되었습니다.`,
           `AI가 제안한 HS4 범위(${analysis.hs4Candidates.join(", ")}) 안에서 공식 CN8을 조회했습니다.`,
           "현재 단계에서는 후보 간 확률을 계산하지 않습니다. CLASS/BTI 검증 전에는 확정 분류가 아닙니다.",
@@ -66,11 +89,11 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
       followUpQuestions: analysis.followUpQuestions,
       warnings: [
         ...(analysis.missingInformation.length > 0
-          ? ["분류에 영향을 줄 수 있는 정보가 일부 부족하므로 후보 신뢰도를 낮게 표시했습니다."]
+          ? ["분류에 영향을 줄 수 있는 정보가 일부 부족합니다. 아래 추가질문에 답하면 후보를 더 좁힐 수 있습니다."]
           : []),
         "officially_verified는 코드가 공식 CN 데이터에 존재한다는 의미이며, 해당 상품의 최종 세관 분류가 확정됐다는 뜻은 아닙니다.",
         "다음 단계에서 CLASS/BTI 및 분류규정 검증을 추가해야 합니다.",
       ],
-      methodology: "AI candidate generation; official nomenclature verification pending",
+      methodology: "AI HS4 scope; official CN8 retrieval; constrained candidate ranking; CLASS/BTI verification pending",
     };
   });
