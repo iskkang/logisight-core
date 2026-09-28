@@ -18,6 +18,13 @@ export const hsCandidateSchema = z.object({
   rationale: z.array(z.string()).min(1),
   confidence: z.number().min(0).max(1),
   sourceStatus: z.enum(["ai_candidate", "officially_verified"]),
+  evidence: z.array(z.object({
+    type: z.enum(["CLASS", "EBTI", "CN", "LEGAL"]),
+    title: z.string(),
+    url: z.string().url(),
+    status: z.enum(["official_source", "matched", "not_found", "manual_lookup_required"]),
+    note: z.string(),
+  })).default([]),
 });
 
 export const hsClassificationResultSchema = z.object({
