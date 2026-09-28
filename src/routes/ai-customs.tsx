@@ -240,12 +240,29 @@ function AnalysisResult({ result }: { result: HsClassificationResult }) {
         ))}</div> : <div className="mt-5"><p className="text-sm text-muted-foreground">현재 정보만으로 공식 CN 후보를 확정하지 않았습니다.</p>{result.followUpQuestions.map((q) => <p key={q} className="mt-2 text-sm font-medium">{q}</p>)}</div>}
         {result.warnings.map((warning) => <p key={warning} className="mt-3 text-xs leading-5 text-muted-foreground">{warning}</p>)}
       </article>
-      <div className="space-y-4"><PendingCard number="02" title="Duty & FTA" text="공식 관세율·협정세율 데이터 연결 필요" /><PendingCard number="03" title="Certification & Regulation" text="EU 품목별 규제 데이터 연결 필요" /><PendingCard number="04" title="Estimated Landed Cost" text="관세·세금·운임 데이터 연결 후 계산 가능" /></div>
+      <div className="space-y-4">
+        <ResultCard number="02" title="Duty & FTA" status={result.customs?.duty.status === "available" ? "데이터 확인" : "데이터 적재 필요"}>
+          {result.customs?.duty.status === "available" ? (
+            <div className="space-y-2 text-sm">
+              <p>EU 기본관세: <strong>{result.customs.duty.thirdCountryRate == null ? "—" : `${result.customs.duty.thirdCountryRate}%`}</strong></p>
+              <p>한국산 협정/특혜세율: <strong>{result.customs.duty.preferentialRate == null ? "—" : `${result.customs.duty.preferentialRate}%`}</strong></p>
+              {result.customs.duty.notes.map((note) => <p key={note} className="text-xs text-muted-foreground">{note}</p>)}
+            </div>
+          ) : <p className="text-sm text-muted-foreground">{result.customs?.duty.notes[0] ?? "공식 관세 데이터를 준비 중입니다."}</p>}
+        </ResultCard>
+        <ResultCard number="03" title="Certification & Regulation" status={result.customs?.regulation.status === "guidance" ? "규제 가이드" : "추가 확인"}>
+          <div className="space-y-3">{result.customs?.regulation.items.map((item) => <a key={item.title} href={item.url} target="_blank" rel="noreferrer" className="block rounded-md border border-border p-3 hover:bg-muted/40"><p className="text-sm font-medium">{item.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></a>)}</div>
+        </ResultCard>
+        <ResultCard number="04" title="Estimated Landed Cost" status="입력 필요">
+          <p className="text-sm text-muted-foreground">{result.customs?.landedCost.formula}</p>
+          <p className="mt-2 text-xs text-muted-foreground">필요 입력: {result.customs?.landedCost.missingInputs.join(", ")}</p>
+        </ResultCard>
+      </div>
     </div>
   );
 }
-function PendingCard({ number, title, text }: { number: string; title: string; text: string }) {
- return <article className="rounded-xl border border-border bg-card p-5"><span className="text-xs font-semibold text-muted-foreground">{number}</span><h3 className="mt-1 font-semibold">{title}</h3><p className="mt-3 text-sm text-muted-foreground">{text}</p></article>;
+function ResultCard({ number, title, status, children }: { number: string; title: string; status: string; children: React.ReactNode }) {
+ return <article className="rounded-xl border border-border bg-card p-5"><div className="flex items-start justify-between gap-3"><div><span className="text-xs font-semibold text-muted-foreground">{number}</span><h3 className="mt-1 font-semibold">{title}</h3></div><span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">{status}</span></div><div className="mt-4">{children}</div></article>;
 }
 
 function AnalysisSkeleton() {
