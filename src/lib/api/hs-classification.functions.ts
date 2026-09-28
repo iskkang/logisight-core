@@ -84,6 +84,29 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
         ],
         confidence: 0,
         sourceStatus: "officially_verified",
+        evidence: [
+          {
+            type: "CN",
+            title: `EU Combined Nomenclature ${candidate.sourceVersion}`,
+            url: candidate.sourceUrl,
+            status: "matched",
+            note: `${candidate.code}가 현재 Logisight에 적재된 공식 CN 데이터에 존재함을 확인했습니다.`,
+          },
+          {
+            type: "CLASS",
+            title: "EU Classification Information System (CLASS)",
+            url: "https://webgate.ec.europa.eu/class-public-ui-web/",
+            status: "manual_lookup_required",
+            note: `${candidate.code} 관련 CN 해설서·분류규정·위원회 결론·EU 법원 판례를 공식 CLASS에서 추가 확인해야 합니다.`,
+          },
+          {
+            type: "EBTI",
+            title: "European Binding Tariff Information (EBTI)",
+            url: "https://ec.europa.eu/taxation_customs/dds2/ebti/ebti_home.jsp",
+            status: "manual_lookup_required",
+            note: `${candidate.code}와 유사 상품의 공개 BTI 결정례를 추가 확인해야 합니다. BTI 사례가 없다는 사실만으로 후보를 배제하지 않습니다.`,
+          },
+        ],
       })),
       missingInformation: analysis.missingInformation,
       followUpQuestions: analysis.followUpQuestions,
@@ -92,7 +115,7 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
           ? ["분류에 영향을 줄 수 있는 정보가 일부 부족합니다. 아래 추가질문에 답하면 후보를 더 좁힐 수 있습니다."]
           : []),
         "officially_verified는 코드가 공식 CN 데이터에 존재한다는 의미이며, 해당 상품의 최종 세관 분류가 확정됐다는 뜻은 아닙니다.",
-        "다음 단계에서 CLASS/BTI 및 분류규정 검증을 추가해야 합니다.",
+        "CN 코드 존재 여부는 공식 데이터로 확인했습니다. CLASS/EBTI의 상품별 결정례는 별도 공식 근거 확인이 필요합니다.",
       ],
       methodology: "AI HS4 scope; official CN8 retrieval; constrained candidate ranking; CLASS/BTI verification pending",
     };
