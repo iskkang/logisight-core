@@ -1,0 +1,23 @@
+name: Ingest EU TARIC
+on:
+  workflow_dispatch:
+    inputs:
+      source_url:
+        description: "Official EU TARIC raw CSV export URL"
+        required: true
+  schedule:
+    - cron: "25 4 * * *"
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Import official TARIC measures
+        run: node scripts/ingest-eu-taric.mjs
+        env:
+          TARIC_SOURCE_URL: ${{ inputs.source_url || secrets.TARIC_SOURCE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
