@@ -9,6 +9,7 @@ import { analyzeProductForEuCn, rankOfficialEuCnCandidates } from "@/server/open
 import { searchOfficialEuNomenclatureByHeadings } from "@/server/customs-nomenclature";
 import { findEuClassificationEvidence } from "@/server/classification-evidence";
 import { findEuCustomsMeasures } from "@/server/eu-customs-measures";
+import { getEuStandardVat } from "@/server/eu-vat";
 
 export const classifyHsProduct = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => hsClassificationInputSchema.parse(input))
@@ -90,9 +91,10 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
     ];
 
     const appliedDutyRate = preference?.ratePercent ?? thirdCountryDuty?.ratePercent ?? null;
+    const destinationVatRate = data.vatRate ?? getEuStandardVat(data.destinationCountry);
     const customsValue = data.productValue != null ? data.productValue + (data.freight ?? 0) + (data.insurance ?? 0) : null;
     const dutyAmount = customsValue != null && appliedDutyRate != null ? customsValue * appliedDutyRate / 100 : null;
-    const vatAmount = customsValue != null && dutyAmount != null && data.vatRate != null ? (customsValue + dutyAmount) * data.vatRate / 100 : null;
+    const vatAmount = customsValue != null && dutyAmount != null && destinationVatRate != null ? (customsValue + dutyAmount) * destinationVatRate / 100 : null;
     const estimatedTotal = customsValue != null && dutyAmount != null && vatAmount != null ? customsValue + dutyAmount + vatAmount : null;
 
     return {
@@ -162,6 +164,7 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
             ? [
                 ...customsMeasures.filter((item) => item.measureType === "THIRD_COUNTRY_DUTY" || item.measureType === "PREFERENCE").map((item) => item.rateText ? `${item.title}: ${item.rateText}` : item.title),
                 ...(preference ? ["FTA 특혜세율은 한-EU FTA 원산지 규정을 충족하고 유효한 원산지 신고가 있는 경우에만 적용됩니다."] : []),
+                ...(!preference && thirdCountryDuty?.ratePercent === 0 ? ["EU 기본관세 자체가 0%이므로 이 품목은 FTA 특혜세율을 적용하지 않아도 관세가 0%입니다."] : []),
               ]
             : ["공식 TARIC 관세 레코드가 아직 적재되지 않았습니다. 수치를 추정하지 않습니다.", "한국산 FTA 세율은 원산지 규정 충족 여부를 확인한 뒤 적용해야 합니다."],
           sources: customsMeasures.filter((item) => item.measureType === "THIRD_COUNTRY_DUTY" || item.measureType === "PREFERENCE").map((item) => item.sourceUrl),
@@ -173,7 +176,7 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
           missingInputs: [
             ...(data.productValue == null ? ["상품가격"] : []),
             ...(data.destinationCountry == null ? ["EU 도착국"] : []),
-            ...(data.vatRate == null ? ["도착국 VAT율"] : []),
+            ...(destinationVatRate == null ? ["도착국 VAT율"] : []),
             ...(appliedDutyRate == null ? ["적용 관세율/FTA 세율"] : []),
           ],
           customsValue,
