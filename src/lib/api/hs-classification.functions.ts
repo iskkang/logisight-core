@@ -159,8 +159,11 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
           thirdCountryRate: thirdCountryDuty?.ratePercent ?? null,
           preferentialRate: preference?.ratePercent ?? null,
           notes: thirdCountryDuty || preference
-            ? customsMeasures.filter((item) => item.measureType === "THIRD_COUNTRY_DUTY" || item.measureType === "PREFERENCE").map((item) => item.rateText ? `${item.title}: ${item.rateText}` : item.title)
-            : ["공식 TARIC/Access2Markets 관세 레코드가 아직 적재되지 않았습니다. 수치를 추정하지 않습니다."],
+            ? [
+                ...customsMeasures.filter((item) => item.measureType === "THIRD_COUNTRY_DUTY" || item.measureType === "PREFERENCE").map((item) => item.rateText ? `${item.title}: ${item.rateText}` : item.title),
+                ...(preference ? ["FTA 특혜세율은 한-EU FTA 원산지 규정을 충족하고 유효한 원산지 신고가 있는 경우에만 적용됩니다."] : []),
+              ]
+            : ["공식 TARIC 관세 레코드가 아직 적재되지 않았습니다. 수치를 추정하지 않습니다.", "한국산 FTA 세율은 원산지 규정 충족 여부를 확인한 뒤 적용해야 합니다."],
           sources: customsMeasures.filter((item) => item.measureType === "THIRD_COUNTRY_DUTY" || item.measureType === "PREFERENCE").map((item) => item.sourceUrl),
         },
         regulation: { status: regulationItems.length > 0 ? "guidance" : "pending", items: regulationItems },
