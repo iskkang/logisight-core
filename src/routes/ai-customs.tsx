@@ -45,6 +45,7 @@ function AiCustomsPage() {
   const [productValue, setProductValue] = useState("");
   const [freight, setFreight] = useState("");
   const [insurance, setInsurance] = useState("");
+  const VAT: Record<string,string> = { DE:"19",FR:"20",NL:"21",IT:"22",ES:"21",PL:"23",AT:"20",BE:"21",BG:"20",HR:"25",CY:"19",CZ:"21",DK:"25",EE:"24",FI:"25.5",GR:"24",HU:"27",IE:"23",LV:"21",LT:"21",LU:"17",MT:"18",PT:"23",RO:"21",SK:"23",SI:"22",SE:"25" };
   const [vatRate, setVatRate] = useState("19");
 
   const analyze = async () => {
@@ -153,8 +154,8 @@ function AiCustomsPage() {
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <Field label="EU destination">
-                <select value={destinationCountry} onChange={(e) => setDestinationCountry(e.target.value)} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
-                  <option value="DE">Germany</option><option value="FR">France</option><option value="NL">Netherlands</option><option value="IT">Italy</option><option value="ES">Spain</option><option value="PL">Poland</option>
+                <select value={destinationCountry} onChange={(e) => { setDestinationCountry(e.target.value); setVatRate(VAT[e.target.value] ?? ""); }} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="DE">Germany</option><option value="FR">France</option><option value="NL">Netherlands</option><option value="IT">Italy</option><option value="ES">Spain</option><option value="PL">Poland</option><option value="AT">Austria</option><option value="BE">Belgium</option><option value="BG">Bulgaria</option><option value="HR">Croatia</option><option value="CY">Cyprus</option><option value="CZ">Czechia</option><option value="DK">Denmark</option><option value="EE">Estonia</option><option value="FI">Finland</option><option value="GR">Greece</option><option value="HU">Hungary</option><option value="IE">Ireland</option><option value="LV">Latvia</option><option value="LT">Lithuania</option><option value="LU">Luxembourg</option><option value="MT">Malta</option><option value="PT">Portugal</option><option value="RO">Romania</option><option value="SK">Slovakia</option><option value="SI">Slovenia</option><option value="SE">Sweden</option>
                 </select>
               </Field>
               <Field label="VAT rate (%)"><input value={vatRate} onChange={(e)=>setVatRate(e.target.value)} type="number" min="0" step="0.1" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
@@ -269,7 +270,7 @@ function AnalysisResult({ result }: { result: HsClassificationResult }) {
           {result.customs?.duty.status === "available" ? (
             <div className="space-y-2 text-sm">
               <p>EU 기본관세: <strong>{result.customs.duty.thirdCountryRate == null ? "—" : `${result.customs.duty.thirdCountryRate}%`}</strong></p>
-              <p>한국산 협정/특혜세율: <strong>{result.customs.duty.preferentialRate == null ? "—" : `${result.customs.duty.preferentialRate}%`}</strong></p>
+              <p>한국산 협정/특혜세율: <strong>{result.customs.duty.preferentialRate == null ? (result.customs.duty.thirdCountryRate === 0 ? "별도 혜택 불필요" : "확인 필요") : `${result.customs.duty.preferentialRate}%`}</strong></p>
               {result.customs.duty.notes.map((note) => <p key={note} className="text-xs text-muted-foreground">{note}</p>)}
             </div>
           ) : <p className="text-sm text-muted-foreground">{result.customs?.duty.notes[0] ?? "공식 관세 데이터를 준비 중입니다."}</p>}
@@ -277,7 +278,7 @@ function AnalysisResult({ result }: { result: HsClassificationResult }) {
         <ResultCard number="03" title="Certification & Regulation" status={result.customs?.regulation.status === "guidance" ? "규제 가이드" : "추가 확인"}>
           <div className="space-y-3">{result.customs?.regulation.items.map((item) => <a key={item.title} href={item.url} target="_blank" rel="noreferrer" className="block rounded-md border border-border p-3 hover:bg-muted/40"><p className="text-sm font-medium">{item.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></a>)}</div>
         </ResultCard>
-        <ResultCard number="04" title="Estimated Landed Cost" status="입력 필요">
+        <ResultCard number="04" title="Estimated Landed Cost" status={result.customs?.landedCost.status === "ready" ? "계산 완료" : "입력 필요"}>
           <p className="text-sm text-muted-foreground">{result.customs?.landedCost.formula}</p>
           {result.customs?.landedCost.status === "ready" ? <div className="mt-3 space-y-1 text-sm"><p>관세평가액: <strong>€{result.customs.landedCost.customsValue?.toFixed(2)}</strong></p><p>관세: <strong>€{result.customs.landedCost.dutyAmount?.toFixed(2)}</strong></p><p>VAT: <strong>€{result.customs.landedCost.vatAmount?.toFixed(2)}</strong></p><p className="pt-1">예상 수입원가: <strong>€{result.customs.landedCost.estimatedTotal?.toFixed(2)}</strong></p></div> : <p className="mt-2 text-xs text-muted-foreground">필요 입력/데이터: {result.customs?.landedCost.missingInputs.join(", ")}</p>}
         </ResultCard>
