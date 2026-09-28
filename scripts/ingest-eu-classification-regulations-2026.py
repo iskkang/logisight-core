@@ -39,14 +39,14 @@ records=[]; seen=set()
 with pdfplumber.open(io.BytesIO(r.content)) as pdf:
     for pno,page in enumerate(pdf.pages,1):
         text=page.extract_text(x_tolerance=2,y_tolerance=2) or ""
-        lines=[re.sub(r"\\s+"," ",x).strip() for x in text.splitlines() if x.strip()]
+        lines=[re.sub(r"\s+"," ",x).strip() for x in text.splitlines() if x.strip()]
         for i,line in enumerate(lines):
             # A valid row must contain a regulation reference and at least one CN code.
-            reg=re.search(r"(?:Regulation|Reg\\.?|R\\.)[^0-9]{0,20}(?:\\(EU\\)\\s*)?(?:No\\s*)?(\\d{2,4}/\\d{1,4}|\\d{1,4}/\\d{2,4})",line,re.I)
+            reg=re.search(r"(?:Regulation|Reg\.?|R\.)[^0-9]{0,20}(?:\(EU\)\s*)?(?:No\s*)?(\d{2,4}/\d{1,4}|\d{1,4}/\d{2,4})",line,re.I)
             if not reg: continue
             window=" ".join(lines[i:min(i+4,len(lines))])
-            codes=re.findall(r"(?<!\\d)(\\d{4}(?:\\s?\\d{2}){0,3})(?!\\d)",window)
-            codes=[re.sub(r"\\s","",c) for c in codes]
+            codes=re.findall(r"(?<!\d)(\d{4}(?:\s?\d{2}){0,3})(?!\d)",window)
+            codes=[re.sub(r"\s","",c) for c in codes]
             codes=[c for c in codes if len(c) in (4,6,8,10)]
             if not codes: continue
             # Prefer the last/current-transposed code in the row/window.
