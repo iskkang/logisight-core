@@ -9,7 +9,7 @@ const productAnalysisSchema = z.object({
   intendedUse: z.string().nullable(),
   form: z.string().nullable(),
   searchConceptsEs: z.array(z.string()).min(1).max(8),
-  hs4Candidates: z.array(z.string().regex(/^\\d{4}$/)).min(1).max(3),
+  hs4Candidates: z.array(z.string().regex(/^\d{4}$/)).min(1).max(3),
   missingInformation: z.array(z.string()).max(8),
   followUpQuestions: z.array(z.string()).max(8),
 });
@@ -30,7 +30,7 @@ const jsonSchema = {
     intendedUse: { type: ["string", "null"] },
     form: { type: ["string", "null"] },
     searchConceptsEs: { type: "array", minItems: 1, maxItems: 8, items: { type: "string" } },
-    hs4Candidates: { type: "array", minItems: 1, maxItems: 3, items: { type: "string", pattern: "^\\\\d{4}$" } },
+    hs4Candidates: { type: "array", minItems: 1, maxItems: 3, items: { type: "string", pattern: "^\\d{4}$" } },
     missingInformation: { type: "array", maxItems: 8, items: { type: "string" } },
     followUpQuestions: { type: "array", maxItems: 8, items: { type: "string" } },
   },
