@@ -116,11 +116,19 @@ def download_workbook(path: str) -> str:
 
 
 def normalize_code(value: object) -> str:
+    """Return an 8-digit CN code only when the source itself contains 8 digits.
+
+    Never zero-pad shorter HS hierarchy codes: doing so turns heading 0302 into
+    the fake commodity code 00000302.
+    """
     if value is None:
         return ""
-    if isinstance(value, (int, float)):
+    if isinstance(value, float) and value.is_integer():
         value = str(int(value))
-    return re.sub(r"\D", "", str(value)).zfill(8)
+    elif isinstance(value, int):
+        value = str(value)
+    digits = re.sub(r"\D", "", str(value))
+    return digits if len(digits) == 8 else ""
 
 
 def find_columns(rows: list[tuple[object, ...]]) -> tuple[int, int, int]:
@@ -177,7 +185,7 @@ def parse_workbook(path: str) -> list[dict[str, object]]:
                 "valid_to": date(2026, 12, 31).isoformat(),
                 "source_name": "EU Combined Nomenclature 2026",
                 "source_url": LEGAL_SOURCE_URL, "source_version": SOURCE_VERSION,
-                "is_active": True,
+                "is_active": True, "is_leaf": True,
             })
 
     rows = list({row["code"]: row for row in candidates}.values())
