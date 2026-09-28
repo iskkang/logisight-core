@@ -41,6 +41,11 @@ function AiCustomsPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<HsClassificationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [destinationCountry, setDestinationCountry] = useState("DE");
+  const [productValue, setProductValue] = useState("");
+  const [freight, setFreight] = useState("");
+  const [insurance, setInsurance] = useState("");
+  const [vatRate, setVatRate] = useState("19");
 
   const analyze = async () => {
     if (!product.trim() || loading) return;
@@ -49,7 +54,14 @@ function AiCustomsPage() {
     setResult(null);
     setError(null);
     try {
-      const response = await classifyHsProduct({ data: { description: product.trim(), originCountry: "KR", destinationMarket: "EU" } });
+      const response = await classifyHsProduct({ data: {
+        description: product.trim(), originCountry: "KR", destinationMarket: "EU",
+        destinationCountry,
+        ...(productValue ? { productValue: Number(productValue) } : {}),
+        ...(freight ? { freight: Number(freight) } : {}),
+        ...(insurance ? { insurance: Number(insurance) } : {}),
+        ...(vatRate ? { vatRate: Number(vatRate) } : {}),
+      } });
       setResult(response);
     } catch (cause) {
       console.error(cause);
@@ -138,6 +150,18 @@ function AiCustomsPage() {
                 className="w-full resize-none rounded-md border border-input bg-background px-3 py-3 text-sm leading-6 outline-none transition focus:border-foreground/40"
               />
             </Field>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <Field label="EU destination">
+                <select value={destinationCountry} onChange={(e) => setDestinationCountry(e.target.value)} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="DE">Germany</option><option value="FR">France</option><option value="NL">Netherlands</option><option value="IT">Italy</option><option value="ES">Spain</option><option value="PL">Poland</option>
+                </select>
+              </Field>
+              <Field label="VAT rate (%)"><input value={vatRate} onChange={(e)=>setVatRate(e.target.value)} type="number" min="0" step="0.1" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
+              <Field label="Product value (EUR)"><input value={productValue} onChange={(e)=>setProductValue(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
+              <Field label="Freight (EUR)"><input value={freight} onChange={(e)=>setFreight(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
+              <Field label="Insurance (EUR)"><input value={insurance} onChange={(e)=>setInsurance(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
+            </div>
 
             <button
               type="button"
@@ -255,7 +279,7 @@ function AnalysisResult({ result }: { result: HsClassificationResult }) {
         </ResultCard>
         <ResultCard number="04" title="Estimated Landed Cost" status="입력 필요">
           <p className="text-sm text-muted-foreground">{result.customs?.landedCost.formula}</p>
-          <p className="mt-2 text-xs text-muted-foreground">필요 입력: {result.customs?.landedCost.missingInputs.join(", ")}</p>
+          {result.customs?.landedCost.status === "ready" ? <div className="mt-3 space-y-1 text-sm"><p>관세평가액: <strong>€{result.customs.landedCost.customsValue?.toFixed(2)}</strong></p><p>관세: <strong>€{result.customs.landedCost.dutyAmount?.toFixed(2)}</strong></p><p>VAT: <strong>€{result.customs.landedCost.vatAmount?.toFixed(2)}</strong></p><p className="pt-1">예상 수입원가: <strong>€{result.customs.landedCost.estimatedTotal?.toFixed(2)}</strong></p></div> : <p className="mt-2 text-xs text-muted-foreground">필요 입력/데이터: {result.customs?.landedCost.missingInputs.join(", ")}</p>}
         </ResultCard>
       </div>
     </div>
