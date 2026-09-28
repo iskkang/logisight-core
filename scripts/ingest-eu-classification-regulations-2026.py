@@ -14,10 +14,25 @@ if "pdf" not in r.headers.get("content-type","").lower():
     for a in soup.find_all("a",href=True):
         href=requests.compat.urljoin(PAGE,a["href"])
         txt=a.get_text(" ",strip=True).lower()
-        if ("classification regulation" in txt or "consolidated list" in txt) and (".pdf" in href.lower() or "document/download" in href):
+        # Commission Drupal download links often have no .pdf suffix and the
+        # visible anchor text can be only "Download". Prefer any official
+        # document/download attachment near the consolidated-list page.
+        if (".pdf" in href.lower() or "/document/download/" in href.lower()):
             links.append(href)
-    if not links: raise SystemExit("official consolidated-list PDF link not found")
-    pdf_url=links[-1]; r=requests.get(pdf_url,timeout=120,headers={"User-Agent":"Logisight-EU-Evidence/1.1"}); r.raise_for_status()
+    if not links: raise SystemExit("official consolidated-list attachment not found")
+    # Validate candidate attachments by fetching them; choose the largest PDF,
+    # which is the consolidated list (currently ~8.5 MB), not small page assets.
+    candidates=[]
+    for href in links:
+        try:
+            rr=requests.get(href,timeout=120,headers={"User-Agent":"Logisight-EU-Evidence/1.2"})
+            ct=rr.headers.get("content-type","").lower()
+            if rr.ok and (rr.content[:4]==b"%PDF" or "pdf" in ct):
+                candidates.append((len(rr.content),href,rr))
+        except requests.RequestException:
+            pass
+    if not candidates: raise SystemExit("no PDF attachment found on official Commission page")
+    _,pdf_url,r=max(candidates,key=lambda x:x[0]) r=requests.get(pdf_url,timeout=120,headers={"User-Agent":"Logisight-EU-Evidence/1.1"}); r.raise_for_status()
 
 records=[]; seen=set()
 with pdfplumber.open(io.BytesIO(r.content)) as pdf:
