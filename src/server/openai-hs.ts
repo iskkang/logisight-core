@@ -9,6 +9,7 @@ const productAnalysisSchema = z.object({
   intendedUse: z.string().nullable(),
   form: z.string().nullable(),
   searchConceptsEs: z.array(z.string()).min(1).max(8),
+  hs4Candidates: z.array(z.string().regex(/^\\d{4}$/)).min(1).max(3),
   missingInformation: z.array(z.string()).max(8),
   followUpQuestions: z.array(z.string()).max(8),
 });
@@ -20,7 +21,7 @@ const jsonSchema = {
   additionalProperties: false,
   required: [
     "normalizedName", "material", "composition", "intendedUse", "form",
-    "searchConceptsEs", "missingInformation", "followUpQuestions",
+    "searchConceptsEs", "hs4Candidates", "missingInformation", "followUpQuestions",
   ],
   properties: {
     normalizedName: { type: "string" },
@@ -29,6 +30,7 @@ const jsonSchema = {
     intendedUse: { type: ["string", "null"] },
     form: { type: ["string", "null"] },
     searchConceptsEs: { type: "array", minItems: 1, maxItems: 8, items: { type: "string" } },
+    hs4Candidates: { type: "array", minItems: 1, maxItems: 3, items: { type: "string", pattern: "^\\\\d{4}$" } },
     missingInformation: { type: "array", maxItems: 8, items: { type: "string" } },
     followUpQuestions: { type: "array", maxItems: 8, items: { type: "string" } },
   },
@@ -48,8 +50,8 @@ export async function analyzeProductForEuCn(input: HsClassificationInput): Promi
       model: process.env.OPENAI_HS_MODEL || "gpt-5.6",
       instructions: [
         "You extract product characteristics for EU customs classification.",
-        "Do not output, guess, or recommend any HS/CN/TARIC code.",
-        "The application will retrieve codes only from its official CN database.",
+        "Identify up to three plausible 4-digit HS headings as a retrieval scope, but never output an 8-digit CN or 10-digit TARIC code.",
+        "The application will retrieve final candidate codes only from its official CN database.",
         "Generate short Spanish customs-nomenclature search concepts because the current official CN descriptions are Spanish.",
         "If classification-critical facts are missing, identify them and ask concise Korean follow-up questions.",
       ].join(" "),

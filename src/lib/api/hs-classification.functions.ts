@@ -6,7 +6,7 @@ import {
   type HsClassificationResult,
 } from "@/server/hs-classification";
 import { analyzeProductForEuCn } from "@/server/openai-hs";
-import { searchOfficialEuNomenclatureByConcepts } from "@/server/customs-nomenclature";
+import { searchOfficialEuNomenclatureByHeadings } from "@/server/customs-nomenclature";
 
 export const classifyHsProduct = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => hsClassificationInputSchema.parse(input))
@@ -14,8 +14,8 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
     const analysis = await analyzeProductForEuCn(data);
 
     const officialCandidates = await searchOfficialEuNomenclatureByConcepts(
-      analysis.searchConceptsEs,
-      5,
+      analysis.hs4Candidates,
+      40,
     );
 
     if (officialCandidates.length === 0) {
@@ -37,7 +37,7 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
           "공식 CN 데이터에서 확인되지 않은 코드는 생성하지 않았습니다.",
           "현재 결과는 세관의 확정 분류가 아닙니다.",
         ],
-        methodology: "AI candidate generation; official nomenclature verification pending",
+        methodology: "AI HS4 scope; official CN8 retrieval; CLASS/BTI verification pending",
       };
     }
 
@@ -50,18 +50,16 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
         intendedUse: analysis.intendedUse,
         form: analysis.form,
       },
-      candidates: officialCandidates.map((candidate, index) => ({
+      candidates: officialCandidates.slice(0, 8).map((candidate) => ({
         hs6: candidate.code.slice(0, 6),
         heading: `${candidate.code} — ${candidate.description}`,
         rationale: [
           "OpenAI는 제품 특성과 검색 개념만 구조화했습니다.",
           `후보 코드는 공식 ${candidate.sourceVersion} 데이터에서 조회되었습니다.`,
-          "후보 순서는 현재 검색 관련도 기반이며 CLASS/BTI 검증 전에는 확정 분류가 아닙니다.",
+          `AI가 제안한 HS4 범위(${analysis.hs4Candidates.join(", ")}) 안에서 공식 CN8을 조회했습니다.`,
+          "현재 단계에서는 후보 간 확률을 계산하지 않습니다. CLASS/BTI 검증 전에는 확정 분류가 아닙니다.",
         ],
-        confidence: Math.max(
-          0.25,
-          (analysis.missingInformation.length > 0 ? 0.52 : 0.65) - index * 0.07,
-        ),
+        confidence: 0,
         sourceStatus: "officially_verified",
       })),
       missingInformation: analysis.missingInformation,

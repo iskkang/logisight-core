@@ -55,13 +55,14 @@ export async function searchOfficialEuNomenclature(
 }
 
 
-export async function searchOfficialEuNomenclatureByConcepts(
-  concepts: string[],
-  limit = 25,
+export async function searchOfficialEuNomenclatureByHeadings(
+  hs4Candidates: string[],
+  limit = 40,
 ): Promise<OfficialNomenclatureCandidate[]> {
-  const terms = [...new Set(concepts.flatMap(queryTerms))].slice(0, 12);
-  if (terms.length === 0) return [];
-  const orFilter = terms.map((term) => `description.ilike.%${term}%`).join(",");
+  const headings = [...new Set(hs4Candidates)].filter((value) => /^\d{4}$/.test(value)).slice(0, 3);
+  if (headings.length === 0) return [];
+
+  const orFilter = headings.map((heading) => `code.like.${heading}%`).join(",");
   const { data, error } = await supabasePublicServer
     .from("customs_nomenclature")
     .select("code,nomenclature,description,level,source_name,source_url,source_version")
@@ -72,6 +73,7 @@ export async function searchOfficialEuNomenclatureByConcepts(
     .or(orFilter)
     .order("code", { ascending: true })
     .limit(limit);
+
   if (error) throw new Error(`Official nomenclature lookup failed: ${error.message}`);
   return (data ?? []).map((row) => ({
     code: row.code,
