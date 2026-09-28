@@ -13,7 +13,7 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<HsClassificationResult> => {
     const analysis = await analyzeProductForEuCn(data);
 
-    const officialCandidates = await searchOfficialEuNomenclatureByConcepts(
+    const officialCandidates = await searchOfficialEuNomenclatureByHeadings(
       analysis.hs4Candidates,
       40,
     );
