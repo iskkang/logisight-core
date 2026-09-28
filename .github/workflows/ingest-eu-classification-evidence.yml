@@ -1,0 +1,22 @@
+name: Ingest EU Classification Evidence
+on:
+  workflow_dispatch:
+    inputs:
+      source_url:
+        description: "Official EUR-Lex/data.europa.eu classification evidence export"
+        required: true
+  schedule:
+    - cron: "40 4 * * 1"
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: node scripts/ingest-eu-classification-evidence.mjs
+        env:
+          EU_CLASS_EVIDENCE_URL: ${{ inputs.source_url || secrets.EU_CLASS_EVIDENCE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
