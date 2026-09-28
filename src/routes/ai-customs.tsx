@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 
 import { seoHead } from "@/lib/seo";
+import { classifyHsProduct } from "@/lib/api/hs-classification.functions";
+import type { HsClassificationResult } from "@/server/hs-classification";
 
 export const Route = createFileRoute("/ai-customs")({
   head: () =>
@@ -36,10 +38,25 @@ const STEPS = [
 function AiCustomsPage() {
   const [product, setProduct] = useState("");
   const [started, setStarted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<HsClassificationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const analyze = () => {
-    if (!product.trim()) return;
+  const analyze = async () => {
+    if (!product.trim() || loading) return;
     setStarted(true);
+    setLoading(true);
+    setResult(null);
+    setError(null);
+    try {
+      const response = await classifyHsProduct({ data: { description: product.trim(), originCountry: "KR", destinationMarket: "EU" } });
+      setResult(response);
+    } catch (cause) {
+      console.error(cause);
+      setError("HS 분류 요청에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -113,6 +130,8 @@ function AiCustomsPage() {
                 onChange={(event) => {
                   setProduct(event.target.value);
                   setStarted(false);
+                  setResult(null);
+                  setError(null);
                 }}
                 rows={6}
                 placeholder="예: Facial skin care serum, 50 ml. Main ingredients: niacinamide 10%, hyaluronic acid. Retail cosmetic product for moisturizing and skin care."
@@ -123,10 +142,10 @@ function AiCustomsPage() {
             <button
               type="button"
               className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!product.trim()}
+              disabled={!product.trim() || loading}
               onClick={analyze}
             >
-              Analyze Product
+              {loading ? "Analyzing..." : "Analyze Product"}
               <ArrowRight className="h-4 w-4" />
             </button>
 
@@ -168,6 +187,18 @@ function AiCustomsPage() {
                 데이터 소스는 다음 개발 단계에서 연결합니다.
               </p>
             </div>
+          ) : loading ? (
+            <div className="rounded-xl border border-border bg-card px-6 py-12 text-center">
+              <PackageSearch className="mx-auto h-8 w-8 animate-pulse text-muted-foreground" />
+              <h2 className="mt-4 text-lg font-semibold">공식 EU CN 후보를 분석하고 있습니다</h2>
+            </div>
+          ) : error ? (
+            <div className="rounded-xl border border-destructive/30 bg-card px-6 py-8">
+              <h2 className="font-semibold">분석 오류</h2>
+              <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+            </div>
+          ) : result ? (
+            <AnalysisResult result={result} />
           ) : (
             <AnalysisSkeleton />
           )}
@@ -175,6 +206,30 @@ function AiCustomsPage() {
       </main>
     </div>
   );
+}
+
+function AnalysisResult({ result }: { result: HsClassificationResult }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <article className="rounded-xl border border-border bg-card p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div><span className="text-xs font-semibold text-muted-foreground">01</span><h3 className="mt-1 text-lg font-semibold">HS Classification</h3></div>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{result.status === "candidate" ? "공식 CN 후보" : "추가정보 필요"}</span>
+        </div>
+        {result.candidates.length > 0 ? <div className="mt-5 space-y-4">{result.candidates.map((candidate) => (
+          <div key={candidate.heading} className="rounded-lg border border-border p-4">
+            <div className="flex items-center justify-between gap-3"><strong>{candidate.heading}</strong><span className="text-xs text-muted-foreground">{Math.round(candidate.confidence * 100)}%</span></div>
+            <ul className="mt-3 space-y-1 text-sm leading-6 text-muted-foreground">{candidate.rationale.map((line) => <li key={line}>• {line}</li>)}</ul>
+          </div>
+        ))}</div> : <div className="mt-5"><p className="text-sm text-muted-foreground">현재 정보만으로 공식 CN 후보를 확정하지 않았습니다.</p>{result.followUpQuestions.map((q) => <p key={q} className="mt-2 text-sm font-medium">{q}</p>)}</div>}
+        {result.warnings.map((warning) => <p key={warning} className="mt-3 text-xs leading-5 text-muted-foreground">{warning}</p>)}
+      </article>
+      <div className="space-y-4"><PendingCard number="02" title="Duty & FTA" text="공식 관세율·협정세율 데이터 연결 필요" /><PendingCard number="03" title="Certification & Regulation" text="EU 품목별 규제 데이터 연결 필요" /><PendingCard number="04" title="Estimated Landed Cost" text="관세·세금·운임 데이터 연결 후 계산 가능" /></div>
+    </div>
+  );
+}
+function PendingCard({ number, title, text }: { number: string; title: string; text: string }) {
+ return <article className="rounded-xl border border-border bg-card p-5"><span className="text-xs font-semibold text-muted-foreground">{number}</span><h3 className="mt-1 font-semibold">{title}</h3><p className="mt-3 text-sm text-muted-foreground">{text}</p></article>;
 }
 
 function AnalysisSkeleton() {
