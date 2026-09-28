@@ -8,6 +8,12 @@ export const hsClassificationInputSchema = z.object({
   composition: z.string().trim().max(2000).optional(),
   intendedUse: z.string().trim().max(1000).optional(),
   form: z.string().trim().max(1000).optional(),
+  destinationCountry: z.string().length(2).optional(),
+  productValue: z.number().nonnegative().optional(),
+  freight: z.number().nonnegative().optional(),
+  insurance: z.number().nonnegative().optional(),
+  quantity: z.number().positive().optional(),
+  vatRate: z.number().min(0).max(100).optional(),
 });
 
 export type HsClassificationInput = z.infer<typeof hsClassificationInputSchema>;
@@ -43,7 +49,7 @@ export const hsClassificationResultSchema = z.object({
   customs: z.object({
     duty: z.object({ status: z.enum(["available","pending"]), thirdCountryRate: z.number().nullable(), preferentialRate: z.number().nullable(), notes: z.array(z.string()), sources: z.array(z.string().url()) }),
     regulation: z.object({ status: z.enum(["available","guidance","pending"]), items: z.array(z.object({ title:z.string(), detail:z.string(), url:z.string().url() })) }),
-    landedCost: z.object({ status: z.enum(["ready","needs_values","pending"]), formula: z.string(), missingInputs: z.array(z.string()) }),
+    landedCost: z.object({ status: z.enum(["ready","needs_values","pending"]), formula: z.string(), missingInputs: z.array(z.string()), customsValue: z.number().nullable().optional(), dutyAmount: z.number().nullable().optional(), vatAmount: z.number().nullable().optional(), estimatedTotal: z.number().nullable().optional() }),
   }).optional(),
   methodology: z.string(),
 });
