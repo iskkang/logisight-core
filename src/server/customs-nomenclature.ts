@@ -53,3 +53,32 @@ export async function searchOfficialEuNomenclature(
     sourceVersion: row.source_version,
   }));
 }
+
+
+export async function searchOfficialEuNomenclatureByConcepts(
+  concepts: string[],
+  limit = 25,
+): Promise<OfficialNomenclatureCandidate[]> {
+  const terms = [...new Set(concepts.flatMap(queryTerms))].slice(0, 12);
+  if (terms.length === 0) return [];
+  const orFilter = terms.map((term) => `description.ilike.%${term}%`).join(",");
+  const { data, error } = await supabasePublicServer
+    .from("customs_nomenclature")
+    .select("code,nomenclature,description,level,source_name,source_url,source_version")
+    .eq("market", "EU")
+    .eq("nomenclature", "CN")
+    .eq("is_active", true)
+    .or(orFilter)
+    .order("code", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`Official nomenclature lookup failed: ${error.message}`);
+  return (data ?? []).map((row) => ({
+    code: row.code,
+    nomenclature: row.nomenclature as "CN",
+    description: row.description,
+    level: row.level as 8,
+    sourceName: row.source_name,
+    sourceUrl: row.source_url,
+    sourceVersion: row.source_version,
+  }));
+}
