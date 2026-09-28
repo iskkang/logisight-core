@@ -3,8 +3,13 @@ on:
   workflow_dispatch:
     inputs:
       source_url:
-        description: "Official EUR-Lex/data.europa.eu classification evidence export"
-        required: true
+        description: "Official EU classification evidence source (optional)"
+        required: false
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ingest-eu-classification-regulations-2026.py"
+      - ".github/workflows/ingest-eu-classification-evidence.yml"
   schedule:
     - cron: "40 4 * * 1"
 jobs:
@@ -12,11 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: node scripts/ingest-eu-classification-evidence.mjs
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install --disable-pip-version-check requests beautifulsoup4 pdfplumber supabase
+      - run: python scripts/ingest-eu-classification-regulations-2026.py
         env:
-          EU_CLASS_EVIDENCE_URL: ${{ inputs.source_url || secrets.EU_CLASS_EVIDENCE_URL }}
+          EU_CLASS_EVIDENCE_URL: ${{ inputs.source_url || secrets.EU_CLASS_EVIDENCE_URL || 'https://taxation-customs.ec.europa.eu/news/big-step-simplification-commission-publishes-consolidated-list-classification-regulations-2025-05-12_en' }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
