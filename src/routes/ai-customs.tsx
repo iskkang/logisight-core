@@ -220,6 +220,22 @@ function AnalysisResult({ result }: { result: HsClassificationResult }) {
           <div key={candidate.heading} className="rounded-lg border border-border p-4">
             <div className="flex items-center justify-between gap-3"><strong>{candidate.heading}</strong></div>
             <ul className="mt-3 space-y-1 text-sm leading-6 text-muted-foreground">{candidate.rationale.map((line) => <li key={line}>• {line}</li>)}</ul>
+            {candidate.evidence.length > 0 && (
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Official evidence</p>
+                <div className="mt-2 space-y-2">
+                  {candidate.evidence.map((item) => (
+                    <a key={item.type} href={item.url} target="_blank" rel="noreferrer" className="block rounded-md border border-border p-3 hover:bg-muted/40">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-medium">{item.title}</span>
+                        <span className="text-xs text-muted-foreground">{item.status === "matched" ? "확인됨" : "추가 확인"}</span>
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.note}</p>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ))}</div> : <div className="mt-5"><p className="text-sm text-muted-foreground">현재 정보만으로 공식 CN 후보를 확정하지 않았습니다.</p>{result.followUpQuestions.map((q) => <p key={q} className="mt-2 text-sm font-medium">{q}</p>)}</div>}
         {result.warnings.map((warning) => <p key={warning} className="mt-3 text-xs leading-5 text-muted-foreground">{warning}</p>)}
