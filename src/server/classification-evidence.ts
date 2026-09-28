@@ -18,6 +18,8 @@ export async function findEuClassificationEvidence(cnCode: string): Promise<Stor
     .select("source_type,source_id,title,source_url,product_description,decision_summary,legal_basis,decision_date")
     .eq("market", "EU")
     .eq("is_active", true)
+    // Quarantine the first consolidated-PDF import: row boundaries were parsed incorrectly.
+    .neq("source_version", "2026-02-11")
     .in("cn_code", prefixes)
     .order("decision_date", { ascending: false, nullsFirst: false })
     .limit(20);
