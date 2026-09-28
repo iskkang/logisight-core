@@ -86,3 +86,57 @@ export async function analyzeProductForEuCn(input: HsClassificationInput): Promi
 
   return productAnalysisSchema.parse(JSON.parse(text));
 }
+
+
+const candidateSelectionSchema = z.object({
+  selectedCodes: z.array(z.string().regex(/^\d{8}$/)).max(3),
+  abstain: z.boolean(),
+  rationaleKo: z.array(z.string()).min(1).max(5),
+});
+
+export async function rankOfficialEuCnCandidates(
+  input: HsClassificationInput,
+  analysis: ProductAnalysis,
+  candidates: Array<{ code: string; description: string }>,
+) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
+
+  const allowedCodes = new Set(candidates.map((candidate) => candidate.code));
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: process.env.OPENAI_HS_MODEL || "gpt-5.6",
+      instructions: [
+        "You are ranking ONLY the official EU CN8 candidates supplied by the application.",
+        "Never invent a code and never select a code outside the supplied candidates.",
+        "Compare product use, form, composition and retail presentation against each candidate description.",
+        "Exclude candidates that plainly contradict the product facts.",
+        "If the supplied facts do not support a defensible shortlist, abstain.",
+        "Return concise Korean reasons. Do not claim this is a binding customs ruling.",
+      ].join(" "),
+      input: JSON.stringify({ product: input, analysis, officialCandidates: candidates }),
+      text: { format: {
+        type: "json_schema", name: "eu_cn_candidate_selection", strict: true,
+        schema: {
+          type: "object", additionalProperties: false,
+          required: ["selectedCodes", "abstain", "rationaleKo"],
+          properties: {
+            selectedCodes: { type: "array", maxItems: 3, items: { type: "string" } },
+            abstain: { type: "boolean" },
+            rationaleKo: { type: "array", minItems: 1, maxItems: 5, items: { type: "string" } },
+          },
+        },
+      }},
+    }),
+  });
+  if (!response.ok) throw new Error(`OpenAI candidate ranking failed: ${response.status}`);
+  const payload = await response.json() as { output?: Array<{ content?: Array<{ type?: string; text?: string }> }> };
+  const outputText = payload.output?.flatMap((item) => item.content ?? []).find((item) => item.type === "output_text")?.text;
+  if (!outputText) throw new Error("OpenAI returned no candidate ranking");
+  const parsed = candidateSelectionSchema.parse(JSON.parse(outputText));
+  const selectedCodes = parsed.selectedCodes.filter((code) => allowedCodes.has(code));
+  if (selectedCodes.length !== parsed.selectedCodes.length) throw new Error("Model selected a CN code outside the official candidate set");
+  return { ...parsed, selectedCodes };
+}

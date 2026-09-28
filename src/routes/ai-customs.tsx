@@ -218,7 +218,7 @@ function AnalysisResult({ result }: { result: HsClassificationResult }) {
         </div>
         {result.candidates.length > 0 ? <div className="mt-5 space-y-4">{result.candidates.map((candidate) => (
           <div key={candidate.heading} className="rounded-lg border border-border p-4">
-            <div className="flex items-center justify-between gap-3"><strong>{candidate.heading}</strong><span className="text-xs text-muted-foreground">{Math.round(candidate.confidence * 100)}%</span></div>
+            <div className="flex items-center justify-between gap-3"><strong>{candidate.heading}</strong></div>
             <ul className="mt-3 space-y-1 text-sm leading-6 text-muted-foreground">{candidate.rationale.map((line) => <li key={line}>• {line}</li>)}</ul>
           </div>
         ))}</div> : <div className="mt-5"><p className="text-sm text-muted-foreground">현재 정보만으로 공식 CN 후보를 확정하지 않았습니다.</p>{result.followUpQuestions.map((q) => <p key={q} className="mt-2 text-sm font-medium">{q}</p>)}</div>}
