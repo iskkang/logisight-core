@@ -32,7 +32,7 @@ if "pdf" not in r.headers.get("content-type","").lower():
         except requests.RequestException:
             pass
     if not candidates: raise SystemExit("no PDF attachment found on official Commission page")
-    _,pdf_url,r=max(candidates,key=lambda x:x[0]) r=requests.get(pdf_url,timeout=120,headers={"User-Agent":"Logisight-EU-Evidence/1.1"}); r.raise_for_status()
+    _,pdf_url,r=max(candidates,key=lambda x:x[0])\n    r.raise_for_status()
 
 records=[]; seen=set()
 with pdfplumber.open(io.BytesIO(r.content)) as pdf:
