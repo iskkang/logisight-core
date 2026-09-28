@@ -4,6 +4,7 @@ import { searchOfficialEuNomenclatureByHeadings } from "@/server/customs-nomencl
 import { findEuClassificationEvidence } from "@/server/classification-evidence";
 import { findEuCustomsMeasures } from "@/server/eu-customs-measures";
 import { getEuStandardVat } from "@/server/eu-vat";
+import { findEuProductRegulations } from "@/server/eu-product-regulations";
 
 export async function classifyHsProductCore(data: HsClassificationInput): Promise<HsClassificationResult> {
   const analysis = await analyzeProductForEuCn(data);
@@ -15,12 +16,9 @@ export async function classifyHsProductCore(data: HsClassificationInput): Promis
   const evidence=new Map(await Promise.all(ranked.map(async c=>[c.code,await findEuClassificationEvidence(c.code)] as const)));
   const measures=await findEuCustomsMeasures(ranked[0].code,data.originCountry);
   const third=measures.find(x=>x.measureType==="THIRD_COUNTRY_DUTY"), pref=measures.find(x=>x.measureType==="PREFERENCE");
-  const regs=measures.filter(x=>x.measureType==="REQUIREMENT"||x.measureType==="REGULATION").map(x=>({title:x.title,detail:x.detail??x.legalBasis??"",url:x.sourceUrl}));
-  const cosmetic=analysis.hs4Candidates.includes("3304");
-  if(cosmetic) regs.push(
-    {title:"EU Cosmetics Regulation (EC) No 1223/2009",detail:"EU 완제품 화장품 기본 규제 프레임워크",url:"https://single-market-economy.ec.europa.eu/sectors/cosmetics/legislation_en"},
-    {title:"Cosmetic Products Notification Portal (CPNP)",detail:"EU 시장 출시 전 Article 13 제품 통지",url:"https://single-market-economy.ec.europa.eu/sectors/cosmetics/cosmetic-product-notification-portal_en"},
-    {title:"CosIng / ingredient restrictions",detail:"INCI 기준 금지·제한 성분 확인",url:"https://single-market-economy.ec.europa.eu/sectors/cosmetics/cosing_en"});
+  const tariffRegs=measures.filter(x=>x.measureType==="REQUIREMENT"||x.measureType==="REGULATION").map(x=>({title:x.title,detail:x.detail??x.legalBasis??"",url:x.sourceUrl}));
+  const productRegs=await findEuProductRegulations(ranked[0].code,[data.description,analysis.normalizedName,analysis.material,analysis.composition,analysis.intendedUse,analysis.form].filter(Boolean).join(" "));
+  const regs=[...tariffRegs,...productRegs.map(x=>({title:x.title,detail:x.detail,url:x.url}))].filter((x,i,a)=>a.findIndex(y=>y.title===x.title)===i);
   const rate=pref?.ratePercent??third?.ratePercent??null, vat=data.vatRate??getEuStandardVat(data.destinationCountry);
   const cv=data.productValue!=null?data.productValue+(data.freight??0)+(data.insurance??0):null;
   const duty=cv!=null&&rate!=null?cv*rate/100:null, va=cv!=null&&duty!=null&&vat!=null?(cv+duty)*vat/100:null, total=cv!=null&&duty!=null&&va!=null?cv+duty+va:null;
