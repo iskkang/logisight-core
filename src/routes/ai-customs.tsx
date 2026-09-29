@@ -45,6 +45,7 @@ function AiCustomsPage() {
   const [productValue, setProductValue] = useState("");
   const [freight, setFreight] = useState("");
   const [insurance, setInsurance] = useState("");
+  const [importCosts, setImportCosts] = useState("");
   const VAT: Record<string,string> = { DE:"19",FR:"20",NL:"21",IT:"22",ES:"21",PL:"23",AT:"20",BE:"21",BG:"20",HR:"25",CY:"19",CZ:"21",DK:"25",EE:"24",FI:"25.5",GR:"24",HU:"27",IE:"23",LV:"21",LT:"21",LU:"17",MT:"18",PT:"23",RO:"21",SK:"23",SI:"22",SE:"25" };
   const [vatRate, setVatRate] = useState("19");
 
@@ -61,6 +62,7 @@ function AiCustomsPage() {
         ...(productValue ? { productValue: Number(productValue) } : {}),
         ...(freight ? { freight: Number(freight) } : {}),
         ...(insurance ? { insurance: Number(insurance) } : {}),
+        ...(importCosts ? { importCosts: Number(importCosts) } : {}),
         ...(vatRate ? { vatRate: Number(vatRate) } : {}),
       } });
       setResult(response);
@@ -162,6 +164,7 @@ function AiCustomsPage() {
               <Field label="Product value (EUR)"><input value={productValue} onChange={(e)=>setProductValue(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
               <Field label="Freight (EUR)"><input value={freight} onChange={(e)=>setFreight(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
               <Field label="Insurance (EUR)"><input value={insurance} onChange={(e)=>setInsurance(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
+              <Field label="Import / incidental costs (EUR)"><input value={importCosts} onChange={(e)=>setImportCosts(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
             </div>
 
             <button
@@ -280,7 +283,7 @@ function AnalysisResult({ result }: { result: HsClassificationResult }) {
         </ResultCard>
         <ResultCard number="04" title="Estimated Landed Cost" status={result.customs?.landedCost.status === "ready" ? "계산 완료" : "입력 필요"}>
           <p className="text-sm text-muted-foreground">{result.customs?.landedCost.formula}</p>
-          {result.customs?.landedCost.status === "ready" ? <div className="mt-3 space-y-1 text-sm"><p>관세평가액: <strong>€{result.customs.landedCost.customsValue?.toFixed(2)}</strong></p><p>관세: <strong>€{result.customs.landedCost.dutyAmount?.toFixed(2)}</strong></p><p>VAT: <strong>€{result.customs.landedCost.vatAmount?.toFixed(2)}</strong></p><p className="pt-1">예상 수입원가: <strong>€{result.customs.landedCost.estimatedTotal?.toFixed(2)}</strong></p></div> : <p className="mt-2 text-xs text-muted-foreground">필요 입력/데이터: {result.customs?.landedCost.missingInputs.join(", ")}</p>}
+          {result.customs?.landedCost.status === "ready" ? <div className="mt-3 space-y-1 text-sm"><p>관세평가액: <strong>€{result.customs.landedCost.customsValue?.toFixed(2)}</strong></p><p>관세: <strong>€{result.customs.landedCost.dutyAmount?.toFixed(2)}</strong></p><p>수입부대비용: <strong>€{result.customs.landedCost.importCosts?.toFixed(2)}</strong></p><p>VAT: <strong>€{result.customs.landedCost.vatAmount?.toFixed(2)}</strong></p><p className="pt-1">예상 수입원가: <strong>€{result.customs.landedCost.estimatedTotal?.toFixed(2)}</strong></p></div> : <p className="mt-2 text-xs text-muted-foreground">필요 입력/데이터: {result.customs?.landedCost.missingInputs.join(", ")}</p>}
         </ResultCard>
       </div>
     </div>

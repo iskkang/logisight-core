@@ -22,10 +22,15 @@ export async function classifyHsProductCore(data: HsClassificationInput): Promis
   const regs=[...tariffRegs,...productRegs.map(x=>({title:x.title,detail:x.detail,url:x.url}))].filter((x,i,a)=>a.findIndex(y=>y.title===x.title)===i);
   const rate=pref?.ratePercent??third?.ratePercent??null, vat=data.vatRate??getEuStandardVat(data.destinationCountry);
   const cv=data.productValue!=null?data.productValue+(data.freight??0)+(data.insurance??0):null;
-  const duty=cv!=null&&rate!=null?cv*rate/100:null, va=cv!=null&&duty!=null&&vat!=null?(cv+duty)*vat/100:null, total=cv!=null&&duty!=null&&va!=null?cv+duty+va:null;
+  const duty=cv!=null&&rate!=null?cv*rate/100:null;
+  // Simplified EU import-VAT estimate: customs value + duty + user-supplied incidental/import costs.
+  // Exact VAT base can vary by Member State and transaction facts.
+  const importCosts=data.importCosts??0;
+  const va=cv!=null&&duty!=null&&vat!=null?(cv+duty+importCosts)*vat/100:null;
+  const total=cv!=null&&duty!=null&&va!=null?cv+duty+importCosts+va:null;
   return {status:"candidate",normalizedProduct:{name:analysis.normalizedName,material:analysis.material,composition:analysis.composition,intendedUse:analysis.intendedUse,form:analysis.form},
     candidates:ranked.map(c=>({hs6:c.code.slice(0,6),heading:`${c.code} — ${c.description}`,rationale:[...ranking.rationaleKo,`공식 ${c.sourceVersion} 데이터에서 조회`],confidence:0,sourceStatus:"officially_verified",evidence:[{type:"CN",title:`EU Combined Nomenclature ${c.sourceVersion}`,url:c.sourceUrl,status:"matched",note:`${c.code} 공식 CN 존재 확인`},...(evidence.get(c.code)??[]).map(x=>({type:x.sourceType==="EBTI"?"EBTI" as const:"CLASS" as const,title:x.title,url:x.sourceUrl,status:"matched" as const,note:[x.productDescription,x.decisionSummary,x.legalBasis].filter(Boolean).join(" ")}))]})),
     missingInformation:analysis.missingInformation,followUpQuestions:analysis.followUpQuestions,
-    customs:{duty:{status:third||pref?"available":"pending",thirdCountryRate:third?.ratePercent??null,preferentialRate:pref?.ratePercent??null,notes:[],sources:measures.filter(x=>x.measureType==="THIRD_COUNTRY_DUTY"||x.measureType==="PREFERENCE").map(x=>x.sourceUrl)},regulation:{status:regs.length?"guidance":"pending",items:regs},landedCost:{status:total!=null?"ready":"needs_values",formula:"관세평가액 + 관세 + VAT",missingInputs:[...(data.productValue==null?["상품가격"]:[]),...(data.destinationCountry==null?["EU 도착국"]:[]),...(vat==null?["도착국 VAT율"]:[]),...(rate==null?["적용 관세율/FTA 세율"]:[])],customsValue:cv,dutyAmount:duty,vatAmount:va,estimatedTotal:total}},
+    customs:{duty:{status:third||pref?"available":"pending",thirdCountryRate:third?.ratePercent??null,preferentialRate:pref?.ratePercent??null,notes:[],sources:measures.filter(x=>x.measureType==="THIRD_COUNTRY_DUTY"||x.measureType==="PREFERENCE").map(x=>x.sourceUrl)},regulation:{status:regs.length?"guidance":"pending",items:regs},landedCost:{status:total!=null?"ready":"needs_values",formula:"상품가 + 운임 + 보험료 + 관세 + 수입부대비용 + 수입 VAT",missingInputs:[...(data.productValue==null?["상품가격"]:[]),...(data.destinationCountry==null?["EU 도착국"]:[]),...(vat==null?["도착국 VAT율"]:[]),...(rate==null?["적용 관세율/FTA 세율"]:[])],customsValue:cv,dutyAmount:duty,vatAmount:va,importCosts,estimatedTotal:total}},
     warnings:["officially_verified는 CN 코드 존재 확인이며 최종 세관 분류 확정이 아닙니다."],methodology:"AI HS4; official CN8; constrained ranking; customs/evidence lookup"};
 }
