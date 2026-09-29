@@ -48,6 +48,7 @@ function AiCustomsPage() {
   const [importCosts, setImportCosts] = useState("");
   const VAT: Record<string,string> = { DE:"19",FR:"20",NL:"21",IT:"22",ES:"21",PL:"23",AT:"20",BE:"21",BG:"20",HR:"25",CY:"19",CZ:"21",DK:"25",EE:"24",FI:"25.5",GR:"24",HU:"27",IE:"23",LV:"21",LT:"21",LU:"17",MT:"18",PT:"23",RO:"21",SK:"23",SI:"22",SE:"25" };
   const [vatRate, setVatRate] = useState("19");
+  const [preferentialOriginEligible, setPreferentialOriginEligible] = useState(false);
 
   const analyze = async () => {
     if (!product.trim() || loading) return;
@@ -64,6 +65,7 @@ function AiCustomsPage() {
         ...(insurance ? { insurance: Number(insurance) } : {}),
         ...(importCosts ? { importCosts: Number(importCosts) } : {}),
         ...(vatRate ? { vatRate: Number(vatRate) } : {}),
+        preferentialOriginEligible,
       } });
       setResult(response);
     } catch (cause) {
@@ -165,6 +167,10 @@ function AiCustomsPage() {
               <Field label="Freight (EUR)"><input value={freight} onChange={(e)=>setFreight(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
               <Field label="Insurance (EUR)"><input value={insurance} onChange={(e)=>setInsurance(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
               <Field label="Import / incidental costs (EUR)"><input value={importCosts} onChange={(e)=>setImportCosts(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
+              <label className="flex items-start gap-3 rounded-md border border-border p-3 text-sm sm:col-span-2">
+                <input type="checkbox" checked={preferentialOriginEligible} onChange={(e)=>setPreferentialOriginEligible(e.target.checked)} className="mt-1" />
+                <span><strong>한-EU FTA 원산지 요건 충족 및 유효한 원산지 신고 보유</strong><br/><span className="text-xs text-muted-foreground">확인한 경우에만 특혜세율을 Landed Cost 계산에 적용합니다.</span></span>
+              </label>
             </div>
 
             <button
@@ -274,6 +280,7 @@ function AnalysisResult({ result }: { result: HsClassificationResult }) {
             <div className="space-y-2 text-sm">
               <p>EU 기본관세: <strong>{result.customs.duty.thirdCountryRate == null ? "—" : `${result.customs.duty.thirdCountryRate}%`}</strong></p>
               <p>한국산 협정/특혜세율: <strong>{result.customs.duty.preferentialRate == null ? (result.customs.duty.thirdCountryRate === 0 ? "별도 혜택 불필요" : "확인 필요") : `${result.customs.duty.preferentialRate}%`}</strong></p>
+              {result.customs.duty.preferentialRate != null && <p>실제 계산 적용: <strong>{preferentialOriginEligible ? "FTA 특혜세율" : "EU 기본관세"}</strong></p>}
               {result.customs.duty.notes.map((note) => <p key={note} className="text-xs text-muted-foreground">{note}</p>)}
             </div>
           ) : <p className="text-sm text-muted-foreground">{result.customs?.duty.notes[0] ?? "공식 관세 데이터를 준비 중입니다."}</p>}
