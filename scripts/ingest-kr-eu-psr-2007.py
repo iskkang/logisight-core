@@ -77,12 +77,9 @@ def main():
         subprocess.run(["pdftotext","-layout",pdf,txt],check=True)
         raw=open(txt,encoding="utf-8",errors="ignore").read()
 
-    annex_marker="ANNEX II\n"
-    pos=raw.find(annex_marker)
-    if pos<0:
-        pos=raw.find("ANNEX II")
-    end=raw.find("ANNEX II(a)",pos+1)
-    if pos<0 or end<0: raise RuntimeError("Could not isolate Annex II")
+    end=raw.rfind("ANNEX II(a)")
+    pos=raw.rfind("ANNEX II",0,end)
+    if pos<0 or end<0 or end<=pos: raise RuntimeError("Could not isolate Annex II")
     annex=raw[pos:end]
 
     lines=annex.splitlines()
@@ -140,7 +137,7 @@ def main():
     for i in range(0,len(psr),300):
         requests.post(sb+"/rest/v1/eu_origin_rules",headers=h,json=psr[i:i+300],timeout=60).raise_for_status()
 
-    requests.delete(sb+"/rest/v1/eu_hs_crosswalk?source_url=eq."+requests.utils.quote(SOURCE_URL,safe=''),headers=h,timeout=60).raise_for_status()
+    requests.delete(sb+"/rest/v1/eu_hs_crosswalk?cn2026_code=not.is.null",headers=h,timeout=60).raise_for_status()
     for i in range(0,len(cross),400):
         requests.post(sb+"/rest/v1/eu_hs_crosswalk",headers=h,json=cross[i:i+400],timeout=60).raise_for_status()
 
