@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import os,re,subprocess,tempfile,requests
+import os,re,requests
+from bs4 import BeautifulSoup
 from collections import defaultdict
 from datetime import date
 
@@ -70,49 +71,62 @@ def fetch_cn8(sb,key):
 
 def main():
     sb=os.environ["SUPABASE_URL"].rstrip("/"); key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    r=requests.get(PDF_URL,timeout=240,headers={"User-Agent":"Logisight-KR-EU-PSR/1.0"});r.raise_for_status()
-    with tempfile.TemporaryDirectory() as d:
-        pdf=f"{d}/fta.pdf"; txt=f"{d}/fta.txt"
-        open(pdf,"wb").write(r.content)
-        subprocess.run(["pdftotext","-layout",pdf,txt],check=True)
-        raw=open(txt,encoding="utf-8",errors="ignore").read()
+    headers={"User-Agent":"Logisight-KR-EU-PSR/1.0"}
+    ra=requests.get(AGREEMENT_URL,timeout=180,headers=headers); ra.raise_for_status()
+    rp=requests.get(PROTOCOL_URL,timeout=180,headers=headers); rp.raise_for_status()
+    if len(ra.text)<100000 or len(rp.text)<50000: raise RuntimeError("EUR-Lex HTML response unexpectedly small")
+    agreement=BeautifulSoup(ra.text,"html.parser")
+    protocol=BeautifulSoup(rp.text,"html.parser")
 
-    end=raw.rfind("ANNEX II(a)")
-    pos=raw.rfind("ANNEX II",0,end)
-    if pos<0 or end<0 or end<=pos: raise RuntimeError("Could not isolate Annex II")
-    annex=raw[pos:end]
+    # CN2007 tariff schedule is embedded in the official agreement HTML.
+    agreement_text=agreement.get_text(" ",strip=True)
+    old8=set("".join(m.groups()) for m in CN8_RE.finditer(agreement_text))
 
-    lines=annex.splitlines()
+    # Parse Annex II table rows from the official rules-of-origin protocol.
+    marker=None
+    for node in protocol.find_all(string=True):
+        if clean(str(node)).upper()=="ANNEX II":
+            marker=node
+    if marker is None: raise RuntimeError("Could not locate Annex II in protocol HTML")
+
     blocks=[]
-    cur=None
-    for line in lines:
-        m=ROW_START.match(line)
-        if m:
-            if cur: blocks.append(cur)
-            cur={"selector":m.group(1),"lines":[line]}
-        elif cur:
-            cur["lines"].append(line)
-    if cur: blocks.append(cur)
+    current=None
+    seen=set()
+    for el in marker.parent.find_all_next():
+        txt=clean(el.get_text(" ",strip=True)) if hasattr(el,"get_text") else ""
+        if txt.upper()=="ANNEX II(A)":
+            break
+        if getattr(el,"name",None)!="tr" or id(el) in seen:
+            continue
+        seen.add(id(el))
+        cells=[clean(x.get_text(" ",strip=True)) for x in el.find_all(["td","th"],recursive=False)]
+        if len(cells)<3: continue
+        prefixes,meta=parse_selector(cells[0]) if cells[0] else ([],{})
+        rulecols=[x for x in cells[2:] if x]
+        if prefixes:
+            if current: blocks.append(current)
+            current={"selector":cells[0],"prefixes":prefixes,"meta":meta,"rules":rulecols}
+        elif current and rulecols:
+            # Continuation/sub-product rows under the same selector are retained.
+            # Multiple divergent sub-rules intentionally become TEXT_RULE unless safely parseable.
+            current["rules"].extend(rulecols)
+    if current: blocks.append(current)
 
     psr=[]
     for b in blocks:
-        prefixes,meta=parse_selector(b["selector"])
-        if not prefixes: continue
-        block="\n".join(b["lines"])
-        rule=extract_rule_text(block)
-        if len(rule)<8: continue
-        for p in prefixes:
+        rule=" OR ".join(dict.fromkeys(x for x in b["rules"] if x))
+        if len(rule)<8: rule="Complex product-specific rule; see official Annex II text for the selector."
+        parsed=rule_json(rule)
+        for p in b["prefixes"]:
             psr.append({
               "agreement":"KR-EU FTA","hs_prefix":p,"hs_version":2007,
-              "rule_code":rule_json(rule)["type"],"rule_text_ko":"공식 한-EU FTA Annex II 원산지 기준을 확인하세요.",
-              "rule_text_en":rule,"rule_json":rule_json(rule),"source_url":SOURCE_URL,
+              "rule_code":parsed["type"],"rule_text_ko":"공식 한-EU FTA Annex II 품목별 원산지 기준",
+              "rule_text_en":rule,"rule_json":parsed,"source_url":SOURCE_URL,
               "legal_basis":"EU-Korea FTA Protocol on Rules of Origin, Annex II",
               "valid_from":"2011-07-01","valid_to":None,"is_active":True,
-              "selector_text":b["selector"],"metadata":{"source":"EUR-Lex OJ L127/2011","parser":"annexII-v1",**meta}
+              "selector_text":b["selector"],"metadata":{"source":"EUR-Lex OJ L127/2011","parser":"annexII-html-v2",**b["meta"]}
             })
     if len(psr)<150: raise RuntimeError(f"Only {len(psr)} PSR rows parsed; refusing mutation")
-
-    old8=set("".join(m.groups()) for m in CN8_RE.finditer(raw[:pos]))
     old6=set(x[:6] for x in old8); old4=set(x[:4] for x in old8); old2=set(x[:2] for x in old8)
     if len(old8)<5000: raise RuntimeError(f"Only {len(old8)} CN2007 codes parsed; refusing mutation")
 
