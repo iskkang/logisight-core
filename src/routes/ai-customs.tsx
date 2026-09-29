@@ -58,6 +58,8 @@ function AiCustomsPage() {
   const [originExWorksPrice, setOriginExWorksPrice] = useState("");
   const [originNonOriginValue, setOriginNonOriginValue] = useState("");
   const [originNonOriginHs4, setOriginNonOriginHs4] = useState("");
+  const [originNonOriginHs6, setOriginNonOriginHs6] = useState("");
+  const [originWhollyObtained, setOriginWhollyObtained] = useState("");
 
   const analyze = async () => {
     if (!product.trim() || loading) return;
@@ -84,6 +86,8 @@ function AiCustomsPage() {
         ...(originExWorksPrice ? { originExWorksPrice: Number(originExWorksPrice) } : {}),
         ...(originNonOriginValue ? { originNonOriginatingMaterialValue: Number(originNonOriginValue) } : {}),
         ...(originNonOriginHs4.trim() ? { originNonOriginatingMaterialHs4: originNonOriginHs4.split(",").map(x=>x.trim()).filter(x=>/^\d{4}$/.test(x)) } : {}),
+        ...(originNonOriginHs6.trim() ? { originNonOriginatingMaterialHs6: originNonOriginHs6.split(",").map(x=>x.trim()).filter(x=>/^\d{6}$/.test(x)) } : {}),
+        ...(originWhollyObtained ? { originWhollyObtained: originWhollyObtained === "yes" } : {}),
       } });
       setResult(response);
     } catch (cause) {
@@ -198,6 +202,8 @@ function AiCustomsPage() {
                   <Field label="공장도가격 (EUR)"><input value={originExWorksPrice} onChange={e=>setOriginExWorksPrice(e.target.value)} type="number" min="0" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
                   <Field label="비원산지재료 가격 (EUR)"><input value={originNonOriginValue} onChange={e=>setOriginNonOriginValue(e.target.value)} type="number" min="0" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
                   <Field label="비원산지 원재료 HS4 (쉼표 구분)"><input value={originNonOriginHs4} onChange={e=>setOriginNonOriginHs4(e.target.value)} placeholder="예: 3901, 3902" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
+                  <Field label="비원산지 원재료 HS6 (쉼표 구분)"><input value={originNonOriginHs6} onChange={e=>setOriginNonOriginHs6(e.target.value)} placeholder="예: 390110, 390120" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
+                  <Field label="완전생산 여부"><select value={originWhollyObtained} onChange={e=>setOriginWhollyObtained(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
                 </div>
                 <label className="mt-3 flex items-start gap-3 text-sm">
                   <input type="checkbox" checked={preferentialOriginEligible} onChange={(e)=>setPreferentialOriginEligible(e.target.checked)} className="mt-1" />
