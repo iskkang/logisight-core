@@ -108,7 +108,7 @@ def fetch_cn8(base,key):
     h={"apikey":key,"Authorization":f"Bearer {key}"}
     while True:
         q=(f"{base}/rest/v1/customs_nomenclature?select=code"
-           f"&market=eq.EU&nomenclature=eq.CN&is_active=eq.true&is_leaf=eq.true"
+           f"&market=eq.EU&nomenclature=eq.CN&is_active=eq.true&level=eq.8"
            f"&order=code.asc&offset={offset}&limit=1000")
         r=requests.get(q,headers=h,timeout=60); r.raise_for_status(); batch=r.json()
         out += [re.sub(r"\D","",x["code"])[:8] for x in batch if x.get("code")]
@@ -150,18 +150,12 @@ def main():
                             "file":f["title"]})
     if len(raw)<500: raise RuntimeError(f"Only {len(raw)} active KR-applicable tariff-preference measures parsed; refusing mutation")
 
-    sample_codes=sorted(set(x["source_code"] for x in raw))
-    print("KR measure source-code sample:", sample_codes[:40])
-    print("KR measure source-code lengths:", {n:sum(1 for x in sample_codes if len(x)==n) for n in sorted(set(map(len,sample_codes)))})
     by_cn=defaultdict(list)
-    unmatched=[]
     for m in raw:
         code=m["source_code"]
         prefix=code[:8] if len(code)>=8 else code
         targets=[c for c in cn8 if c.startswith(prefix)]
-        if not targets and len(unmatched)<40: unmatched.append((code,prefix))
         for c in targets: by_cn[c].append(m)
-    print("Unmatched source-code sample:", unmatched)
 
     payload=[]
     for c,items in by_cn.items():
