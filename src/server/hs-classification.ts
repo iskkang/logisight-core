@@ -21,7 +21,7 @@ export const hsClassificationInputSchema = z.object({
   originSufficientProcessing: z.boolean().optional(),
   originExWorksPrice: z.number().nonnegative().optional(),
   originNonOriginatingMaterialValue: z.number().nonnegative().optional(),
-  originNonOriginatingMaterialHs4: z.array(z.string().regex(/^\\d{4}$/)).optional(),
+  originNonOriginatingMaterialHs4: z.array(z.string().regex(/^\d{4}$/)).optional(),
 });
 
 export type HsClassificationInput = z.infer<typeof hsClassificationInputSchema>;
