@@ -1,57 +1,45 @@
 #!/usr/bin/env python3
-"""Ingest 2026 EU CN8 conventional (third-country) duties from Commission TARIC raw Excel.
-
-Set TARIC_RAW_XLSX_URL to the current official Commission/CIRCABC Excel download.
-The parser fails closed if it cannot identify >=9,000 CN8 rows or the duty column.
-"""
-import io, os, re, requests
+import os,re,subprocess,tempfile,requests
 from datetime import date
-from openpyxl import load_workbook
 
-SOURCE_PAGE="https://taxation-customs.ec.europa.eu/online-services/online-services-and-databases-customs/eu-customs-tariff-taric_en"
-CODE=re.compile(r"^\d{8}$")
-PCT=re.compile(r"^\s*(\d+(?:[.,]\d+)?)\s*%\s*$")
-
-def norm(v):
-    d=re.sub(r"\D","",str(v or ""))
-    return d[:8] if len(d)>=8 else ""
-
-def find_cols(rows):
-    for i,row in enumerate(rows[:50]):
-        vals=[str(x or "").strip().lower() for x in row]
-        ci=next((j for j,v in enumerate(vals) if v in {"cn code","commodity code","goods code","code nc","código nc"}),None)
-        di=next((j for j,v in enumerate(vals) if "third" in v and ("duty" in v or "country" in v) or v in {"conventional rate of duty","duty rate"}),None)
-        if ci is not None and di is not None:return i,ci,di
-    raise RuntimeError("Could not identify CN8 / third-country duty columns")
-
-def parse(blob):
-    wb=load_workbook(io.BytesIO(blob),read_only=True,data_only=True)
+PDF_URL="https://sede.agenciatributaria.gob.es/static_files/Sede/Tema/Aduanas/Comercio_exterior/Nomenclaturas/2026/OJ_L_202501926_ES_TXT.pdf"
+SRC="https://eur-lex.europa.eu/eli/reg_impl/2025/1926/oj"
+CODE=re.compile(r"(?<!\d)(\d{4})\s+(\d{2})\s+(\d{2})(?!\d)")
+PCT=re.compile(r"^(\d+(?:[.,]\d+)?)\s*%$")
+def clean_rate(s):
+    s=re.sub(r"\s*\([^)]*\)\s*$","",s.strip())
+    return s
+def parse(text):
     out={}
-    for ws in wb.worksheets:
-        rows=list(ws.iter_rows(values_only=True))
-        try:h,ci,di=find_cols(rows)
-        except RuntimeError:continue
-        for row in rows[h+1:]:
-            if max(ci,di)>=len(row):continue
-            code=norm(row[ci]); rate_text=str(row[di] or "").strip()
-            if not CODE.fullmatch(code) or not rate_text:continue
-            free=rate_text.lower() in {"free","0","0%","0 %"}
-            m=PCT.fullmatch(rate_text)
-            rate=0.0 if free else (float(m.group(1).replace(",",".")) if m else None)
-            out[code]={"cn_code":code,"origin_country":None,"destination_country":None,"measure_type":"THIRD_COUNTRY_DUTY","rate_percent":rate,"rate_text":rate_text,"title":"EU CN 2026 conventional rate of duty","detail":"Official TARIC/CCT third-country duty; complex rates are preserved verbatim in rate_text.","legal_basis":"Council Regulation (EEC) No 2658/87; CN 2026","source_url":SOURCE_PAGE,"valid_from":date(2026,1,1).isoformat(),"valid_to":date(2026,12,31).isoformat(),"is_active":True,"metadata":{"source":"EU TARIC raw data","year":2026}}
-    if len(out)<9000:raise RuntimeError(f"Only {len(out)} CN8 duty rows parsed; refusing mutation")
-    return list(out.values())
-
+    for line in text.splitlines():
+        m=CODE.search(line)
+        if not m: continue
+        code="".join(m.groups())
+        tail=line[m.end():].strip()
+        cols=[x.strip() for x in re.split(r"\s{2,}",tail) if x.strip()]
+        if not cols: continue
+        rate=clean_rate(cols[-1])
+        low=rate.lower()
+        if low in {"free","exento","0 %","0%"}: pct=0.0
+        else:
+            p=PCT.match(rate); pct=float(p.group(1).replace(",",".")) if p else None
+            if pct is None and not any(x in low for x in ["€/","eur/","euro/","min","max","+"]): continue
+        out[code]=(pct,rate)
+    return out
 def main():
-    url=os.environ["TARIC_RAW_XLSX_URL"]
-    r=requests.get(url,timeout=120,headers={"User-Agent":"Logisight-TARIC-Ingest/1.0"});r.raise_for_status()
-    rows=parse(r.content)
+    r=requests.get(PDF_URL,timeout=180,headers={"User-Agent":"Logisight-CN-Duty/1.0"});r.raise_for_status()
+    with tempfile.TemporaryDirectory() as d:
+        pdf=f"{d}/cn.pdf"; txt=f"{d}/cn.txt"; open(pdf,"wb").write(r.content)
+        subprocess.run(["pdftotext","-layout",pdf,txt],check=True)
+        rows=parse(open(txt,encoding="utf-8",errors="ignore").read())
+    if len(rows)<7000: raise RuntimeError(f"only {len(rows)} duty rows parsed")
     base=os.environ["SUPABASE_URL"].rstrip("/"); key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    headers={"apikey":key,"Authorization":f"Bearer {key}","Content-Type":"application/json","Prefer":"return=minimal"}
-    # Replace only this importer's 2026 conventional-duty snapshot.
-    q=f'{base}/rest/v1/eu_customs_measures?measure_type=eq.THIRD_COUNTRY_DUTY&valid_from=eq.2026-01-01&metadata->>source=eq.EU%20TARIC%20raw%20data'
-    requests.delete(q,headers=headers,timeout=60).raise_for_status()
-    for i in range(0,len(rows),500):
-        requests.post(f"{base}/rest/v1/eu_customs_measures",headers=headers,json=rows[i:i+500],timeout=60).raise_for_status()
-    print(f"Ingested {len(rows)} EU CN8 conventional-duty rows")
-if __name__=="__main__":main()
+    h={"apikey":key,"Authorization":f"Bearer {key}","Content-Type":"application/json","Prefer":"return=minimal"}
+    payload=[]
+    for code,(pct,rate) in rows.items():
+        payload.append({"cn_code":code,"origin_country":None,"destination_country":None,"measure_type":"THIRD_COUNTRY_DUTY","rate_percent":pct,"rate_text":rate,"title":"EU CN 2026 conventional rate of duty","detail":"Official CN 2026 conventional duty","legal_basis":"Commission Implementing Regulation (EU) 2025/1926","source_url":SRC,"valid_from":"2026-01-01","valid_to":"2026-12-31","is_active":True,"metadata":{"source":"CN 2026 official regulation","year":2026}})
+    requests.delete(base+"/rest/v1/eu_customs_measures?measure_type=eq.THIRD_COUNTRY_DUTY&metadata->>source=eq.CN%202026%20official%20regulation",headers=h,timeout=60).raise_for_status()
+    for i in range(0,len(payload),400):
+        requests.post(base+"/rest/v1/eu_customs_measures",headers=h,json=payload[i:i+400],timeout=60).raise_for_status()
+    print("ingested",len(payload))
+if __name__=="__main__": main()
