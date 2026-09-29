@@ -15,6 +15,7 @@ export const hsClassificationInputSchema = z.object({
   importCosts: z.number().nonnegative().optional(),
   quantity: z.number().positive().optional(),
   vatRate: z.number().min(0).max(100).optional(),
+  preferentialOriginEligible: z.boolean().optional(),
 });
 
 export type HsClassificationInput = z.infer<typeof hsClassificationInputSchema>;
