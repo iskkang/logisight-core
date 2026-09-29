@@ -232,7 +232,7 @@ function AiCustomsPage() {
               <p className="mt-2 text-sm text-muted-foreground">{error}</p>
             </div>
           ) : result ? (
-            <AnalysisResult result={result} />
+            <AnalysisResult result={result} preferentialOriginEligible={preferentialOriginEligible} />
           ) : (
             <AnalysisSkeleton />
           )}
@@ -242,7 +242,7 @@ function AiCustomsPage() {
   );
 }
 
-function AnalysisResult({ result }: { result: HsClassificationResult }) {
+function AnalysisResult({ result, preferentialOriginEligible }: { result: HsClassificationResult; preferentialOriginEligible: boolean }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <article className="rounded-xl border border-border bg-card p-6">
