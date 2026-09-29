@@ -18,19 +18,47 @@ type RuleRow = {
   rule_text_ko: string;
   rule_json: any;
   source_url: string;
+  metadata?: any;
 };
 
 async function findRule(cnCode: string): Promise<RuleRow | null> {
-  const prefixes = [cnCode.slice(0,8),cnCode.slice(0,6),cnCode.slice(0,4),cnCode.slice(0,2)];
+  const { data: cross, error: crossError } = await supabasePublicServer
+    .from("eu_hs_crosswalk")
+    .select("hs2007_code,mapping_type")
+    .eq("cn2026_code",cnCode)
+    .eq("is_active",true)
+    .maybeSingle();
+  if (crossError) throw new Error("HS crosswalk lookup failed: " + crossError.message);
+
+  const mapped = cross?.hs2007_code as string | null | undefined;
+  const mappingType = cross?.mapping_type as string | undefined;
+  const allowedLen = mappingType === "HS6_IDENTITY" ? 6 : mappingType === "HS4_FAMILY" ? 4 : mappingType === "CHAPTER_FAMILY" ? 2 : 0;
+
+  const mappedPrefixes = mapped && allowedLen
+    ? [mapped.slice(0,allowedLen), mapped.slice(0,4), mapped.slice(0,2)].filter((x,i,a)=>x && a.indexOf(x)===i)
+    : [];
+  const currentPrefixes = [cnCode.slice(0,8),cnCode.slice(0,6),cnCode.slice(0,4),cnCode.slice(0,2)];
+  const prefixes = [...new Set([...currentPrefixes, ...mappedPrefixes])];
+
   const { data, error } = await supabasePublicServer
     .from("eu_origin_rules")
-    .select("hs_prefix,rule_code,rule_text_ko,rule_json,source_url")
+    .select("hs_prefix,rule_code,rule_text_ko,rule_json,source_url,metadata")
     .eq("agreement","KR-EU FTA")
     .eq("is_active",true)
     .in("hs_prefix",prefixes);
   if (error) throw new Error("Origin-rule lookup failed: " + error.message);
   const rows=(data ?? []) as RuleRow[];
-  return rows.sort((a,b)=>b.hs_prefix.length-a.hs_prefix.length)[0] ?? null;
+
+  const usable = rows.filter(r => {
+    if (!r.metadata?.source || r.metadata.source !== "EUR-Lex OJ L127/2011") return true;
+    return mappedPrefixes.includes(r.hs_prefix);
+  });
+
+  return usable.sort((a,b)=>{
+    const manualA = a.metadata?.source === "EUR-Lex OJ L127/2011" ? 0 : 1;
+    const manualB = b.metadata?.source === "EUR-Lex OJ L127/2011" ? 0 : 1;
+    return (b.hs_prefix.length-a.hs_prefix.length) || (manualB-manualA);
+  })[0] ?? null;
 }
 
 function evalNode(node:any, input:HsClassificationInput, finalHs4:string): {pass:boolean|null; checks:string[]; missing:string[]} {
@@ -47,6 +75,22 @@ function evalNode(node:any, input:HsClassificationInput, finalHs4:string): {pass
       "충분가공: " + (input.originSufficientProcessing ? "예" : "아니오"),
     ];
     return {pass:Boolean(input.originManufacturedInKr && input.originFabricOriginating && input.originSufficientProcessing),checks,missing:[]};
+  }
+  if (node.type==="TEXTILE_CH61") {
+    const missing:string[]=[];
+    if (input.originKnittingInKr == null) missing.push("한국 내 편직 여부");
+    if (input.originSpinningOrExtrusionInKr == null) missing.push("한국 내 방적 또는 인조필라멘트사 압출 여부");
+    if (input.originMakingUpInKr == null) missing.push("한국 내 재단·봉제·조립(making-up) 여부");
+    if (missing.length) return {pass:null,checks:[],missing};
+    const routeA=Boolean(input.originSpinningOrExtrusionInKr && input.originKnittingInKr);
+    const routeB=Boolean(input.originKnittingInKr && input.originMakingUpInKr);
+    return {pass:routeA||routeB,checks:[
+      "경로 A(방적/압출 + 편직): " + (routeA ? "충족" : "불충족"),
+      "경로 B(편직 + 재단·봉제·조립): " + (routeB ? "충족" : "불충족"),
+    ],missing:[]};
+  }
+  if (node.type==="TEXT_RULE") {
+    return {pass:null,checks:[],missing:["이 품목의 공식 PSR은 복합 규칙이므로 세부 공정·재료 조건 확인"]};
   }
   if (node.type==="CTH") {
     const hs=input.originNonOriginatingMaterialHs4;

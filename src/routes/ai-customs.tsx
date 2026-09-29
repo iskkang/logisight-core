@@ -52,6 +52,9 @@ function AiCustomsPage() {
   const [originManufacturedInKr, setOriginManufacturedInKr] = useState("");
   const [originFabricOriginating, setOriginFabricOriginating] = useState("");
   const [originSufficientProcessing, setOriginSufficientProcessing] = useState("");
+  const [originKnittingInKr, setOriginKnittingInKr] = useState("");
+  const [originSpinningOrExtrusionInKr, setOriginSpinningOrExtrusionInKr] = useState("");
+  const [originMakingUpInKr, setOriginMakingUpInKr] = useState("");
   const [originExWorksPrice, setOriginExWorksPrice] = useState("");
   const [originNonOriginValue, setOriginNonOriginValue] = useState("");
   const [originNonOriginHs4, setOriginNonOriginHs4] = useState("");
@@ -75,6 +78,9 @@ function AiCustomsPage() {
         ...(originManufacturedInKr ? { originManufacturedInKr: originManufacturedInKr === "yes" } : {}),
         ...(originFabricOriginating ? { originFabricOriginating: originFabricOriginating === "yes" } : {}),
         ...(originSufficientProcessing ? { originSufficientProcessing: originSufficientProcessing === "yes" } : {}),
+        ...(originKnittingInKr ? { originKnittingInKr: originKnittingInKr === "yes" } : {}),
+        ...(originSpinningOrExtrusionInKr ? { originSpinningOrExtrusionInKr: originSpinningOrExtrusionInKr === "yes" } : {}),
+        ...(originMakingUpInKr ? { originMakingUpInKr: originMakingUpInKr === "yes" } : {}),
         ...(originExWorksPrice ? { originExWorksPrice: Number(originExWorksPrice) } : {}),
         ...(originNonOriginValue ? { originNonOriginatingMaterialValue: Number(originNonOriginValue) } : {}),
         ...(originNonOriginHs4.trim() ? { originNonOriginatingMaterialHs4: originNonOriginHs4.split(",").map(x=>x.trim()).filter(x=>/^\d{4}$/.test(x)) } : {}),
@@ -186,6 +192,9 @@ function AiCustomsPage() {
                   <Field label="한국에서 최종 생산"><select value={originManufacturedInKr} onChange={e=>setOriginManufacturedInKr(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
                   <Field label="투입 원단이 한-EU FTA 원산지"><select value={originFabricOriginating} onChange={e=>setOriginFabricOriginating(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
                   <Field label="한국 내 충분가공"><select value={originSufficientProcessing} onChange={e=>setOriginSufficientProcessing(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
+                  <Field label="한국 내 편직"><select value={originKnittingInKr} onChange={e=>setOriginKnittingInKr(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
+                  <Field label="한국 내 방적 또는 필라멘트사 압출"><select value={originSpinningOrExtrusionInKr} onChange={e=>setOriginSpinningOrExtrusionInKr(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
+                  <Field label="한국 내 재단·봉제·조립"><select value={originMakingUpInKr} onChange={e=>setOriginMakingUpInKr(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
                   <Field label="공장도가격 (EUR)"><input value={originExWorksPrice} onChange={e=>setOriginExWorksPrice(e.target.value)} type="number" min="0" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
                   <Field label="비원산지재료 가격 (EUR)"><input value={originNonOriginValue} onChange={e=>setOriginNonOriginValue(e.target.value)} type="number" min="0" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
                   <Field label="비원산지 원재료 HS4 (쉼표 구분)"><input value={originNonOriginHs4} onChange={e=>setOriginNonOriginHs4(e.target.value)} placeholder="예: 3901, 3902" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
