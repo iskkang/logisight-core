@@ -71,7 +71,7 @@ export async function searchOfficialEuNomenclatureByHeadings(
     .eq("market", "EU")
     .eq("nomenclature", "CN")
     .eq("is_active", true)
-    .eq("is_leaf", true)
+    .eq("level", 8)
     .or(orFilter)
     .order("code", { ascending: true })
     .limit(limit);
