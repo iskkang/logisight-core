@@ -116,6 +116,34 @@ def fetch_cn8(base,key):
         offset += 1000
     return sorted(set(x for x in out if len(x)==8))
 
+
+def resolve_targets(source_code, cn8, cn8set):
+    code=re.sub(r"\D","",source_code or "")
+    if len(code)<4: return []
+    if len(code)>=10:
+        code=code[:10]
+        first8=code[:8]
+        if first8 in cn8set:
+            return [first8]
+        # TARIC exports zero-fill parent nomenclature levels. Resolve the
+        # most-specific existing CN prefix instead of treating zeros as a
+        # literal CN8 code (e.g. 0101000000 means heading 0101).
+        for n,zeros in ((6,4),(4,6),(2,8)):
+            if code[n:10]=="0"*zeros:
+                p=code[:n]
+                hits=[c for c in cn8 if c.startswith(p)]
+                if hits: return hits
+        # TARIC10 child without an exact CN8 row: inherit to its CN8 parent
+        hits=[c for c in cn8 if c==first8]
+        if hits: return hits
+    # Fallback for shorter parent codes
+    for n in (8,6,4,2):
+        if len(code)>=n:
+            p=code[:n]
+            hits=[c for c in cn8 if c.startswith(p)]
+            if hits: return hits
+    return []
+
 def main():
     sb=os.environ["SUPABASE_URL"].rstrip("/"); key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     year,month=latest_month()
@@ -150,11 +178,10 @@ def main():
                             "file":f["title"]})
     if len(raw)<500: raise RuntimeError(f"Only {len(raw)} active KR-applicable tariff-preference measures parsed; refusing mutation")
 
+    cn8set=set(cn8)
     by_cn=defaultdict(list)
     for m in raw:
-        code=m["source_code"]
-        prefix=code[:8] if len(code)>=8 else code
-        targets=[c for c in cn8 if c.startswith(prefix)]
+        targets=resolve_targets(m["source_code"],cn8,cn8set)
         for c in targets: by_cn[c].append(m)
 
     payload=[]
