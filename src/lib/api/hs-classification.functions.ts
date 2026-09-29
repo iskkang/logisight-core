@@ -90,7 +90,7 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
       ] : []),
     ];
 
-    const appliedDutyRate = preference?.ratePercent ?? thirdCountryDuty?.ratePercent ?? null;
+    const appliedDutyRate = data.preferentialOriginEligible && preference?.ratePercent != null ? preference.ratePercent : thirdCountryDuty?.ratePercent ?? null;
     const destinationVatRate = data.vatRate ?? getEuStandardVat(data.destinationCountry);
     const customsValue = data.productValue != null ? data.productValue + (data.freight ?? 0) + (data.insurance ?? 0) : null;
     const dutyAmount = customsValue != null && appliedDutyRate != null ? customsValue * appliedDutyRate / 100 : null;
