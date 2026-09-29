@@ -38,6 +38,30 @@ def latest_month():
 def download(node):
     r=requests.get(f"{BASE}/{node}/content",headers=HEAD,timeout=180); r.raise_for_status(); return r.content
 
+def find_month_file(month_id, needle):
+    needle=needle.lower()
+    for x in children(month_id):
+        if needle in x["title"].lower() and ("spreadsheet" in x["mime"] or "excel" in x["mime"]):
+            return x
+    return None
+
+def korea_origin_codes(month_id, today):
+    geo=find_month_file(month_id,"geographical area composition")
+    codes={"KR"}
+    if not geo: return codes
+    wb=load_workbook(io.BytesIO(download(geo["id"])),read_only=True,data_only=True)
+    for ws in wb.worksheets:
+        for row in ws.iter_rows(values_only=True):
+            if len(row)<10: continue
+            member_iso=str(row[6] or "").strip().upper()
+            if member_iso!="KR": continue
+            start=as_date(row[8]); end=as_date(row[9])
+            if start and start>today: continue
+            if end and end<today: continue
+            group=str(row[0] or "").strip()
+            if group: codes.add(group)
+    return codes
+
 def norm_header(v):
     return re.sub(r"[^a-z0-9]+"," ",str(v or "").strip().lower()).strip()
 
@@ -97,11 +121,13 @@ def main():
     year,month=latest_month()
     files=[x for x in children(month["id"]) if "duties import" in x["title"].lower() and ("spreadsheet" in x["mime"] or "excel" in x["mime"])]
     if not files: raise RuntimeError(f"No Duties Import XLSX in {year}/{month['title']}")
+    today=date.today()
+    origin_codes=korea_origin_codes(month["id"],today)
+    print("KR applicable TARIC geographical-area codes:", sorted(origin_codes))
     cn8=fetch_cn8(sb,key)
     if len(cn8)<8000: raise RuntimeError(f"Only {len(cn8)} active CN8 codes; refusing import")
 
     raw=[]
-    today=date.today()
     for f in files:
         wb=load_workbook(io.BytesIO(download(f["id"])),read_only=True,data_only=True)
         for ws in wb.worksheets:
@@ -110,7 +136,7 @@ def main():
                 if len(row)<=max(idx.values()): continue
                 typ=str(row[idx["type"]] or "").strip()
                 origin=str(row[idx["origin"]] or "").strip().upper()
-                if typ!=MEASURE_TYPE or origin!=ORIGIN: continue
+                if typ!=MEASURE_TYPE or origin not in origin_codes: continue
                 code=re.sub(r"\D","",str(row[idx["code"]] or ""))
                 if len(code)<2: continue
                 start=as_date(row[idx.get("start",3)]); end=as_date(row[idx.get("end",4)])
@@ -122,7 +148,7 @@ def main():
                             "legal":str(row[idx.get("legal",8)] or "").strip(),
                             "start":start.isoformat() if start else None,"end":end.isoformat() if end else None,
                             "file":f["title"]})
-    if len(raw)<500: raise RuntimeError(f"Only {len(raw)} active KR tariff-preference measures parsed; refusing mutation")
+    if len(raw)<500: raise RuntimeError(f"Only {len(raw)} active KR-applicable tariff-preference measures parsed; refusing mutation")
 
     by_cn=defaultdict(list)
     for m in raw:
