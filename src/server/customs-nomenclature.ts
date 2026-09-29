@@ -4,6 +4,7 @@ export type OfficialNomenclatureCandidate = {
   code: string;
   nomenclature: "HS" | "CN" | "TARIC";
   description: string;
+  descriptionKo: string | null;
   level: 2 | 4 | 6 | 8 | 10;
   sourceName: string;
   sourceUrl: string;
@@ -34,7 +35,7 @@ export async function searchOfficialEuNomenclature(
 
   const { data, error } = await supabasePublicServer
     .from("customs_nomenclature")
-    .select("code,nomenclature,description,level,source_name,source_url,source_version")
+    .select("code,nomenclature,description,description_ko,level,source_name,source_url,source_version")
     .eq("market", "EU")
     .eq("is_active", true)
     .or(orFilter)
@@ -47,6 +48,7 @@ export async function searchOfficialEuNomenclature(
     code: row.code,
     nomenclature: row.nomenclature as "HS" | "CN" | "TARIC",
     description: row.description,
+    descriptionKo: row.description_ko ?? null,
     level: row.level as 2 | 4 | 6 | 8 | 10,
     sourceName: row.source_name,
     sourceUrl: row.source_url,
@@ -65,7 +67,7 @@ export async function searchOfficialEuNomenclatureByHeadings(
   const orFilter = headings.map((heading) => `code.like.${heading}%`).join(",");
   const { data, error } = await supabasePublicServer
     .from("customs_nomenclature")
-    .select("code,nomenclature,description,level,source_name,source_url,source_version")
+    .select("code,nomenclature,description,description_ko,level,source_name,source_url,source_version")
     .eq("market", "EU")
     .eq("nomenclature", "CN")
     .eq("is_active", true)
@@ -79,6 +81,7 @@ export async function searchOfficialEuNomenclatureByHeadings(
     code: row.code,
     nomenclature: row.nomenclature as "CN",
     description: row.description,
+    descriptionKo: row.description_ko ?? null,
     level: row.level as 8,
     sourceName: row.source_name,
     sourceUrl: row.source_url,
