@@ -5,7 +5,7 @@ from datetime import date
 PDF_URL="https://sede.agenciatributaria.gob.es/static_files/Sede/Tema/Aduanas/Comercio_exterior/Nomenclaturas/2026/OJ_L_202501926_ES_TXT.pdf"
 SRC="https://eur-lex.europa.eu/eli/reg_impl/2025/1926/oj"
 CODE=re.compile(r"(?<!\d)(\d{4})\s+(\d{2})\s+(\d{2})(?!\d)")
-PCT=re.compile(r"^(\d+(?:[.,]\d+)?)\s*%$")
+PCT=re.compile(r"^(\d+(?:[.,]\d+)?)\s*%?$")
 def clean_rate(s):
     s=re.sub(r"\s*\([^)]*\)\s*$","",s.strip())
     return s
@@ -18,12 +18,12 @@ def parse(text):
         tail=line[m.end():].strip()
         cols=[x.strip() for x in re.split(r"\s{2,}",tail) if x.strip()]
         if not cols: continue
-        rate=clean_rate(cols[-1])
+        rate=clean_rate(cols[-2] if len(cols)>=2 else cols[-1])
         low=rate.lower()
-        if low in {"free","exento","0 %","0%"}: pct=0.0
+        if low in {"free","exento","exención","0 %","0%","0"}: pct=0.0
         else:
-            p=PCT.match(rate); pct=float(p.group(1).replace(",",".")) if p else None
-            if pct is None and not any(x in low for x in ["€/","eur/","euro/","min","max","+"]): continue
+            p=PCT.match(rate); pct=float(p.group(1).replace(",", ".")) if p else None
+        if not rate or rate in {"—","-"}: continue
         out[code]=(pct,rate)
     return out
 def main():
@@ -32,9 +32,6 @@ def main():
         pdf=f"{d}/cn.pdf"; txt=f"{d}/cn.txt"; open(pdf,"wb").write(r.content)
         subprocess.run(["pdftotext","-layout",pdf,txt],check=True)
         raw=open(txt,encoding="utf-8",errors="ignore").read()
-        for needle in ["6109 10 00","3304 99 00","Tipo convencional","Conventional rate"]:
-            pos=raw.find(needle)
-            if pos>=0: print("DEBUG",needle,repr(raw[max(0,pos-500):pos+1000]))
         rows=parse(raw)
     if len(rows)<7000: raise RuntimeError(f"only {len(rows)} duty rows parsed")
     base=os.environ["SUPABASE_URL"].rstrip("/"); key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
