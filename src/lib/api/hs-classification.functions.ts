@@ -10,6 +10,7 @@ import { searchOfficialEuNomenclatureByHeadings } from "@/server/customs-nomencl
 import { findEuClassificationEvidence } from "@/server/classification-evidence";
 import { findEuCustomsMeasures } from "@/server/eu-customs-measures";
 import { getEuStandardVat } from "@/server/eu-vat";
+import { assessKrEuOrigin } from "@/server/eu-origin-assessment";
 
 export const classifyHsProduct = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => hsClassificationInputSchema.parse(input))
@@ -90,7 +91,9 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
       ] : []),
     ];
 
-    const appliedDutyRate = data.preferentialOriginEligible && preference?.ratePercent != null ? preference.ratePercent : thirdCountryDuty?.ratePercent ?? null;
+    const originAssessment = await assessKrEuOrigin(rankedCandidates[0].code, data);
+    const canApplyPreference = data.preferentialOriginEligible === true && originAssessment.status === "qualified";
+    const appliedDutyRate = canApplyPreference && preference?.ratePercent != null ? preference.ratePercent : thirdCountryDuty?.ratePercent ?? null;
     const destinationVatRate = data.vatRate ?? getEuStandardVat(data.destinationCountry);
     const customsValue = data.productValue != null ? data.productValue + (data.freight ?? 0) + (data.insurance ?? 0) : null;
     const dutyAmount = customsValue != null && appliedDutyRate != null ? customsValue * appliedDutyRate / 100 : null;
@@ -171,6 +174,7 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
           sources: customsMeasures.filter((item) => item.measureType === "THIRD_COUNTRY_DUTY" || item.measureType === "PREFERENCE").map((item) => item.sourceUrl),
         },
         regulation: { status: regulationItems.length > 0 ? "guidance" : "pending", items: regulationItems },
+        originAssessment,
         landedCost: {
           status: estimatedTotal != null ? "ready" : "needs_values",
           formula: "상품가 + 운임 + 보험료 + 관세 + 수입부대비용 + 수입 VAT",
