@@ -72,7 +72,11 @@ def fetch_cn8(sb,key):
 
 def main():
     sb=os.environ["SUPABASE_URL"].rstrip("/"); key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    headers={"User-Agent":"Logisight-KR-EU-PSR/1.0"}
+    headers={
+      "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36",
+      "Accept":"text/html,application/xhtml+xml",
+      "Accept-Language":"en-US,en;q=0.9"
+    }
     ra=requests.get(AGREEMENT_URL,timeout=180,headers=headers); ra.raise_for_status()
     rp=requests.get(PROTOCOL_URL,timeout=180,headers=headers); rp.raise_for_status()
     if len(ra.text)<100000 or len(rp.text)<50000: raise RuntimeError("EUR-Lex HTML response unexpectedly small")
