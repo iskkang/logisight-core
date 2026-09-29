@@ -63,7 +63,7 @@ async function findRule(cnCode: string): Promise<RuleRow | null> {
   const manual=rows.filter(r=>r.metadata?.source!=="KCS FTA Portal HS2007 PSR");
   return manual.sort((a,b)=>b.hs_prefix.length-a.hs_prefix.length)[0] ?? null;
 }
-function evalNode(node:any, input:HsClassificationInput, finalHs4:string): {pass:boolean|null; checks:string[]; missing:string[]} {
+function evalNode(node:any, input:HsClassificationInput, finalHs6:string): {pass:boolean|null; checks:string[]; missing:string[]} {
   if (!node || typeof node!=="object") return {pass:null,checks:[],missing:["원산지 판정 규칙"]};
   if (node.type==="FABRIC_FORWARD") {
     const missing:string[]=[];
@@ -101,20 +101,20 @@ function evalNode(node:any, input:HsClassificationInput, finalHs4:string): {pass
   if (node.type==="CC") {
     const hs=input.originNonOriginatingMaterialHs4;
     if (!hs?.length) return {pass:null,checks:[],missing:["비원산지 원재료 HS4 목록"]};
-    const finalChapter=finalHs4.slice(0,2);
+    const finalChapter=finalHs6.slice(0,2);
     const bad=hs.filter(x=>x.slice(0,2)===finalChapter);
     return {pass:bad.length===0,checks:[bad.length ? "완제품과 같은 류(HS2)의 비원산지재료 존재: " + bad.join(", ") : "모든 비원산지재료가 완제품과 다른 류"],missing:[]};
   }
   if (node.type==="CTSH") {
     const hs=input.originNonOriginatingMaterialHs6;
     if (!hs?.length) return {pass:null,checks:[],missing:["비원산지 원재료 HS6 목록"]};
-    const bad=hs.filter(x=>x===finalHs4);
+    const bad=hs.filter(x=>x===finalHs6);
     return {pass:bad.length===0,checks:[bad.length ? "완제품과 같은 HS6 비원산지재료 존재: " + bad.join(", ") : "모든 비원산지재료가 완제품과 다른 HS6"],missing:[]};
   }
   if (node.type==="CTH") {
     const hs=input.originNonOriginatingMaterialHs4;
     if (!hs?.length) return {pass:null,checks:[],missing:["비원산지 원재료 HS4 목록"]};
-    const bad=hs.filter(x=>x===finalHs4);
+    const bad=hs.filter(x=>x===finalHs6.slice(0,4));
     return {pass:bad.length===0,checks:[bad.length ? "완제품과 같은 HS4 비원산지재료 존재: " + bad.join(", ") : "모든 비원산지재료가 완제품과 다른 HS4"],missing:[]};
   }
   if (node.type==="MC") {
@@ -125,13 +125,13 @@ function evalNode(node:any, input:HsClassificationInput, finalHs4:string): {pass
     return {pass:pct<=Number(node.maxPercent),checks:["비원산지재료 비율 " + pct.toFixed(2) + "% ≤ " + node.maxPercent + "%"],missing:[]};
   }
   if (node.type==="AND" && Array.isArray(node.rules)) {
-    const results=node.rules.map((r:any)=>evalNode(r,input,finalHs4));
+    const results=node.rules.map((r:any)=>evalNode(r,input,finalHs6));
     if (results.some(x=>x.pass===false)) return {pass:false,checks:results.flatMap(x=>x.checks),missing:[]};
     if (results.every(x=>x.pass===true)) return {pass:true,checks:results.flatMap(x=>x.checks),missing:[]};
     return {pass:null,checks:results.flatMap(x=>x.checks),missing:[...new Set(results.flatMap(x=>x.missing))]};
   }
   if (node.type==="OR" && Array.isArray(node.rules)) {
-    const results=node.rules.map((r:any)=>evalNode(r,input,finalHs4));
+    const results=node.rules.map((r:any)=>evalNode(r,input,finalHs6));
     if (results.some(x=>x.pass===true)) return {pass:true,checks:results.flatMap(x=>x.checks),missing:[]};
     if (results.every(x=>x.pass===false)) return {pass:false,checks:results.flatMap(x=>x.checks),missing:[]};
     return {pass:null,checks:results.flatMap(x=>x.checks),missing:[...new Set(results.flatMap(x=>x.missing))]};
@@ -142,7 +142,7 @@ function evalNode(node:any, input:HsClassificationInput, finalHs4:string): {pass
 export async function assessKrEuOrigin(cnCode:string,input:HsClassificationInput): Promise<OriginAssessment> {
   const rule=await findRule(cnCode);
   if (!rule) return {status:"rule_unavailable",ruleCode:null,ruleTextKo:null,sourceUrl:null,checks:[],missingInputs:["해당 품목의 구조화된 한-EU FTA PSR"]};
-  const result=evalNode(rule.rule_json,input,cnCode.slice(0,4));
+  const result=evalNode(rule.rule_json,input,cnCode.slice(0,6));
   return {
     status: result.pass===true?"qualified":result.pass===false?"not_qualified":"needs_information",
     ruleCode: rule.rule_code,
