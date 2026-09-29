@@ -20,7 +20,7 @@ export async function classifyHsProductCore(data: HsClassificationInput): Promis
   const tariffRegs=measures.filter(x=>x.measureType==="REQUIREMENT"||x.measureType==="REGULATION").map(x=>({title:x.title,detail:x.detail??x.legalBasis??"",url:x.sourceUrl}));
   const productRegs=await findEuProductRegulations(ranked[0].code,[data.description,analysis.normalizedName,analysis.material,analysis.composition,analysis.intendedUse,analysis.form].filter(Boolean).join(" "));
   const regs=[...tariffRegs,...productRegs.map(x=>({title:x.title,detail:x.detail,url:x.url}))].filter((x,i,a)=>a.findIndex(y=>y.title===x.title)===i);
-  const rate=pref?.ratePercent??third?.ratePercent??null, vat=data.vatRate??getEuStandardVat(data.destinationCountry);
+  const rate=data.preferentialOriginEligible&&pref?.ratePercent!=null?pref.ratePercent:third?.ratePercent??null, vat=data.vatRate??getEuStandardVat(data.destinationCountry);
   const cv=data.productValue!=null?data.productValue+(data.freight??0)+(data.insurance??0):null;
   const duty=cv!=null&&rate!=null?cv*rate/100:null;
   // Simplified EU import-VAT estimate: customs value + duty + user-supplied incidental/import costs.
