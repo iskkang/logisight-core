@@ -4,8 +4,9 @@ from bs4 import BeautifulSoup
 from collections import defaultdict
 from datetime import date
 
-PDF_URL="https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=OJ:L:2011:127:FULL"
-SOURCE_URL="https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=OJ:L:2011:127:FULL"
+AGREEMENT_URL="https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:22011A0514(01)"
+PROTOCOL_URL="https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:22011A0514(02)"
+SOURCE_URL=PROTOCOL_URL
 
 ROW_START=re.compile(r"^\s*((?:ex\s+)?Chapter\s+\d{1,2}|(?:ex\s+)?\d{4}(?:\s+\d{2})?(?:\s+to\s+\d{4}(?:\s+\d{2})?)?)\s{2,}")
 CN8_RE=re.compile(r"(?<!\d)(\d{4})\s+(\d{2})\s+(\d{2})(?!\d)")
