@@ -1,62 +1,119 @@
 #!/usr/bin/env python3
-import os,re,requests
+import os,re,requests,subprocess,tempfile,time,json
 from bs4 import BeautifulSoup
 from collections import defaultdict
-from datetime import date
 
-AGREEMENT_URL="https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:22011A0514(01)"
-PROTOCOL_URL="https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:22011A0514(02)"
-SOURCE_URL=PROTOCOL_URL
+PSR_PAGE="https://www.customs.go.kr/ftaportalkor/ad/ftaTrtyPsr/psr.do?mi=3528"
+PSR_DATA="https://www.customs.go.kr/ftaportalkor/ad/ftaTrtyPsr/psrCategoryView.do"
+CROSSWALK_URL="https://www.customs.go.kr/common/nttFileDownload.do?fileKey=baee47db73be787e49c4e253fc2f5c23"
+SOURCE_NAME="KCS FTA Portal HS2007 PSR"
+CROSS_SOURCE="KCS HS2022-HS2007 official crosswalk"
+UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36"
 
-ROW_START=re.compile(r"^\s*((?:ex\s+)?Chapter\s+\d{1,2}|(?:ex\s+)?\d{4}(?:\s+\d{2})?(?:\s+to\s+\d{4}(?:\s+\d{2})?)?)\s{2,}")
-CN8_RE=re.compile(r"(?<!\d)(\d{4})\s+(\d{2})\s+(\d{2})(?!\d)")
-PCT_RE=re.compile(r"(?:does not exceed|not exceed)\s+(\d+(?:[.,]\d+)?)\s*%.*?ex-works",re.I|re.S)
-
-PROCESS_WORDS=[
- "Manufacture","Spinning","Weaving","Knitting","Printing","Refining","Grinding",
- "Assembly","Embroidering","Coating","Making-up","Wholly obtained","All the materials",
- "A change","Production","Distillation","Chemical reaction","Mixing"
-]
+PCT=re.compile(r"(?:does not exceed|not exceed|no more than)\s+(\d+(?:[.,]\d+)?)\s*%.*?(?:ex-works|ex works)",re.I|re.S)
+HS6PAIR=re.compile(r"^\s*(\d{6})\s+(\d{6})(?:\s|$)")
 
 def clean(s):
-    return re.sub(r"\s+"," ",s.replace("\u00ad","").replace("","")).strip()
+    return re.sub(r"\s+"," ",str(s or "").replace("\u00a0"," ")).strip()
 
-def parse_selector(sel):
-    raw=clean(sel)
-    x=raw.lower().replace("ex ","")
-    if x.startswith("chapter "):
-        return [x.split()[1].zfill(2)], {"selector_type":"chapter","ex":raw.lower().startswith("ex ")}
-    m=re.fullmatch(r"(\d{4})(?:\s+(\d{2}))?",x)
-    if m:
-        return [m.group(1)+(m.group(2) or "")], {"selector_type":"subheading" if m.group(2) else "heading","ex":raw.lower().startswith("ex ")}
-    m=re.fullmatch(r"(\d{4})(?:\s+(\d{2}))?\s+to\s+(\d{4})(?:\s+(\d{2}))?",x)
-    if m and not m.group(2) and not m.group(4):
-        a,b=int(m.group(1)),int(m.group(3))
-        if 0 <= b-a <= 100:
-            return [f"{n:04d}" for n in range(a,b+1)], {"selector_type":"heading_range","ex":raw.lower().startswith("ex ")}
-    return [], {"selector_type":"unparsed","ex":raw.lower().startswith("ex ")}
-
-def extract_rule_text(block):
-    flat=clean(block)
-    starts=[flat.find(w) for w in PROCESS_WORDS if flat.find(w)>=0]
-    if not starts: return flat
-    return flat[min(starts):]
-
-def rule_json(rule):
-    r=clean(rule)
-    low=r.lower()
-    has_cth=("materials of any heading" in low and "except that of the product" in low)
-    pct=PCT_RE.search(r)
-    has_mc=bool(pct)
-    if has_cth and has_mc:
-        return {"type":"OR","rules":[{"type":"CTH"},{"type":"MC","maxPercent":float(pct.group(1).replace(",","."))}]}
-    if has_cth:
-        return {"type":"CTH"}
-    if has_mc and ("value of all the materials used" in low or "value of all materials used" in low):
-        return {"type":"MC","maxPercent":float(pct.group(1).replace(",","."))}
-    if "chapter 61" in low or ("spinning" in low and "knitting" in low):
-        return {"type":"TEXTILE_PROCESS","process":"CH61"}
+def parse_rule_json(ko,en):
+    k=clean(ko); e=clean(en); low=e.lower()
+    cth=("materials of any heading except that of the product" in low
+         or "materials of any heading, except that of the product" in low
+         or ("모든 호" in k and "그 제품의 호" in k and ("제외" in k or "빼고" in k)))
+    cc=("materials of any chapter except that of the product" in low
+        or ("모든 류" in k and "그 제품의 류" in k and "제외" in k))
+    ctsh=("materials of any subheading except that of the product" in low
+          or ("모든 소호" in k and "그 제품의 소호" in k and "제외" in k))
+    pct=PCT.search(e)
+    mc={"type":"MC","maxPercent":float(pct.group(1).replace(",","."))} if pct else None
+    wholly=("wholly obtained" in low or "완전생산" in k)
+    textile_ch61=(("spinning" in low or "extrusion" in low) and "knitting" in low and ("making up" in low or "cutting" in low))
+    if textile_ch61:
+        return {"type":"TEXTILE_CH61"}
+    base=None
+    if ctsh: base={"type":"CTSH"}
+    elif cth: base={"type":"CTH"}
+    elif cc: base={"type":"CC"}
+    elif wholly: base={"type":"WO"}
+    if base and mc:
+        if re.search(r"\bor\b",low) or "또는" in k or "어느 하나" in k:
+            return {"type":"OR","rules":[base,mc]}
+        return {"type":"AND","rules":[base,mc]}
+    if base: return base
+    if mc: return mc
     return {"type":"TEXT_RULE"}
+
+def parse_psr_chapter(session,chapter):
+    r=session.post(PSR_DATA,data={"ftaId":"KOREU","nationId":"EU","searchType":"01","searchValue":chapter},timeout=90)
+    r.raise_for_status()
+    soup=BeautifulSoup(r.text,"html.parser")
+    tables=[]
+    for table in soup.find_all("table"):
+        cap=clean(table.find("caption").get_text(" ",strip=True) if table.find("caption") else "")
+        if "수출세율 조회" in cap:
+            tables.append(table)
+    out=[]
+    for table in tables:
+        pending=None
+        for tr in table.find_all("tr"):
+            cells=[clean(td.get_text(" ",strip=True)) for td in tr.find_all("td")]
+            if not cells: continue
+            if len(cells)>=4 and re.fullmatch(r"\d{6}",cells[0] or ""):
+                if pending:
+                    out.append(pending)
+                pending={"hs":cells[0],"division":cells[1],"item_ko":cells[2],"rule_ko":cells[3],"item_en":"","rule_en":""}
+            elif pending and len(cells)>=2:
+                pending["item_en"]=cells[0]
+                pending["rule_en"]=cells[1]
+                out.append(pending); pending=None
+        if pending: out.append(pending)
+    return out
+
+def fetch_all_psr():
+    s=requests.Session(); s.headers.update({"User-Agent":UA,"Accept-Language":"ko-KR,ko;q=0.9,en;q=0.7"})
+    rows=[]
+    for n in range(1,98):
+        ch=f"{n:02d}"
+        try:
+            got=parse_psr_chapter(s,ch)
+        except Exception as e:
+            raise RuntimeError(f"KCS PSR chapter {ch} failed: {e}")
+        rows.extend(got)
+        if n%10==0: print("PSR chapters",n,"rows",len(rows))
+        time.sleep(0.03)
+    # Deduplicate exact bilingual records.
+    seen=set(); payload=[]
+    for x in rows:
+        key=(x["hs"],x["division"],x["item_ko"],x["rule_ko"],x["item_en"],x["rule_en"])
+        if key in seen: continue
+        seen.add(key)
+        parsed=parse_rule_json(x["rule_ko"],x["rule_en"])
+        payload.append({
+          "agreement":"KR-EU FTA","hs_prefix":x["hs"],"hs_version":2007,
+          "rule_code":parsed["type"],"rule_text_ko":x["rule_ko"] or "관세청 한-EU FTA 품목별 원산지결정기준",
+          "rule_text_en":x["rule_en"] or None,"rule_json":parsed,"source_url":PSR_PAGE,
+          "legal_basis":"EU-Korea FTA Protocol on Rules of Origin, Annex II",
+          "is_active":True,"valid_from":"2011-07-01","valid_to":None,
+          "selector_text":x["hs"] + (("/"+x["division"]) if x["division"] else ""),
+          "metadata":{"source":SOURCE_NAME,"item_ko":x["item_ko"],"item_en":x["item_en"],"division":x["division"],"retrieval":"KCS psrCategoryView.do"}
+        })
+    return payload
+
+def extract_crosswalk_pairs():
+    r=requests.get(CROSSWALK_URL,headers={"User-Agent":UA},timeout=180); r.raise_for_status()
+    if not r.content.startswith(b"%PDF"): raise RuntimeError("KCS crosswalk download is not PDF")
+    with tempfile.TemporaryDirectory() as d:
+        pdf=os.path.join(d,"crosswalk.pdf"); txt=os.path.join(d,"crosswalk.txt")
+        open(pdf,"wb").write(r.content)
+        subprocess.run(["pdftotext","-layout",pdf,txt],check=True,timeout=300)
+        pairs=[]
+        with open(txt,encoding="utf-8",errors="replace") as fh:
+            for line in fh:
+                m=HS6PAIR.match(line)
+                if m: pairs.append((m.group(1),m.group(2)))
+    pairs=sorted(set(pairs))
+    return pairs
 
 def fetch_cn8(sb,key):
     out=[]; off=0
@@ -64,7 +121,7 @@ def fetch_cn8(sb,key):
     while True:
         q=(f"{sb}/rest/v1/customs_nomenclature?select=code&market=eq.EU&nomenclature=eq.CN"
            f"&is_active=eq.true&level=eq.8&order=code.asc&offset={off}&limit=1000")
-        r=requests.get(q,headers=h,timeout=60);r.raise_for_status(); batch=r.json()
+        r=requests.get(q,headers=h,timeout=60); r.raise_for_status(); batch=r.json()
         out += [re.sub(r"\D","",x["code"])[:8] for x in batch if x.get("code")]
         if len(batch)<1000: break
         off += 1000
@@ -72,91 +129,57 @@ def fetch_cn8(sb,key):
 
 def main():
     sb=os.environ["SUPABASE_URL"].rstrip("/"); key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    headers={
-      "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36",
-      "Accept":"application/xhtml+xml,text/html;q=0.9",
-      "Accept-Language":"eng,en;q=0.9"
-    }
-    ra=requests.get(AGREEMENT_URL,timeout=180,headers=headers); ra.raise_for_status()
-    rp=requests.get(PROTOCOL_URL,timeout=180,headers=headers); rp.raise_for_status()
-    print("EUR-Lex bytes",len(ra.content),len(rp.content),"urls",ra.url,rp.url)
-    agreement=BeautifulSoup(ra.text,"html.parser")
-    protocol=BeautifulSoup(rp.text,"html.parser")
+    psr=fetch_all_psr()
+    hs6_rules=set(x["hs_prefix"] for x in psr)
+    rule_types=defaultdict(int)
+    for x in psr: rule_types[x["rule_code"]]+=1
+    print("KCS PSR",len(psr),"HS6",len(hs6_rules),"types",dict(rule_types))
+    if len(hs6_rules)<4500 or len(psr)<4500:
+        raise RuntimeError(f"Only {len(psr)} rules / {len(hs6_rules)} HS6 parsed; refusing mutation")
 
-    # CN2007 tariff schedule is embedded in the official agreement HTML.
-    agreement_text=agreement.get_text(" ",strip=True)
-    old8=set("".join(m.groups()) for m in CN8_RE.finditer(agreement_text))
-
-    # EUR-Lex renders this historical annex as pipe-delimited text rather than HTML <tr>s.
-    # Parse only the official Annex II text range, from the Annex II heading to Annex II(a).
-    protocol_text=clean(protocol.get_text(" ",strip=True))
-    annex_start=protocol_text.find("ANNEX II LIST OF WORKING OR PROCESSING REQUIRED")
-    annex_end=protocol_text.find("ANNEX II(a)",annex_start+1)
-    if annex_start<0 or annex_end<0: raise RuntimeError("Could not isolate Annex II text")
-    annex=protocol_text[annex_start:annex_end]
-
-    selector_re=re.compile(r"(?<!\\w)((?:ex\\s+)?Chapter\\s+\\d{1,2}|(?:ex\\s+)?\\d{4}(?:\\s+\\d{2})?(?:\\s+to\\s+\\d{4}(?:\\s+\\d{2})?)?)\\s*\\|",re.I)
-    matches=list(selector_re.finditer(annex))
-    blocks=[]
-    for i,m in enumerate(matches):
-        selector=clean(m.group(1))
-        prefixes,meta=parse_selector(selector)
-        if not prefixes: continue
-        body=annex[m.end():(matches[i+1].start() if i+1<len(matches) else len(annex))]
-        cells=[clean(x) for x in body.split("|")]
-        # cell 0 is the product description. Remaining cells are alternative/continuation rules.
-        rules=[x for x in cells[1:] if len(x)>=4 and not re.fullmatch(r"\\(\\d+\\)(?:\\s+or\\s+\\(\\d+\\))?",x)]
-        blocks.append({"selector":selector,"prefixes":prefixes,"meta":meta,"rules":rules})
-
-    psr=[]
-    for b in blocks:
-        rule=" OR ".join(dict.fromkeys(x for x in b["rules"] if x))
-        if len(rule)<8: rule="Complex product-specific rule; see official Annex II text for the selector."
-        parsed=rule_json(rule)
-        for p in b["prefixes"]:
-            psr.append({
-              "agreement":"KR-EU FTA","hs_prefix":p,"hs_version":2007,
-              "rule_code":parsed["type"],"rule_text_ko":"공식 한-EU FTA Annex II 품목별 원산지 기준",
-              "rule_text_en":rule,"rule_json":parsed,"source_url":SOURCE_URL,
-              "legal_basis":"EU-Korea FTA Protocol on Rules of Origin, Annex II",
-              "valid_from":"2011-07-01","valid_to":None,"is_active":True,
-              "selector_text":b["selector"],"metadata":{"source":"EUR-Lex OJ L127/2011","parser":"annexII-text-v3",**b["meta"]}
-            })
-    print("Parsed source counts: CN2007",len(old8),"PSR",len(psr),"selector_matches",len(matches))
-    if len(psr)<150: raise RuntimeError(f"Only {len(psr)} PSR rows parsed; refusing mutation")
-    old6=set(x[:6] for x in old8); old4=set(x[:4] for x in old8); old2=set(x[:2] for x in old8)
-    if len(old8)<5000: raise RuntimeError(f"Only {len(old8)} CN2007 codes parsed; refusing mutation")
+    pairs=extract_crosswalk_pairs()
+    by22=defaultdict(set)
+    for h22,h07 in pairs: by22[h22].add(h07)
+    print("KCS crosswalk pairs",len(pairs),"HS2022",len(by22))
+    if len(pairs)<4500 or len(by22)<4000:
+        raise RuntimeError("Crosswalk PDF parse too small; refusing mutation")
 
     cn8=fetch_cn8(sb,key)
     cross=[]
+    unresolved=[]
     for c in cn8:
-        if c[:6] in old6:
-            hs=c[:6]; typ="HS6_IDENTITY"
-        elif c[:4] in old4:
-            hs=c[:4]; typ="HS4_FAMILY"
-        elif c[:2] in old2:
-            hs=c[:2]; typ="CHAPTER_FAMILY"
-        else:
-            hs=None; typ="UNRESOLVED"
-        cross.append({"cn2026_code":c,"hs2007_code":hs,"mapping_type":typ,"source_url":SOURCE_URL,
-                      "is_active":True,"metadata":{"source":"CN2007 schedule in EU-Korea FTA OJ + CN2026 Logisight","conservative":typ!="HS6_IDENTITY"}})
-    if len(cross)<9000: raise RuntimeError(f"Only {len(cross)} CN2026 rows; refusing mutation")
+        h22=c[:6]
+        olds=sorted(by22.get(h22,[]))
+        if not olds:
+            unresolved.append(c)
+            continue
+        for old in olds:
+            cross.append({
+              "cn2026_code":c,"hs2007_code":old,
+              "mapping_type":"HS6_IDENTITY" if old==h22 else "KCS_HS2022_TO_HS2007",
+              "source_url":CROSSWALK_URL,"is_active":True,
+              "metadata":{"source":CROSS_SOURCE,"hs2022":h22,"one_to_many":len(olds)>1}
+            })
+    mapped_cn=len(set(x["cn2026_code"] for x in cross))
+    print("CN8 crosswalk rows",len(cross),"mapped CN8",mapped_cn,"unresolved",len(unresolved))
+    if mapped_cn < int(len(cn8)*0.90):
+        raise RuntimeError(f"Only {mapped_cn}/{len(cn8)} CN8 mapped; refusing mutation")
 
     h={"apikey":key,"Authorization":f"Bearer {key}","Content-Type":"application/json","Prefer":"return=minimal"}
-    # Replace generated PSR rows, retain manually curated overrides.
-    requests.delete(sb+"/rest/v1/eu_origin_rules?metadata->>source=eq.EUR-Lex%20OJ%20L127/2011",headers=h,timeout=60).raise_for_status()
+
+    # Replace only generated KCS rules. Retain hand-curated overrides.
+    delurl=sb+"/rest/v1/eu_origin_rules?metadata->>source=eq."+requests.utils.quote(SOURCE_NAME,safe="")
+    dr=requests.delete(delurl,headers=h,timeout=60); dr.raise_for_status()
     for i in range(0,len(psr),300):
-        requests.post(sb+"/rest/v1/eu_origin_rules",headers=h,json=psr[i:i+300],timeout=60).raise_for_status()
+        rr=requests.post(sb+"/rest/v1/eu_origin_rules",headers=h,json=psr[i:i+300],timeout=90); rr.raise_for_status()
 
-    requests.delete(sb+"/rest/v1/eu_hs_crosswalk?cn2026_code=not.is.null",headers=h,timeout=60).raise_for_status()
+    # Full official crosswalk snapshot.
+    dr=requests.delete(sb+"/rest/v1/eu_hs_crosswalk?cn2026_code=not.is.null",headers=h,timeout=60); dr.raise_for_status()
     for i in range(0,len(cross),400):
-        requests.post(sb+"/rest/v1/eu_hs_crosswalk",headers=h,json=cross[i:i+400],timeout=60).raise_for_status()
+        rr=requests.post(sb+"/rest/v1/eu_hs_crosswalk",headers=h,json=cross[i:i+400],timeout=90); rr.raise_for_status()
 
-    counts=defaultdict(int)
-    for x in cross: counts[x["mapping_type"]]+=1
-    types=defaultdict(int)
-    for x in psr: types[x["rule_json"]["type"]]+=1
-    print("PSR rows",len(psr),"types",dict(types))
-    print("Crosswalk",len(cross),dict(counts))
+    print(json.dumps({"psr_rows":len(psr),"psr_hs6":len(hs6_rules),"rule_types":dict(rule_types),
+                      "crosswalk_rows":len(cross),"mapped_cn8":mapped_cn,"unresolved_cn8":len(unresolved)},ensure_ascii=False))
 
-if __name__=="__main__": main()
+if __name__=="__main__":
+    main()

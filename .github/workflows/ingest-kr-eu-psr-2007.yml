@@ -14,8 +14,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: pip install requests beautifulsoup4
-      - name: Ingest official Annex II PSR and crosswalk
+      - name: Ingest official KCS HS2007 PSR and HS2022→HS2007 crosswalk
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
