@@ -1,0 +1,23 @@
+name: Ingest EU CN 2026 duties
+on:
+  workflow_dispatch:
+    inputs:
+      taric_raw_xlsx_url:
+        description: Official European Commission TARIC raw Excel URL
+        required: true
+        type: string
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests openpyxl
+      - name: Ingest official CN8 conventional duties
+        env:
+          TARIC_RAW_XLSX_URL: ${{ inputs.taric_raw_xlsx_url }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/ingest-eu-cn-duty-2026.py
