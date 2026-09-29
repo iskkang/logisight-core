@@ -87,35 +87,26 @@ def main():
     agreement_text=agreement.get_text(" ",strip=True)
     old8=set("".join(m.groups()) for m in CN8_RE.finditer(agreement_text))
 
-    # Parse Annex II table rows from the official rules-of-origin protocol.
-    marker=None
-    for node in protocol.find_all(string=True):
-        if clean(str(node)).upper()=="ANNEX II":
-            marker=node
-    if marker is None: raise RuntimeError("Could not locate Annex II in protocol HTML")
+    # EUR-Lex renders this historical annex as pipe-delimited text rather than HTML <tr>s.
+    # Parse only the official Annex II text range, from the Annex II heading to Annex II(a).
+    protocol_text=clean(protocol.get_text(" ",strip=True))
+    annex_start=protocol_text.find("ANNEX II LIST OF WORKING OR PROCESSING REQUIRED")
+    annex_end=protocol_text.find("ANNEX II(a)",annex_start+1)
+    if annex_start<0 or annex_end<0: raise RuntimeError("Could not isolate Annex II text")
+    annex=protocol_text[annex_start:annex_end]
 
+    selector_re=re.compile(r"(?<!\\w)((?:ex\\s+)?Chapter\\s+\\d{1,2}|(?:ex\\s+)?\\d{4}(?:\\s+\\d{2})?(?:\\s+to\\s+\\d{4}(?:\\s+\\d{2})?)?)\\s*\\|",re.I)
+    matches=list(selector_re.finditer(annex))
     blocks=[]
-    current=None
-    seen=set()
-    for el in marker.parent.find_all_next():
-        txt=clean(el.get_text(" ",strip=True)) if hasattr(el,"get_text") else ""
-        if txt.upper()=="ANNEX II(A)":
-            break
-        if getattr(el,"name",None)!="tr" or id(el) in seen:
-            continue
-        seen.add(id(el))
-        cells=[clean(x.get_text(" ",strip=True)) for x in el.find_all(["td","th"],recursive=False)]
-        if len(cells)<3: continue
-        prefixes,meta=parse_selector(cells[0]) if cells[0] else ([],{})
-        rulecols=[x for x in cells[2:] if x]
-        if prefixes:
-            if current: blocks.append(current)
-            current={"selector":cells[0],"prefixes":prefixes,"meta":meta,"rules":rulecols}
-        elif current and rulecols:
-            # Continuation/sub-product rows under the same selector are retained.
-            # Multiple divergent sub-rules intentionally become TEXT_RULE unless safely parseable.
-            current["rules"].extend(rulecols)
-    if current: blocks.append(current)
+    for i,m in enumerate(matches):
+        selector=clean(m.group(1))
+        prefixes,meta=parse_selector(selector)
+        if not prefixes: continue
+        body=annex[m.end():(matches[i+1].start() if i+1<len(matches) else len(annex))]
+        cells=[clean(x) for x in body.split("|")]
+        # cell 0 is the product description. Remaining cells are alternative/continuation rules.
+        rules=[x for x in cells[1:] if len(x)>=4 and not re.fullmatch(r"\\(\\d+\\)(?:\\s+or\\s+\\(\\d+\\))?",x)]
+        blocks.append({"selector":selector,"prefixes":prefixes,"meta":meta,"rules":rules})
 
     psr=[]
     for b in blocks:
@@ -129,12 +120,10 @@ def main():
               "rule_text_en":rule,"rule_json":parsed,"source_url":SOURCE_URL,
               "legal_basis":"EU-Korea FTA Protocol on Rules of Origin, Annex II",
               "valid_from":"2011-07-01","valid_to":None,"is_active":True,
-              "selector_text":b["selector"],"metadata":{"source":"EUR-Lex OJ L127/2011","parser":"annexII-html-v2",**b["meta"]}
+              "selector_text":b["selector"],"metadata":{"source":"EUR-Lex OJ L127/2011","parser":"annexII-text-v3",**b["meta"]}
             })
-    if len(psr)<150:
-        print("DEBUG tr_count",len(protocol.find_all("tr")),"table_count",len(protocol.find_all("table")))
-        print("DEBUG protocol text sample",clean(protocol.get_text(" ",strip=True))[:6000])
-        raise RuntimeError(f"Only {len(psr)} PSR rows parsed; refusing mutation")
+    print("Parsed source counts: CN2007",len(old8),"PSR",len(psr),"selector_matches",len(matches))
+    if len(psr)<150: raise RuntimeError(f"Only {len(psr)} PSR rows parsed; refusing mutation")
     old6=set(x[:6] for x in old8); old4=set(x[:4] for x in old8); old2=set(x[:2] for x in old8)
     if len(old8)<5000: raise RuntimeError(f"Only {len(old8)} CN2007 codes parsed; refusing mutation")
 
