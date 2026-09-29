@@ -48,7 +48,9 @@ def find_month_file(month_id, needle):
 def korea_origin_codes(month_id, today):
     geo=find_month_file(month_id,"geographical area composition")
     codes={"KR"}
-    if not geo: return codes
+    if not geo:
+        print("CIRCABC month files:", [x["title"] for x in children(month_id)])
+        return codes
     wb=load_workbook(io.BytesIO(download(geo["id"])),read_only=True,data_only=True)
     for ws in wb.worksheets:
         for row in ws.iter_rows(values_only=True):
