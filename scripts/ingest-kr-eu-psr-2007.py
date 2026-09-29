@@ -131,7 +131,13 @@ def main():
               "valid_from":"2011-07-01","valid_to":None,"is_active":True,
               "selector_text":b["selector"],"metadata":{"source":"EUR-Lex OJ L127/2011","parser":"annexII-html-v2",**b["meta"]}
             })
-    if len(psr)<150: raise RuntimeError(f"Only {len(psr)} PSR rows parsed; refusing mutation")
+    if len(psr)<150:
+        print("DEBUG tr_count",len(protocol.find_all("tr")),"table_count",len(protocol.find_all("table")))
+        rawhtml=rp.text
+        for needle in ["Chapter 61","3901 to 3921","ANNEX II"]:
+            i=rawhtml.find(needle)
+            print("DEBUG",needle,i,rawhtml[max(0,i-1000):i+3000] if i>=0 else "")
+        raise RuntimeError(f"Only {len(psr)} PSR rows parsed; refusing mutation")
     old6=set(x[:6] for x in old8); old4=set(x[:4] for x in old8); old2=set(x[:2] for x in old8)
     if len(old8)<5000: raise RuntimeError(f"Only {len(old8)} CN2007 codes parsed; refusing mutation")
 
