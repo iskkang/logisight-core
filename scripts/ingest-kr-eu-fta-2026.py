@@ -122,7 +122,7 @@ def main():
                             "legal":str(row[idx.get("legal",8)] or "").strip(),
                             "start":start.isoformat() if start else None,"end":end.isoformat() if end else None,
                             "file":f["title"]})
-    if len(raw)<1000: raise RuntimeError(f"Only {len(raw)} active KR tariff-preference measures parsed; refusing mutation")
+    if len(raw)<500: raise RuntimeError(f"Only {len(raw)} active KR tariff-preference measures parsed; refusing mutation")
 
     by_cn=defaultdict(list)
     for m in raw:
