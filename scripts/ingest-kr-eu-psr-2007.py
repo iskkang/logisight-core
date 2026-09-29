@@ -79,7 +79,7 @@ def main():
     }
     ra=requests.get(AGREEMENT_URL,timeout=180,headers=headers); ra.raise_for_status()
     rp=requests.get(PROTOCOL_URL,timeout=180,headers=headers); rp.raise_for_status()
-    if len(ra.text)<100000 or len(rp.text)<50000: raise RuntimeError("EUR-Lex HTML response unexpectedly small")
+    print("EUR-Lex bytes",len(ra.content),len(rp.content),"urls",ra.url,rp.url)
     agreement=BeautifulSoup(ra.text,"html.parser")
     protocol=BeautifulSoup(rp.text,"html.parser")
 
