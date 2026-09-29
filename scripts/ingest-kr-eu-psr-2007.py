@@ -74,8 +74,8 @@ def main():
     sb=os.environ["SUPABASE_URL"].rstrip("/"); key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     headers={
       "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36",
-      "Accept":"text/html,application/xhtml+xml",
-      "Accept-Language":"en-US,en;q=0.9"
+      "Accept":"application/xhtml+xml,text/html;q=0.9",
+      "Accept-Language":"eng,en;q=0.9"
     }
     ra=requests.get(AGREEMENT_URL,timeout=180,headers=headers); ra.raise_for_status()
     rp=requests.get(PROTOCOL_URL,timeout=180,headers=headers); rp.raise_for_status()
@@ -133,10 +133,7 @@ def main():
             })
     if len(psr)<150:
         print("DEBUG tr_count",len(protocol.find_all("tr")),"table_count",len(protocol.find_all("table")))
-        rawhtml=rp.text
-        for needle in ["Chapter 61","3901 to 3921","ANNEX II"]:
-            i=rawhtml.find(needle)
-            print("DEBUG",needle,i,rawhtml[max(0,i-1000):i+3000] if i>=0 else "")
+        print("DEBUG protocol text sample",clean(protocol.get_text(" ",strip=True))[:6000])
         raise RuntimeError(f"Only {len(psr)} PSR rows parsed; refusing mutation")
     old6=set(x[:6] for x in old8); old4=set(x[:4] for x in old8); old2=set(x[:2] for x in old8)
     if len(old8)<5000: raise RuntimeError(f"Only {len(old8)} CN2007 codes parsed; refusing mutation")
