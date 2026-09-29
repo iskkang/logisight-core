@@ -12,9 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: sudo apt-get update && sudo apt-get install -y poppler-utils
-      - run: pip install requests
+        with:
+          python-version: "3.12"
+      - run: pip install requests beautifulsoup4
       - name: Ingest official Annex II PSR and crosswalk
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
