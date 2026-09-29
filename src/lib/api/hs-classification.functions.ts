@@ -94,8 +94,9 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
     const destinationVatRate = data.vatRate ?? getEuStandardVat(data.destinationCountry);
     const customsValue = data.productValue != null ? data.productValue + (data.freight ?? 0) + (data.insurance ?? 0) : null;
     const dutyAmount = customsValue != null && appliedDutyRate != null ? customsValue * appliedDutyRate / 100 : null;
-    const vatAmount = customsValue != null && dutyAmount != null && destinationVatRate != null ? (customsValue + dutyAmount) * destinationVatRate / 100 : null;
-    const estimatedTotal = customsValue != null && dutyAmount != null && vatAmount != null ? customsValue + dutyAmount + vatAmount : null;
+    const importCosts = data.importCosts ?? 0;
+    const vatAmount = customsValue != null && dutyAmount != null && destinationVatRate != null ? (customsValue + dutyAmount + importCosts) * destinationVatRate / 100 : null;
+    const estimatedTotal = customsValue != null && dutyAmount != null && vatAmount != null ? customsValue + dutyAmount + importCosts + vatAmount : null;
 
     return {
       status: "candidate",
@@ -108,7 +109,7 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
       },
       candidates: rankedCandidates.map((candidate) => ({
         hs6: candidate.code.slice(0, 6),
-        heading: `${candidate.code} — ${candidate.description}`,
+        heading: `${candidate.code} — ${candidate.descriptionKo ?? "공식 CN 품목"}`,
         rationale: [
           ...ranking.rationaleKo,
           `후보 코드는 공식 ${candidate.sourceVersion} 데이터에서 조회되었습니다.`,
@@ -172,7 +173,7 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
         regulation: { status: regulationItems.length > 0 ? "guidance" : "pending", items: regulationItems },
         landedCost: {
           status: estimatedTotal != null ? "ready" : "needs_values",
-          formula: "관세평가액(상품가+운임+보험료) + 관세 + 수입 VAT",
+          formula: "상품가 + 운임 + 보험료 + 관세 + 수입부대비용 + 수입 VAT",
           missingInputs: [
             ...(data.productValue == null ? ["상품가격"] : []),
             ...(data.destinationCountry == null ? ["EU 도착국"] : []),
@@ -182,6 +183,7 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
           customsValue,
           dutyAmount,
           vatAmount,
+          importCosts,
           estimatedTotal,
         },
       },
