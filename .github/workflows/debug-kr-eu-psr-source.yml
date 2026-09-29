@@ -1,0 +1,18 @@
+name: Debug KR-EU PSR source
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/debug-kr-eu-psr-source.py
+      - .github/workflows/debug-kr-eu-psr-source.yml
+  workflow_dispatch:
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - run: pip install requests
+      - run: python scripts/debug-kr-eu-psr-source.py
