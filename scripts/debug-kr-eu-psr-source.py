@@ -1,14 +1,24 @@
 #!/usr/bin/env python3
-import os,subprocess,tempfile,requests,re
-URL="https://www.customs.go.kr/upload/call/FTA.pdf"
-r=requests.get(URL,timeout=180,headers={"User-Agent":"Logisight-PSR-Diagnostic/1.0"}); r.raise_for_status()
-with tempfile.TemporaryDirectory() as d:
-    pdf=f"{d}/fta.pdf"; txt=f"{d}/fta.txt"
-    open(pdf,"wb").write(r.content)
-    subprocess.run(["pdftotext","-layout",pdf,txt],check=True)
-    raw=open(txt,encoding="utf-8",errors="ignore").read()
-for needle in ["ANNEX II","6109","CHAPTER 61","3907","9018","List of working or processing"]:
-    pos=raw.find(needle)
-    print("\n###",needle,"@",pos)
-    if pos>=0: print(raw[max(0,pos-2500):pos+6000])
-print("chars",len(raw))
+import requests,re
+from bs4 import BeautifulSoup
+URL="https://www.customs.go.kr/ftaportalkor/ad/ftaTrtyPsr/psr.do?mi=3528"
+h={"User-Agent":"Mozilla/5.0","Accept-Language":"ko-KR,ko;q=0.9,en;q=0.8"}
+r=requests.get(URL,headers=h,timeout=90); print("status",r.status_code,"url",r.url,"bytes",len(r.content)); r.raise_for_status()
+html=r.text
+soup=BeautifulSoup(html,"html.parser")
+print("FORMS")
+for f in soup.find_all("form"):
+    print("form",f.get("id"),f.get("name"),f.get("method"),f.get("action"))
+    for x in f.find_all(["input","select","button"]):
+        print(" ",x.name,x.get("name"),x.get("id"),x.get("value"))
+print("SCRIPTS")
+for sc in soup.find_all("script"):
+    src=sc.get("src")
+    if src: print("src",src)
+    txt=sc.get_text("\n",strip=True)
+    if any(k in txt for k in ["ftaTrtyPsr","fId","ajax","psr","search"]):
+        print("INLINE",txt[:12000])
+for needle in ["fId","ftaTrtyPsr","ajax","searchKeyword","hsCode","searchHs","list.do","select.do"]:
+    print("\nNEEDLE",needle)
+    for m in list(re.finditer(re.escape(needle),html,re.I))[:10]:
+        print(html[max(0,m.start()-700):m.start()+1800].replace("\n"," ")[:2500])
