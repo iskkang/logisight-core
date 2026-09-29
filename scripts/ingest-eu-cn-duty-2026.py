@@ -31,7 +31,11 @@ def main():
     with tempfile.TemporaryDirectory() as d:
         pdf=f"{d}/cn.pdf"; txt=f"{d}/cn.txt"; open(pdf,"wb").write(r.content)
         subprocess.run(["pdftotext","-layout",pdf,txt],check=True)
-        rows=parse(open(txt,encoding="utf-8",errors="ignore").read())
+        raw=open(txt,encoding="utf-8",errors="ignore").read()
+        for needle in ["6109 10 00","3304 99 00","Tipo convencional","Conventional rate"]:
+            pos=raw.find(needle)
+            if pos>=0: print("DEBUG",needle,repr(raw[max(0,pos-500):pos+1000]))
+        rows=parse(raw)
     if len(rows)<7000: raise RuntimeError(f"only {len(rows)} duty rows parsed")
     base=os.environ["SUPABASE_URL"].rstrip("/"); key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     h={"apikey":key,"Authorization":f"Bearer {key}","Content-Type":"application/json","Prefer":"return=minimal"}
