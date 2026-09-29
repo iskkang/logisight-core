@@ -16,6 +16,12 @@ export const hsClassificationInputSchema = z.object({
   quantity: z.number().positive().optional(),
   vatRate: z.number().min(0).max(100).optional(),
   preferentialOriginEligible: z.boolean().optional(),
+  originManufacturedInKr: z.boolean().optional(),
+  originFabricOriginating: z.boolean().optional(),
+  originSufficientProcessing: z.boolean().optional(),
+  originExWorksPrice: z.number().nonnegative().optional(),
+  originNonOriginatingMaterialValue: z.number().nonnegative().optional(),
+  originNonOriginatingMaterialHs4: z.array(z.string().regex(/^\d{4}$/)).optional(),
 });
 
 export type HsClassificationInput = z.infer<typeof hsClassificationInputSchema>;
@@ -51,6 +57,14 @@ export const hsClassificationResultSchema = z.object({
   customs: z.object({
     duty: z.object({ status: z.enum(["available","pending"]), thirdCountryRate: z.number().nullable(), preferentialRate: z.number().nullable(), notes: z.array(z.string()), sources: z.array(z.string().url()) }),
     regulation: z.object({ status: z.enum(["available","guidance","pending"]), items: z.array(z.object({ title:z.string(), detail:z.string(), url:z.string().url() })) }),
+    originAssessment: z.object({
+      status: z.enum(["qualified","not_qualified","needs_information","rule_unavailable"]),
+      ruleCode: z.string().nullable(),
+      ruleTextKo: z.string().nullable(),
+      sourceUrl: z.string().url().nullable(),
+      checks: z.array(z.string()),
+      missingInputs: z.array(z.string()),
+    }).optional(),
     landedCost: z.object({ status: z.enum(["ready","needs_values","pending"]), formula: z.string(), missingInputs: z.array(z.string()), customsValue: z.number().nullable().optional(), dutyAmount: z.number().nullable().optional(), vatAmount: z.number().nullable().optional(), importCosts: z.number().nullable().optional(), estimatedTotal: z.number().nullable().optional() }),
   }).optional(),
   methodology: z.string(),
