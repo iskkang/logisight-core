@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const hsClassificationInputSchema = z.object({
-  description: z.string().trim().min(10).max(5000),
+  description: z.string().trim().min(2).max(5000),
   originCountry: z.string().length(2).default("KR"),
   destinationMarket: z.enum(["EU"]).default("EU"),
   material: z.string().trim().max(1000).optional(),
