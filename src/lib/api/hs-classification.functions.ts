@@ -11,6 +11,7 @@ import { findEuClassificationEvidence } from "@/server/classification-evidence";
 import { findEuCustomsMeasures } from "@/server/eu-customs-measures";
 import { getEuStandardVat } from "@/server/eu-vat";
 import { assessKrEuOrigin } from "@/server/eu-origin-assessment";
+import { findEuProductRegulations } from "@/server/eu-product-regulations";
 
 export const classifyHsProduct = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => hsClassificationInputSchema.parse(input))
@@ -81,9 +82,12 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
     const thirdCountryDuty = customsMeasures.find((item) => item.measureType === "THIRD_COUNTRY_DUTY");
     const preference = customsMeasures.find((item) => item.measureType === "PREFERENCE");
     const storedRegulations = customsMeasures.filter((item) => item.measureType === "REQUIREMENT" || item.measureType === "REGULATION");
+    const productEvidenceText = [data.description, data.material, data.composition, data.intendedUse, data.form].filter(Boolean).join(" ");
+    const productRegulations = await findEuProductRegulations(rankedCandidates[0].code, productEvidenceText);
     const isCosmetic = analysis.hs4Candidates.includes("3304");
     const regulationItems = [
       ...storedRegulations.map((item) => ({ title: item.title, detail: item.detail ?? item.legalBasis ?? "", url: item.sourceUrl })),
+      ...productRegulations.map((item) => ({ title: item.title, detail: item.detail, url: item.url })),
       ...(isCosmetic ? [
         { title: "EU Cosmetics Regulation (EC) No 1223/2009", detail: "EU 시장에 출시되는 완제품 화장품의 기본 규제 프레임워크입니다. Responsible Person, 안전성 평가 등 제품 요건 확인이 필요합니다.", url: "https://single-market-economy.ec.europa.eu/sectors/cosmetics/legislation_en" },
         { title: "Cosmetic Products Notification Portal (CPNP)", detail: "EU 시장 출시 전 Responsible Person 등이 Regulation 1223/2009 Article 13에 따라 제품 정보를 CPNP에 통지해야 합니다.", url: "https://single-market-economy.ec.europa.eu/sectors/cosmetics/cosmetic-product-notification-portal_en" },
@@ -112,7 +116,7 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
       },
       candidates: rankedCandidates.map((candidate) => ({
         hs6: candidate.code.slice(0, 6),
-        heading: `${candidate.code} — ${candidate.descriptionKo ?? "공식 CN 품목"}`,
+        heading: `${candidate.code} — ${candidate.descriptionKo ?? ranking.displayNamesKo.get(candidate.code) ?? "공식 CN 품목"}`,
         rationale: [
           ...ranking.rationaleKo,
           `후보 코드는 공식 ${candidate.sourceVersion} 데이터에서 조회되었습니다.`,
