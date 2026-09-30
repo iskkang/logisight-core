@@ -189,9 +189,9 @@ function AiCustomsPage() {
               <Field label="Freight (EUR)"><input value={freight} onChange={(e)=>setFreight(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
               <Field label="Insurance (EUR)"><input value={insurance} onChange={(e)=>setInsurance(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
               <Field label="Import / incidental costs (EUR)"><input value={importCosts} onChange={(e)=>setImportCosts(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
-              <div className="rounded-md border border-border p-4 sm:col-span-2">
-                <p className="text-sm font-semibold">한-EU FTA 원산지 자동 판정 입력</p>
-                <p className="mt-1 text-xs text-muted-foreground">HS별 PSR에 필요한 정보만 사용하며, 정보가 부족하면 자동으로 추가정보 필요로 판정합니다.</p>
+              <details className="rounded-md border border-border p-4 sm:col-span-2">
+                <summary className="cursor-pointer text-sm font-semibold">한-EU FTA 원산지 판정 상세 입력 (선택)</summary>
+                <p className="mt-2 text-xs text-muted-foreground">먼저 상품명만으로 분석할 수 있습니다. FTA 특혜세율 자동판정이 필요할 때만 아래 정보를 입력하세요.</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <Field label="한국에서 최종 생산"><select value={originManufacturedInKr} onChange={e=>setOriginManufacturedInKr(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
                   <Field label="투입 원단이 한-EU FTA 원산지"><select value={originFabricOriginating} onChange={e=>setOriginFabricOriginating(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
@@ -209,7 +209,7 @@ function AiCustomsPage() {
                   <input type="checkbox" checked={preferentialOriginEligible} onChange={(e)=>setPreferentialOriginEligible(e.target.checked)} className="mt-1" />
                   <span><strong>유효한 한-EU FTA 원산지 신고/증빙 보유</strong><br/><span className="text-xs text-muted-foreground">자동 PSR 판정이 충족이고 이 항목도 확인된 경우에만 특혜세율을 Landed Cost에 적용합니다.</span></span>
                 </label>
-              </div>
+              </details>
             </div>
 
             <button
