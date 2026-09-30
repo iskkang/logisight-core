@@ -320,7 +320,11 @@ function AnalysisResult({ result, preferentialOriginEligible }: { result: HsClas
               <p>EU 기본관세: <strong>{result.customs.duty.thirdCountryRate == null ? "—" : `${result.customs.duty.thirdCountryRate}%`}</strong></p>
               <p>한국산 협정/특혜세율: <strong>{result.customs.duty.preferentialRate == null ? (result.customs.duty.thirdCountryRate === 0 ? "별도 혜택 불필요" : "확인 필요") : `${result.customs.duty.preferentialRate}%`}</strong></p>
               {result.customs.duty.preferentialRate != null && <p>실제 계산 적용: <strong>{preferentialOriginEligible && result.customs.originAssessment?.status === "qualified" ? "FTA 특혜세율" : "EU 기본관세"}</strong></p>}
-              {result.customs.originAssessment && <div className="mt-3 rounded-md border border-border p-3">
+              {result.customs.duty.thirdCountryRate === 0 && result.customs.duty.preferentialRate == null ? (
+                <div className="mt-3 rounded-md border border-border p-3 text-xs text-muted-foreground">
+                  EU 기본관세가 이미 0%이므로 관세 절감을 위한 FTA 원산지 판정은 필요하지 않습니다.
+                </div>
+              ) : result.customs.originAssessment && <div className="mt-3 rounded-md border border-border p-3">
                 <p className="font-medium">원산지 자동판정: {result.customs.originAssessment.status === "qualified" ? "충족" : result.customs.originAssessment.status === "not_qualified" ? "불충족" : result.customs.originAssessment.status === "needs_information" ? "추가정보 필요" : "PSR 데이터 준비 필요"}</p>
                 {result.customs.originAssessment.ruleCode && <p className="mt-1 text-xs text-muted-foreground">적용 기준: {result.customs.originAssessment.ruleCode}</p>}
                 {result.customs.originAssessment.ruleTextKo && <p className="mt-1 text-xs leading-5 text-muted-foreground">{result.customs.originAssessment.ruleTextKo}</p>}
