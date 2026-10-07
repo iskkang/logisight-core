@@ -141,7 +141,19 @@ export function EurasiaStatisticsPanel() {
       mapRef.current = map;
       map.createPane("corridor"); map.getPane("corridor")!.style.zIndex = "450";
       map.createPane("nodes"); map.getPane("nodes")!.style.zIndex = "460";
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", { subdomains: "abcd", maxZoom: 12, attribution: "&copy; OpenStreetMap &copy; CARTO" }).addTo(map);
+      // 베이스맵 ★
+      // 예전에는 CARTO light_nolabels 래스터를 썼는데, CARTO 가 래스터 베이스맵에
+      // API 키를 요구하도록 바뀌면서 타일 자리에 "API KEY REQUIRED" 워터마크가
+      // 깔렸다(응답은 200 이라 네트워크 오류로도 안 잡힌다 —— 2KB 짜리 안내 이미지가
+      // 정상 타일인 척 내려온다).
+      // Esri World Light Gray 로 바꾼다. 밝은 회색·라벨 없음이라 그 위에 얹는
+      // 단계구분도(물동량)가 묻히지 않는다 —— 원래 light_nolabels 를 고른 이유와 같다.
+      // 주의: Esri 는 타일 좌표 순서가 {z}/{y}/{x} 다(x·y 가 뒤바뀌어 있다).
+      // CARTO 벡터 타일은 여전히 열려 있어 미주 지도(MapLibre GL)는 손대지 않았다.
+      L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 12, attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ" },
+      ).addTo(map);
       setTimeout(() => mapRef.current?.invalidateSize(), 120);
 
       // 코리도어 네트워크(정적)
