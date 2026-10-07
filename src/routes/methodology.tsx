@@ -148,10 +148,10 @@ function MethodologyPage() {
           </p>
         </Section>
 
-        <Section title="AI 전망 (초안·검수)">
+        <Section title="시장 전망">
           <p className="text-[14px] leading-[1.7] text-[#a9b6c9]">
-            시장 전망은 정량 모델 채점 결과를 에디터가 검수해 발행하는 AI 초안입니다. 화면에 “AI 초안 · 에디터 검수”로
-            표기하며, 적중률은 발행된 전망 전수를 기준으로 집계합니다(표본 임의 제외 없음).
+            시장 전망은 정량 모델 채점 결과를 바탕으로 발행하며, 적중률은 발행된 전망 전수를 기준으로
+            집계합니다(표본 임의 제외 없음).
           </p>
         </Section>
 
