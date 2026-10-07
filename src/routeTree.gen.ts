@@ -12,10 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AiCustomsRouteImport } from './routes/ai-customs'
 import { Route as AsiaRouteImport } from './routes/asia'
 import { Route as BriefingRouteImport } from './routes/briefing'
 import { Route as ClimateRouteImport } from './routes/climate'
+import { Route as CustomsRouteImport } from './routes/customs'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EurasiaRouteImport } from './routes/eurasia'
 import { Route as FaqRouteImport } from './routes/faq'
@@ -48,8 +48,8 @@ import { Route as RailAmericasRouteImport } from './routes/rail.americas'
 import { Route as RailEurasiaRouteImport } from './routes/rail.eurasia'
 import { Route as RailEuropeRouteImport } from './routes/rail.europe'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
-import { Route as ApiAiCustomsE2eRouteImport } from './routes/api/ai-customs/e2e'
 import { Route as ApiCronIndexnowRouteImport } from './routes/api/cron/indexnow'
+import { Route as ApiCustomsE2eRouteImport } from './routes/api/customs/e2e'
 import { Route as ApiTradeBriefRouteImport } from './routes/api/trade/brief'
 import { Route as ApiWebhooksResendRouteImport } from './routes/api/webhooks/resend'
 import { Route as ReportsMonthlyMonthRouteImport } from './routes/reports.monthly.$month'
@@ -70,11 +70,6 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AiCustomsRoute = AiCustomsRouteImport.update({
-  id: '/ai-customs',
-  path: '/ai-customs',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AsiaRoute = AsiaRouteImport.update({
   id: '/asia',
   path: '/asia',
@@ -88,6 +83,11 @@ const BriefingRoute = BriefingRouteImport.update({
 const ClimateRoute = ClimateRouteImport.update({
   id: '/climate',
   path: '/climate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomsRoute = CustomsRouteImport.update({
+  id: '/customs',
+  path: '/customs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -250,14 +250,14 @@ const ReportsIndexRoute = ReportsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ReportsRoute,
 } as any)
-const ApiAiCustomsE2eRoute = ApiAiCustomsE2eRouteImport.update({
-  id: '/api/ai-customs/e2e',
-  path: '/api/ai-customs/e2e',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiCronIndexnowRoute = ApiCronIndexnowRouteImport.update({
   id: '/api/cron/indexnow',
   path: '/api/cron/indexnow',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCustomsE2eRoute = ApiCustomsE2eRouteImport.update({
+  id: '/api/customs/e2e',
+  path: '/api/customs/e2e',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTradeBriefRoute = ApiTradeBriefRouteImport.update({
@@ -285,10 +285,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
-  '/ai-customs': typeof AiCustomsRoute
   '/asia': typeof AsiaRoute
   '/briefing': typeof BriefingRoute
   '/climate': typeof ClimateRoute
+  '/customs': typeof CustomsRoute
   '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
   '/faq': typeof FaqRoute
@@ -321,8 +321,8 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/rail/': typeof RailIndexRoute
   '/reports/': typeof ReportsIndexRoute
-  '/api/ai-customs/e2e': typeof ApiAiCustomsE2eRoute
   '/api/cron/indexnow': typeof ApiCronIndexnowRoute
+  '/api/customs/e2e': typeof ApiCustomsE2eRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
   '/api/webhooks/resend': typeof ApiWebhooksResendRoute
   '/reports/monthly/$month': typeof ReportsMonthlyMonthRoute
@@ -331,10 +331,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/ai-customs': typeof AiCustomsRoute
   '/asia': typeof AsiaRoute
   '/briefing': typeof BriefingRoute
   '/climate': typeof ClimateRoute
+  '/customs': typeof CustomsRoute
   '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
   '/faq': typeof FaqRoute
@@ -365,8 +365,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/rail': typeof RailIndexRoute
   '/reports': typeof ReportsIndexRoute
-  '/api/ai-customs/e2e': typeof ApiAiCustomsE2eRoute
   '/api/cron/indexnow': typeof ApiCronIndexnowRoute
+  '/api/customs/e2e': typeof ApiCustomsE2eRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
   '/api/webhooks/resend': typeof ApiWebhooksResendRoute
   '/reports/monthly/$month': typeof ReportsMonthlyMonthRoute
@@ -377,10 +377,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
-  '/ai-customs': typeof AiCustomsRoute
   '/asia': typeof AsiaRoute
   '/briefing': typeof BriefingRoute
   '/climate': typeof ClimateRoute
+  '/customs': typeof CustomsRoute
   '/dashboard': typeof DashboardRoute
   '/eurasia': typeof EurasiaRoute
   '/faq': typeof FaqRoute
@@ -413,8 +413,8 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/rail/': typeof RailIndexRoute
   '/reports/': typeof ReportsIndexRoute
-  '/api/ai-customs/e2e': typeof ApiAiCustomsE2eRoute
   '/api/cron/indexnow': typeof ApiCronIndexnowRoute
+  '/api/customs/e2e': typeof ApiCustomsE2eRoute
   '/api/trade/brief': typeof ApiTradeBriefRoute
   '/api/webhooks/resend': typeof ApiWebhooksResendRoute
   '/reports/monthly/$month': typeof ReportsMonthlyMonthRoute
@@ -426,10 +426,10 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
-    | '/ai-customs'
     | '/asia'
     | '/briefing'
     | '/climate'
+    | '/customs'
     | '/dashboard'
     | '/eurasia'
     | '/faq'
@@ -462,8 +462,8 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/rail/'
     | '/reports/'
-    | '/api/ai-customs/e2e'
     | '/api/cron/indexnow'
+    | '/api/customs/e2e'
     | '/api/trade/brief'
     | '/api/webhooks/resend'
     | '/reports/monthly/$month'
@@ -472,10 +472,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
-    | '/ai-customs'
     | '/asia'
     | '/briefing'
     | '/climate'
+    | '/customs'
     | '/dashboard'
     | '/eurasia'
     | '/faq'
@@ -506,8 +506,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/rail'
     | '/reports'
-    | '/api/ai-customs/e2e'
     | '/api/cron/indexnow'
+    | '/api/customs/e2e'
     | '/api/trade/brief'
     | '/api/webhooks/resend'
     | '/reports/monthly/$month'
@@ -517,10 +517,10 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
-    | '/ai-customs'
     | '/asia'
     | '/briefing'
     | '/climate'
+    | '/customs'
     | '/dashboard'
     | '/eurasia'
     | '/faq'
@@ -553,8 +553,8 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/rail/'
     | '/reports/'
-    | '/api/ai-customs/e2e'
     | '/api/cron/indexnow'
+    | '/api/customs/e2e'
     | '/api/trade/brief'
     | '/api/webhooks/resend'
     | '/reports/monthly/$month'
@@ -565,10 +565,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRouteWithChildren
-  AiCustomsRoute: typeof AiCustomsRoute
   AsiaRoute: typeof AsiaRoute
   BriefingRoute: typeof BriefingRoute
   ClimateRoute: typeof ClimateRoute
+  CustomsRoute: typeof CustomsRoute
   DashboardRoute: typeof DashboardRoute
   EurasiaRoute: typeof EurasiaRoute
   FaqRoute: typeof FaqRoute
@@ -589,8 +589,8 @@ export interface RootRouteChildren {
   UnsubscribeRoute: typeof UnsubscribeRoute
   ArticleSlugRoute: typeof ArticleSlugRoute
   Index1520RoutesRoute: typeof Index1520RoutesRoute
-  ApiAiCustomsE2eRoute: typeof ApiAiCustomsE2eRoute
   ApiCronIndexnowRoute: typeof ApiCronIndexnowRoute
+  ApiCustomsE2eRoute: typeof ApiCustomsE2eRoute
   ApiTradeBriefRoute: typeof ApiTradeBriefRoute
   ApiWebhooksResendRoute: typeof ApiWebhooksResendRoute
 }
@@ -618,13 +618,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ai-customs': {
-      id: '/ai-customs'
-      path: '/ai-customs'
-      fullPath: '/ai-customs'
-      preLoaderRoute: typeof AiCustomsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/asia': {
       id: '/asia'
       path: '/asia'
@@ -644,6 +637,13 @@ declare module '@tanstack/react-router' {
       path: '/climate'
       fullPath: '/climate'
       preLoaderRoute: typeof ClimateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customs': {
+      id: '/customs'
+      path: '/customs'
+      fullPath: '/customs'
+      preLoaderRoute: typeof CustomsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -870,18 +870,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsIndexRouteImport
       parentRoute: typeof ReportsRoute
     }
-    '/api/ai-customs/e2e': {
-      id: '/api/ai-customs/e2e'
-      path: '/api/ai-customs/e2e'
-      fullPath: '/api/ai-customs/e2e'
-      preLoaderRoute: typeof ApiAiCustomsE2eRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/cron/indexnow': {
       id: '/api/cron/indexnow'
       path: '/api/cron/indexnow'
       fullPath: '/api/cron/indexnow'
       preLoaderRoute: typeof ApiCronIndexnowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/customs/e2e': {
+      id: '/api/customs/e2e'
+      path: '/api/customs/e2e'
+      fullPath: '/api/customs/e2e'
+      preLoaderRoute: typeof ApiCustomsE2eRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/trade/brief': {
@@ -972,10 +972,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AdminRoute: AdminRouteWithChildren,
-  AiCustomsRoute: AiCustomsRoute,
   AsiaRoute: AsiaRoute,
   BriefingRoute: BriefingRoute,
   ClimateRoute: ClimateRoute,
+  CustomsRoute: CustomsRoute,
   DashboardRoute: DashboardRoute,
   EurasiaRoute: EurasiaRoute,
   FaqRoute: FaqRoute,
@@ -996,8 +996,8 @@ const rootRouteChildren: RootRouteChildren = {
   UnsubscribeRoute: UnsubscribeRoute,
   ArticleSlugRoute: ArticleSlugRoute,
   Index1520RoutesRoute: Index1520RoutesRoute,
-  ApiAiCustomsE2eRoute: ApiAiCustomsE2eRoute,
   ApiCronIndexnowRoute: ApiCronIndexnowRoute,
+  ApiCustomsE2eRoute: ApiCustomsE2eRoute,
   ApiTradeBriefRoute: ApiTradeBriefRoute,
   ApiWebhooksResendRoute: ApiWebhooksResendRoute,
 }

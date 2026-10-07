@@ -16,14 +16,14 @@ import { seoHead } from "@/lib/seo";
 import { classifyHsProduct } from "@/lib/api/hs-classification.functions";
 import type { HsClassificationResult } from "@/server/hs-classification";
 
-export const Route = createFileRoute("/ai-customs")({
+export const Route = createFileRoute("/customs")({
   head: () =>
     seoHead({
-      title: "AI HS & Customs - Logisight",
+      title: "HS & Customs - Logisight",
       description:
         "상품 정보를 기반으로 HS Code, 관세·FTA, 수입 규제와 Landed Cost를 한 흐름에서 검토합니다.",
-      path: "/ai-customs",
-      jaPath: "/ai-customs",
+      path: "/customs",
+      jaPath: "/customs",
     }),
   component: AiCustomsPage,
 });
@@ -107,7 +107,7 @@ function AiCustomsPage() {
             Logisight Intelligence
           </div>
           <h1 className="max-w-3xl text-3xl font-bold tracking-tight sm:text-5xl">
-            AI HS & Customs
+            HS &amp; Customs
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
             제품 하나로 HS 분류부터 관세·FTA, 수입 규제, 예상 Landed Cost까지 검토합니다.
@@ -352,7 +352,7 @@ function ResultCard({ number, title, status, children }: { number: string; title
 
 function AnalysisSkeleton() {
   const sections = [
-    ["01", "HS Classification", "공식 HS 데이터 및 AI 분류 엔진 연결 필요"],
+    ["01", "HS Classification", "공식 HS 데이터 및 분류 엔진 연결 필요"],
     ["02", "Duty & FTA", "공식 관세율·협정세율 데이터 연결 필요"],
     ["03", "Certification & Regulation", "EU 품목별 규제 데이터 연결 필요"],
     ["04", "Estimated Landed Cost", "관세·세금·운임 데이터 연결 후 계산 가능"],

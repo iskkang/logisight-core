@@ -13,7 +13,7 @@ const CASES=[
  {id:"water-pump",description:"Centrifugal electric water pump for industrial liquid transfer",expectedHs4:"8413"}
 ];
 
-export const Route=createFileRoute("/api/ai-customs/e2e")({server:{handlers:{POST:async({request})=>{
+export const Route=createFileRoute("/api/customs/e2e")({server:{handlers:{POST:async({request})=>{
  const secret=process.env.E2E_TEST_SECRET;
  if(!secret||request.headers.get("x-e2e-secret")!==secret) return new Response("Unauthorized",{status:401});
  const results=[];
