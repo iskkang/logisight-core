@@ -384,7 +384,7 @@ function BriefBand({ model, indexStats }: { model: TradeModel; indexStats: Index
   const fallbackBrief = buildFallbackBrief(model, indexStats);
   const loadingBrief = briefState.status === "loading";
   const brief = briefState.status === "ready" && briefState.data ? briefState.data : fallbackBrief;
-  const briefLabel = briefState.status === "ready" ? "AI 종합" : "규칙 기반 요약";
+  const briefLabel = briefState.status === "ready" ? "종합" : "규칙 기반 요약";
   const briefLabelPeriod = briefState.period ?? formatPeriod(model.snapshot.period);
   const top3 = model.allCountries.slice(0, 3);
   const concentration = model.totalCountryTrade > 0 ? Math.round((sum(top3.map((c) => c.tradeUsd)) / model.totalCountryTrade) * 100) : null;

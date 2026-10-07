@@ -205,7 +205,7 @@ function buildHeroSummary(kcciStat: IndexStats | undefined, stats: IndexStats[],
   const fc = openForecasts[0];
   if (fc?.direction) {
     const dir = ({ up: "상승", down: "하락", flat: "보합" } as Record<string, string>)[fc.direction] ?? "";
-    parts.push(`AI 전망(에디터 검수): ${fc.metric_ref ?? "운임"} ${dir} 기조 시사.`);
+    parts.push(`전망: ${fc.metric_ref ?? "운임"} ${dir} 기조 시사.`);
   }
   if (alertCount > 0) parts.push(`경보 ${alertCount}건 점검 권장.`);
   return parts.join(" ") || "주요 노선 현황과 운임 지수를 확인하세요.";
@@ -305,7 +305,7 @@ function JudgmentPanel({ forecasts, seriesMap, stats, selectedMetric }: {
     <div className={`p-[22px] ${CARD}`}>
       <div className="mb-4 flex items-center gap-2.5">
         <span className="text-[17px] font-bold text-[#1a2433]">운임 종합 판단</span>
-        <span className="rounded-full border border-[#ccfbf1] bg-[#e9f8f4] px-2.5 py-1 text-[11px] font-semibold text-[#0d9488]">AI 인사이트 · 에디터 검수</span>
+        
         {direction && <span className="ml-auto rounded-full border border-[#c7ead6] bg-[#ecfdf3] px-2.5 py-1 lsg-mono text-[11px] font-semibold text-[#067647]">{direction.glyph} {direction.label}</span>}
       </div>
 
@@ -366,7 +366,7 @@ function JudgmentPanel({ forecasts, seriesMap, stats, selectedMetric }: {
 
       <div className="my-[18px] flex gap-3 rounded-[12px] border border-[#ccfbf1] bg-[#e9f8f4] px-[17px] py-[15px]">
         <div className="grid h-[30px] w-[30px] flex-none place-items-center rounded-[8px] bg-[#0d9488] text-[11px] font-bold text-white">LS</div>
-        <div><div className="mb-1 text-[13px] font-semibold text-[#1a2433]">LOGISIGHT 분석</div><p className="text-[13px] leading-[1.55] text-[#54606f]">{lead || "전망 본문 수집 중입니다. 에디터 검수 후 공개됩니다."}</p></div>
+        <div><div className="mb-1 text-[13px] font-semibold text-[#1a2433]">LOGISIGHT 분석</div><p className="text-[13px] leading-[1.55] text-[#54606f]">{lead || "전망 본문 수집 중입니다."}</p></div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 min-[640px]:grid-cols-3">

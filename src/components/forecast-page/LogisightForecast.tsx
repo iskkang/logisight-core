@@ -193,7 +193,7 @@ function Hero({ kpis, lastUpdated, modules, activeModule, onModule }: {
         <div className="max-w-[760px] pt-[58px] pb-[68px]">
           <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">Verified Forecast</span>
           <h1 className="mt-3.5 text-[clamp(32px,4.4vw,50px)] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#e9eef7]">물류 시장 <span className="text-[#2dd4bf]">전망</span></h1>
-          <p className="mt-4 max-w-[640px] text-[15px] leading-[1.6] text-[#93a1b7]">Logisight AI가 현재와 과거 데이터를 분석하여 운임 방향을 전망합니다.</p>
+          <p className="mt-4 max-w-[640px] text-[15px] leading-[1.6] text-[#93a1b7]">현재와 과거 데이터를 분석해 운임 방향을 전망합니다.</p>
           {modules.length > 0 && (
             <div className="mt-[18px] flex flex-wrap gap-2">
               <button type="button" onClick={() => onModule(null)} className={`rounded-full border px-3 py-[5px] text-[12px] ${activeModule == null ? "border-[#2dd4bf73] bg-[#0e2a2a] text-[#2dd4bf]" : "border-[#78a0cd1c] bg-[#0e1626] text-[#93a1b7]"}`}>전체</button>
@@ -219,7 +219,7 @@ function Hero({ kpis, lastUpdated, modules, activeModule, onModule }: {
 function Kpis({ kpis }: { kpis: ReturnType<typeof computeKpis> }) {
   const items = [
     { lab: "방향 적중률 (12주)", ic: "✓", bg: "#16a34a", v: kpis.hitRate.gate ? "누적 중" : `${kpis.hitRate.rate}%`, num: false, s: kpis.hitRate.gate ? `판정 표본 ${kpis.hitRate.sample}/10` : `${kpis.hitRate.sample}건 판정 기준` },
-    { lab: "이번 주 발행", ic: "+", bg: "#0d9488", v: `${kpis.publishedThisWeek}건`, num: true, s: "검수 통과 발행" },
+    { lab: "이번 주 발행", ic: "+", bg: "#0d9488", v: `${kpis.publishedThisWeek}건`, num: true, s: "발행" },
     { lab: "판정 대기", ic: "⏳", bg: "#d97706", v: `${kpis.awaitingJudgment}건`, num: true, s: "확인 일정 전" },
     { lab: "근거 데이터 평균", ic: "◉", bg: "#3b82f6", v: kpis.avgEvidence != null ? `${kpis.avgEvidence}/5` : "—", num: true, s: "발행 전망 기준" },
     { lab: "평균 리드타임", ic: "→", bg: "#64748b", v: kpis.leadTimeDays != null ? `${kpis.leadTimeDays}일` : "—", num: true, s: "발행 → 판정" },
@@ -377,7 +377,7 @@ function DetailPanel({ f, series }: { f: Forecast; series?: ForecastSeries }) {
       </div>
       <div className="mt-3.5 flex flex-wrap items-center justify-between gap-4 text-[12px] text-[#828d9d]">
         <span>전망은 정보 제공 목적이며 투자·계약 권유가 아닙니다. 모든 전망은 확률로 표현됩니다.</span>
-        <span className="font-semibold text-[#0d9488]">AI 초안 · 에디터 검수</span>
+        
       </div>
     </div>
   );
@@ -388,8 +388,8 @@ const METHOD: { b: string; s: string }[] = [
   { b: "데이터 수집", s: "관세청 · Drewry · 상하이해운거래소(SSE) · KITA, SCFI/WCI" },
   { b: "5팩터 채점", s: "모멘텀 · 공급 · 수요 · 비용 · 가격행동을 −2~+2로 채점" },
   { b: "가중 합산", s: "해상: 공급30 · 모멘텀25 · 수요25 · 비용10 · 가격10, 한국발은 중국 수급 보정" },
-  { b: "AI 산문 + 자동 검증", s: "판정 단위 · 결측 여부 자동 검사" },
-  { b: "에디터 검수 후 발행", s: "발행 후 본문 폴백, 판정일 실측으로 적중 집계" },
+  { b: "자동 검증", s: "판정 단위 · 결측 여부 자동 검사" },
+  { b: "발행", s: "발행 후 본문 폴백, 판정일 실측으로 적중 집계" },
 ];
 function Methodology() {
   return (
@@ -467,9 +467,9 @@ export function LogisightForecast() {
           {/* GEO: 보이지 않는 Article JSON-LD만 유지 (시각 요소 없음) */}
           <GeoArticleSchema
             article={{
-              headline: "물류 시장 전망 — AI 초안 · 에디터 검수",
+              headline: "물류 시장 전망",
               description:
-                "Logisight AI가 현재·과거 데이터를 분석해 운임·유라시아·무역·정책 방향을 확률·방향으로 전망합니다. 발행 전 에디터 검수.",
+                "현재·과거 데이터를 분석해 운임·유라시아·무역·정책 방향을 확률·방향으로 전망합니다.",
               path: "/forecasts",
               datePublished: geo.latestDate,
               dateModified: geo.latestDate,
@@ -483,7 +483,7 @@ export function LogisightForecast() {
             <section className="mt-[26px]">
               <div className="mb-3.5 flex items-center gap-2.5">
                 <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">철도 전망</h2>
-                <span className="rounded-full border border-[#d8dfe9] bg-[#eef1f6] px-[9px] py-[3px] text-[11px] text-[#828d9d]">유라시아 · AI</span>
+                <span className="rounded-full border border-[#d8dfe9] bg-[#eef1f6] px-[9px] py-[3px] text-[11px] text-[#828d9d]">유라시아</span>
               </div>
               <div className={`p-[22px] ${CARD}`}>
                 <p className="text-[14px] leading-[1.65] text-[#1a2433]">{railBrief.outlook.summary}</p>
@@ -494,7 +494,7 @@ export function LogisightForecast() {
                     ))}
                   </ul>
                 )}
-                <div className="mt-3.5 border-t border-[#d8dfe9] pt-2.5 text-[11px] text-[#828d9d]">AI 분석 · 유라시아 격주 시장 리포트 기반{railBrief.generatedAt ? ` · ${railBrief.generatedAt.slice(0, 10)}` : ""}</div>
+                <div className="mt-3.5 border-t border-[#d8dfe9] pt-2.5 text-[11px] text-[#828d9d]">유라시아 격주 시장 리포트 기반{railBrief.generatedAt ? ` · ${railBrief.generatedAt.slice(0, 10)}` : ""}</div>
               </div>
             </section>
           )}
@@ -502,7 +502,7 @@ export function LogisightForecast() {
           {open.length === 0 ? (
             <div className={`mt-[26px] px-6 py-16 text-center ${CARD}`}>
               <p className="text-[14px] font-semibold text-[#1a2433]">데이터 수집 중</p>
-              <p className="mt-1 text-[12px] text-[#828d9d]">검수를 통과한 전망이 게재되면 이곳에 표시됩니다.</p>
+              <p className="mt-1 text-[12px] text-[#828d9d]">발행된 전망이 게재되면 이곳에 표시됩니다.</p>
             </div>
           ) : (
             <>

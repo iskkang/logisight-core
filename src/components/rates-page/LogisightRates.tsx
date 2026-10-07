@@ -610,12 +610,10 @@ export function LogisightRates() {
                 ) : <div className="mt-[7px] text-[15px] font-semibold text-[#828d9d]">데이터 수집 중</div>}
               </div>
             </div>
-            {/* AI 요약 — 발행·검수된 운임 전망(forecasts)에서만. 없으면 미표시. */}
+            {/* 운임 요약 — 발행된 운임 전망(forecasts)에서만. 없으면 미표시. */}
             {reports.length > 0 && (
-              <div className="mt-[18px] flex gap-3 rounded-[12px] border border-[#d4e6f2] bg-[#eef6fb] px-[17px] py-[15px]">
-                <div className="grid h-[30px] w-[30px] flex-none place-items-center rounded-[8px] bg-[#3b82f6] text-[11px] font-bold text-white">AI</div>
+              <div className="mt-[18px] rounded-[12px] border border-[#d4e6f2] bg-[#eef6fb] px-[17px] py-[15px]">
                 <div>
-                  <b className="mb-1 block text-[13px] font-semibold text-[#1a2433]">AI 초안 · 에디터 검수</b>
                   <p className="text-[13px] leading-[1.55] text-[#54606f]">{[reports[0].lead, reports[0].outlook].filter(Boolean).join(" ")}</p>
                 </div>
               </div>

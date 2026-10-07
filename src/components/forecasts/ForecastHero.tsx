@@ -55,7 +55,7 @@ export function ForecastHero({
           물류 시장 <span style={{ color: "#5bb8f5" }}>전망</span>
         </h1>
         <p className="mt-3 max-w-[640px] text-sm leading-relaxed text-white/80">
-          향후 2~4주 운임 방향을 정량 모델 + 에디터 검수로 발행하고, 판정일 실측으로 사후 적중을
+          향후 2~4주 운임 방향을 정량 모델로 발행하고, 판정일 실측으로 사후 적중을
           매깁니다. 적중률 분모는 발행된 전망 전수입니다.
         </p>
 

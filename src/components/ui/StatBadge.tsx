@@ -1,6 +1,6 @@
 // 극단·비표준 수치에 맥락을 붙이는 공통 배지. 네이티브 title 툴팁(SSR 안전·JS 불필요)으로
 // "숨기지 않고 설명한다" 원칙을 구현한다. 값은 그대로 두고 옆에 배지만 덧붙인다.
-type Kind = "stat" | "estimate" | "ai-draft";
+type Kind = "stat" | "estimate";
 
 const PRESET: Record<Kind, { label: string; title: string; cls: string }> = {
   // 신고/통계 기준 극저가 레인 — 실제 all-in 견적과 차이 가능.
@@ -14,11 +14,6 @@ const PRESET: Record<Kind, { label: string; title: string; cls: string }> = {
     label: "추정",
     title: "산정 방식: 공개 집계 지표 기반 추정값입니다. 단정이 아닌 추정·정합 관점으로 제공됩니다.",
     cls: "border-[#dbeafe] bg-[#eff6ff] text-[#1d4ed8]",
-  },
-  "ai-draft": {
-    label: "AI 초안",
-    title: "AI가 생성한 초안으로, 에디터 검수 전 상태입니다.",
-    cls: "border-[#ccfbf1] bg-[#e9f8f4] text-[#0d9488]",
   },
 };
 

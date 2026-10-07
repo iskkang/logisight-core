@@ -122,9 +122,6 @@ export function ForecastItem({ f, showModule = false }: { f: Forecast; showModul
           <span className="text-sm font-bold tabular-nums text-foreground">{f.expected_range_pct}%</span>
         )}
         {f.confidence && <ConfidenceMeter level={f.confidence} />}
-        <span className="ml-auto rounded bg-status-observe/10 px-1.5 py-0.5 text-[11px] text-status-observe">
-          AI 초안 · 에디터 검수
-        </span>
       </div>
 
       {/* meta line */}
@@ -232,7 +229,7 @@ export function ForecastTracking({
       </div>
       {scoped.length === 0 ? (
         <p className="rounded-lg border border-border bg-card px-4 py-6 text-sm text-muted-foreground">
-          발행된 전망이 아직 없습니다 — 검수 후 게재됩니다.
+          발행된 전망이 아직 없습니다.
         </p>
       ) : (
         <div className="space-y-2">

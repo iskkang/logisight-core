@@ -226,7 +226,7 @@ function HeroAndGlobe({ data, pills, forecastQuality }: { data: Parameters<typeo
         <div className="pt-12 pb-[22px]">
           <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">Global Climate Forecast</span>
           <h1 className="mt-3 text-[clamp(30px,4vw,46px)] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#e9eef7]">세계 기후 예측</h1>
-          <p className="mt-3.5 max-w-[620px] text-[15px] leading-[1.6] text-[#93a1b7]">전 세계 항만·주요 해협·내륙 철도 거점의 기상 리스크를 AI 예보 기반, 영향을 받는 노선과 리스크를 감지합니다.</p>
+          <p className="mt-3.5 max-w-[620px] text-[15px] leading-[1.6] text-[#93a1b7]">전 세계 항만·주요 해협·내륙 철도 거점의 기상 리스크와 영향을 받는 노선을 감지합니다.</p>
           <div className="mt-5 flex flex-wrap gap-2.5">
             {pills.map((p, i) => <span key={i} className="inline-flex items-center gap-2 rounded-full border border-[#78a0cd1c] bg-[#0e1626] px-[13px] py-[7px] text-[12.5px] text-[#93a1b7]"><span className={`h-[7px] w-[7px] rounded-full ${p.c}`} />{p.t}</span>)}
           </div>
@@ -442,7 +442,7 @@ function RouteForecast({ fc }: { fc: ClimateForecastRow }) {
   return (
     <div className="mt-3 rounded-[8px] border border-[#bfe6e0] bg-[#f0faf8] px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="rounded-[5px] bg-[#0d9488] px-1.5 py-[2px] text-[10px] font-extrabold tracking-[0.04em] text-white">AI 분석</span>
+        
         {via && <span className="text-[11px] font-semibold text-[#0f766e]">via {via}</span>}
       </div>
       <p className="mt-1.5 text-[12px] leading-[1.5] text-[#334155]">{fcSummary(weather)}</p>
@@ -457,7 +457,7 @@ function RouteForecast({ fc }: { fc: ClimateForecastRow }) {
               <p className="mt-0.5 text-[12px] leading-[1.55] text-[#475569]">{t}</p>
             </div>
           ))}
-          <div className="text-[10.5px] text-[#94a3b8]">AI 자동 분석 · 코드 가드 검증 · 트랙 교차판정 기반</div>
+          <div className="text-[10.5px] text-[#94a3b8]">코드 가드 검증 · 트랙 교차판정 기반</div>
         </div>
       )}
     </div>
@@ -488,12 +488,12 @@ function Impact({ rm, routes, events, nodes, forecasts }: { rm: RiskMap; routes:
   if (rows.length === 0) return null;
   return (
     <>
-      <div className="mb-3.5 mt-[26px] flex items-center justify-between gap-2.5"><h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">예보 리스크 → 영향 노선</h2><span className={CHIP}>asset_risk 예보 · track/AI 분석 우선</span></div>
+      <div className="mb-3.5 mt-[26px] flex items-center justify-between gap-2.5"><h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">예보 리스크 → 영향 노선</h2><span className={CHIP}>asset_risk 예보 · track 우선</span></div>
       <div className="grid grid-cols-1 gap-3.5 min-[1080px]:grid-cols-3">
         {rows.map(({ r, base, evs, lead, worst, forecast }) => {
           const crit = worst === 3;
           const c: Lv = crit ? "r" : worst === 2 || evs.length ? "a" : level(base);
-          const tag = forecast ? "AI 예보 연결" : crit ? "경보 · 예보 track" : worst === 2 ? "주의 · 예보 track" : evs.length ? "track 주시" : "영향 낮음";
+          const tag = forecast ? "예보 연결" : crit ? "경보 · 예보 track" : worst === 2 ? "주의 · 예보 track" : evs.length ? "track 주시" : "영향 낮음";
           const traj = HDAYS.map((_, h) => routeRisk(rm, r, h));
           const chk = (r.chokes || []).join(" · ") || "—";
           const inten = lead ? parseIntensity(lead.e.title) : null;
@@ -564,7 +564,7 @@ function RegionImpact({ events, assets, routes, nodes, forecasts }: { events: Ev
                   ))}
                 </div>
               )}
-              {fc ? <RouteForecast fc={fc} /> : <div className="mt-3 rounded-[8px] border border-[#e6ebf2] bg-[#f6f8fb] px-3 py-2 text-[11.5px] text-[#828d9d]">AI 영향 분석 검수 중 — 발행되면 여기에 표시됩니다.</div>}
+              {fc ? <RouteForecast fc={fc} /> : <div className="mt-3 rounded-[8px] border border-[#e6ebf2] bg-[#f6f8fb] px-3 py-2 text-[11.5px] text-[#828d9d]">영향 분석 준비 중 — 발행되면 여기에 표시됩니다.</div>}
             </div>
           );
         })}
@@ -748,7 +748,7 @@ export function LogisightClimate() {
             article={{
               headline: "세계 기후 예측 — 항만·해협·노선 기상 리스크",
               description:
-                "전 세계 항만·주요 해협·내륙 철도 거점의 기상 리스크와 영향 노선을 AI 예보 기반으로 모니터링하는 대시보드.",
+                "전 세계 항만·주요 해협·내륙 철도 거점의 기상 리스크와 영향 노선을 모니터링하는 대시보드.",
               path: "/climate",
               datePublished: refTime,
               dateModified: refTime,

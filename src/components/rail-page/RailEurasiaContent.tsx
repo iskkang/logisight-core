@@ -212,7 +212,6 @@ export function RailEurasiaContent() {
             <section>
               <div className="mb-3 mt-[26px] flex items-center justify-between gap-2.5">
                 <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#1a2433]">유라시아 리스크</h2>
-                <span className="rounded-full border border-[#d8dfe9] bg-[#eef1f6] px-[9px] py-[3px] text-[11px] text-[#828d9d]">AI 분석</span>
               </div>
               <div className="divide-y divide-[#e6ebf2] rounded-[14px] border border-[#d8dfe9] bg-[#f4f7fb]">
                 {railBrief.risks.map((r, i) => (
