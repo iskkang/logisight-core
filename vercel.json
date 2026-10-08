@@ -60,7 +60,7 @@
   ],
   "rewrites": [
     {
-      "source": "/reports/:type/:file",
+      "source": "/reports/:type/:file(.*\\.pdf)",
       "destination": "https://hmgbvqczmyjixkqbruzp.supabase.co/storage/v1/object/public/reports/:type/:file"
     }
   ]
