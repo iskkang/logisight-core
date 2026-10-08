@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import {
   latestNewsQueryOptions,
+  newsCountQueryOptions,
   formatPublishedAt,
   todayKST,
   isInternalNewsItem,
@@ -19,38 +20,78 @@ import { HomeFooter } from "@/components/home/HomeFooter";
 import LogisightNewsTop from "@/components/news-page/LogisightNewsTop";
 import type { Pick as NewsPick } from "@/components/news-page/LogisightNewsTop";
 
+const PER_PAGE = 40;
+
 const newsSearchSchema = z.object({
   cat: z.string().min(1).max(40).optional(),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
+  // page 는 optional 이고 기본값을 두지 않는다 ★
+  // validateSearch 가 URL 에 없는 값을 돌려주면 라우터가 주소를 정규화하며 307 을
+  // 건다. 이 저장소에서 /asia 와 /forecasts 가 같은 이유로 당한 적이 있다.
+  // 1쪽은 /news, 2쪽부터 /news?page=2 —— 1쪽 주소에 ?page=1 이 붙지 않아야 한다.
+  page: z.coerce.number().int().min(1).max(200).optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/news")({
   validateSearch: newsSearchSchema,
-  loaderDeps: ({ search }) => ({ cat: search.cat, date: search.date }),
-  loader: ({ context, deps }) =>
-    context.queryClient.ensureQueryData(
-      latestNewsQueryOptions({ lang: "ko", limit: 40, category: deps.cat, date: deps.date }),
-    ),
-  head: () =>
-    seoHead({
-      title: "물류 뉴스 — Logisight",
+  loaderDeps: ({ search }) => ({ cat: search.cat, date: search.date, page: search.page }),
+  loader: async ({ context, deps }) => {
+    const page = deps.page ?? 1;
+    await Promise.all([
+      context.queryClient.ensureQueryData(
+        latestNewsQueryOptions({
+          lang: "ko",
+          limit: PER_PAGE,
+          offset: (page - 1) * PER_PAGE,
+          category: deps.cat,
+          date: deps.date,
+        }),
+      ),
+      context.queryClient.ensureQueryData(
+        newsCountQueryOptions({ lang: "ko", category: deps.cat, date: deps.date }),
+      ),
+    ]);
+    // head 가 쓸 값은 로더가 넘긴다 —— search 를 head 에서 직접 읽는 선례가 없어
+    // 라우터 버전에 따라 깨질 수 있다(article.$slug.tsx 와 같은 방식).
+    return { page, cat: deps.cat };
+  },
+  head: ({ loaderData }) => {
+    const page = loaderData?.page ?? 1;
+    // 2쪽부터는 canonical 을 그 쪽 자신으로 둔다. 1쪽으로 몰면 2쪽 이후 기사 링크가
+    // 색인에서 사라져, 페이지네이션을 만든 목적(기사 도달 경로 확보)이 없어진다.
+    // 카테고리 필터는 같은 기사의 부분집합이라 canonical 을 /news 로 모은다.
+    const path = loaderData?.cat ? "/news" : `/news${page > 1 ? `?page=${page}` : ""}`;
+    return seoHead({
+      title: `물류 뉴스${page > 1 ? ` (${page}쪽)` : ""} — Logisight`,
       description:
         "해상·항공·철도·물류·무역. 글로벌 운임과 공급망을 흔드는 핵심 뉴스를 한국어 요약과 함께 매주 정리합니다.",
-      path: "/news",
+      path,
       jaPath: "/news",
-    }),
+    });
+  },
   component: NewsPage,
 });
 
 function NewsPage() {
   const navigate = useNavigate();
-  const { cat, date } = Route.useSearch();
+  const { cat, date, page: pageParam } = Route.useSearch();
+  const page = pageParam ?? 1;
   const { data } = useSuspenseQuery(
-    latestNewsQueryOptions({ lang: "ko", limit: 40, category: cat, date }),
+    latestNewsQueryOptions({
+      lang: "ko",
+      limit: PER_PAGE,
+      offset: (page - 1) * PER_PAGE,
+      category: cat,
+      date,
+    }),
   );
+  const { data: total } = useSuspenseQuery(
+    newsCountQueryOptions({ lang: "ko", category: cat, date }),
+  );
+  const totalPages = Math.max(1, Math.ceil((total ?? 0) / PER_PAGE));
   const allItems: NewsItem[] = data ?? [];
 
   // 기간 세그먼트는 클라이언트 측 최신성 필터(전체=비필터)로 동작 — 초기 렌더는 항상 "전체"라
@@ -347,6 +388,8 @@ function NewsPage() {
             </div>
           </div>
         )}
+
+        <Pagination page={page} totalPages={totalPages} cat={cat} date={date} />
       </div>
 
       <HomeFooter />
@@ -507,5 +550,76 @@ function NewsItemLink({
     <a href={item.url} target="_blank" rel="noopener noreferrer" className={className}>
       {children}
     </a>
+  );
+}
+
+/**
+ * 목록 페이지네이션.
+ *
+ * ■ 왜 필요한가
+ * 기사 500건이 사이트맵에는 있는데 /news 에서는 40건만 보였다. 나머지는 HTML 경로로
+ * 도달할 수 없어, Search Console 에서 492건이 "발견됨 — 현재 색인이 생성되지 않음"
+ * 으로 쌓였다. 크롤러에게 사이트맵은 "이런 주소가 있다"는 통보일 뿐이고, 크롤 우선순위는
+ * 내부 링크가 만든다.
+ *
+ * ■ Link 로 그리는 이유
+ * 버튼+navigate 로 만들면 HTML 에 <a href> 가 남지 않아 크롤러가 따라갈 수 없다.
+ * TanStack 의 Link 는 실제 앵커를 렌더하므로 SSR 결과에 주소가 들어간다.
+ *
+ * ■ 번호를 거는 이유
+ * 이전/다음만 두면 마지막 쪽까지 13번을 눌러야 닿는다(깊이 13). 번호를 함께 두면
+ * 어느 쪽이든 두 번 안에 닿는다.
+ */
+function Pagination({
+  page,
+  totalPages,
+  cat,
+  date,
+}: {
+  page: number;
+  totalPages: number;
+  cat?: string;
+  date?: string;
+}) {
+  if (totalPages <= 1) return null;
+
+  // 현재 쪽 주변 ±2 와 처음·끝을 보여준다. 500건이면 13쪽이라 전부 깔아도 되지만,
+  // 기사가 늘면 줄이 길어진다.
+  const nums = new Set<number>([1, totalPages]);
+  for (let p = page - 2; p <= page + 2; p++) if (p >= 1 && p <= totalPages) nums.add(p);
+  const list = [...nums].sort((a, b) => a - b);
+
+  // page=1 은 주소에 넣지 않는다 —— /news 와 /news?page=1 이 같은 내용의 서로 다른
+  // 주소가 되어 중복 색인을 만든다.
+  const to = (p: number) => ({
+    to: "/news" as const,
+    search: { cat, date, page: p > 1 ? p : undefined },
+  });
+  const cls =
+    "inline-flex min-w-[36px] items-center justify-center rounded-md border px-2.5 py-1.5 text-[13px]";
+  const plain = `${cls} border-[#d8dfe9] bg-white text-[#54606f] hover:border-[#0d9488] hover:text-[#0d9488]`;
+  const here = `${cls} border-[#0d9488] bg-[#0d9488] font-bold text-white`;
+
+  return (
+    <nav aria-label="뉴스 목록 페이지" className="mt-12 flex flex-wrap items-center justify-center gap-1.5">
+      {page > 1 && (
+        <Link {...to(page - 1)} className={plain} rel="prev">
+          이전
+        </Link>
+      )}
+      {list.map((p, i) => (
+        <span key={p} className="flex items-center gap-1.5">
+          {i > 0 && list[i - 1] !== p - 1 && <span className="px-1 text-[#9aa3af]">…</span>}
+          <Link {...to(p)} className={p === page ? here : plain} aria-current={p === page ? "page" : undefined}>
+            {p}
+          </Link>
+        </span>
+      ))}
+      {page < totalPages && (
+        <Link {...to(page + 1)} className={plain} rel="next">
+          다음
+        </Link>
+      )}
+    </nav>
   );
 }

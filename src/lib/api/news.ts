@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { getLatestNews } from "./news.functions";
+import { getLatestNews, getNewsCount } from "./news.functions";
 
 export type NewsItem = {
   id: number;
@@ -45,6 +45,7 @@ export function dateToKSTRange(date: string): {
 export const latestNewsQueryOptions = (input: {
   lang?: string;
   limit?: number;
+  offset?: number;
   category?: string;
   date?: string; // "YYYY-MM-DD" — undefined means no date filter
 }) => {
@@ -56,6 +57,29 @@ export const latestNewsQueryOptions = (input: {
         data: {
           lang: input.lang ?? "ko",
           limit: input.limit ?? 20,
+          offset: input.offset ?? 0,
+          category: input.category,
+          dateFrom: range?.dateFrom,
+          dateTo: range?.dateTo,
+        },
+      }),
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+/** 목록 총 건수 — 페이지네이션 번호 계산용. 필터는 latestNewsQueryOptions 와 같다. */
+export const newsCountQueryOptions = (input: {
+  lang?: string;
+  category?: string;
+  date?: string;
+}) => {
+  const range = input.date ? dateToKSTRange(input.date) : undefined;
+  return queryOptions({
+    queryKey: ["maritime_news", "count", input],
+    queryFn: () =>
+      getNewsCount({
+        data: {
+          lang: input.lang ?? "ko",
           category: input.category,
           dateFrom: range?.dateFrom,
           dateTo: range?.dateTo,
