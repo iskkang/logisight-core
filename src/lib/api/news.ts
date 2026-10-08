@@ -42,6 +42,15 @@ export function dateToKSTRange(date: string): {
   };
 }
 
+/**
+ * /news 목록 한 페이지의 기사 수.
+ *
+ * 라우트(news.tsx)와 사이트맵(sitemap[.]xml.ts)이 같은 값을 봐야 한다 —— 어긋나면
+ * 사이트맵이 존재하지 않는 페이지 번호를 내보낸다. 컴포넌트가 없는 이 모듈에 둔 건
+ * 서버 핸들러가 라우트 모듈 전체를 끌어오지 않게 하기 위해서다.
+ */
+export const PER_PAGE = 40;
+
 export const latestNewsQueryOptions = (input: {
   lang?: string;
   limit?: number;

@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { ReactNode } from "react";
 
 import {
+  PER_PAGE,
   latestNewsQueryOptions,
   newsCountQueryOptions,
   formatPublishedAt,
@@ -19,8 +20,6 @@ import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
 import LogisightNewsTop from "@/components/news-page/LogisightNewsTop";
 import type { Pick as NewsPick } from "@/components/news-page/LogisightNewsTop";
-
-const PER_PAGE = 40;
 
 const newsSearchSchema = z.object({
   cat: z.string().min(1).max(40).optional(),
