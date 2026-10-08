@@ -37,7 +37,7 @@ export function HomeFooter() {
           </div>
           <Col title="서비스">
             <Link to="/rates" className={itemCls}>운임 대시보드</Link>
-            <Link to="/rail" className={itemCls}>철도 코리도어</Link>
+            <Link to="/rail/americas" className={itemCls}>철도 코리도어</Link>
             <Link to="/industries" className={itemCls}>산업별 교역</Link>
             <Link to="/reports" className={itemCls}>마켓 리포트</Link>
             <Link to="/methodology" className={itemCls}>데이터 방법론</Link>

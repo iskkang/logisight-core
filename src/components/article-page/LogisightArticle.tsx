@@ -492,7 +492,7 @@ export default function LogisightArticle({
               <div className="reportcta">
                 <div className="rc-h">{reportCta.heading}</div>
                 <p className="rc-b">{reportCta.body}</p>
-                <Link to="/briefing" className="rbtn">
+                <Link to="/reports" className="rbtn">
                   {reportCta.buttonLabel} →
                 </Link>
               </div>

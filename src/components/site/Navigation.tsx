@@ -14,18 +14,23 @@ const GNB = [
 ] as const;
 
 const SUB_GNB = [
-  { to: "/dashboard", label: "종합" },
-  { to: "/forecasts", label: "전망" },
-  { to: "/rates", label: "운임" },
-  { to: "/rail", label: "철도" },
-  { to: "/port-risk", label: "포트" },
-  { to: "/trade", label: "무역" },
-  { to: "/industries", label: "산업" },
-  { to: "/climate", label: "기상" },
+  // to 는 이동할 주소, match 는 "이 메뉴에 속한 경로" 기준이다 ★
+  // /rail 은 /rail/americas 로 307 리다이렉트한다. 내비는 모든 페이지에 있어
+  // 크롤러가 전 페이지에서 한 홉을 더 탔으므로 링크는 목적지로 직접 건다. 다만
+  // 활성 표시는 /rail 하위 전체(americas·eurasia)에서 켜져야 하므로 기준은 /rail 로
+  // 남긴다 —— to 를 그대로 기준으로 쓰면 /rail/eurasia 에서 "철도"가 꺼진다.
+  { to: "/dashboard", match: "/dashboard", label: "종합" },
+  { to: "/forecasts", match: "/forecasts", label: "전망" },
+  { to: "/rates", match: "/rates", label: "운임" },
+  { to: "/rail/americas", match: "/rail", label: "철도" },
+  { to: "/port-risk", match: "/port-risk", label: "포트" },
+  { to: "/trade", match: "/trade", label: "무역" },
+  { to: "/industries", match: "/industries", label: "산업" },
+  { to: "/climate", match: "/climate", label: "기상" },
 ] as const;
 
 // 대시보드(다크 토글 허용) 영역
-export const DASHBOARD_PREFIXES = SUB_GNB.map((i) => i.to);
+export const DASHBOARD_PREFIXES = SUB_GNB.map((i) => i.match);
 
 function isDashboardPath(pathname: string): boolean {
   return DASHBOARD_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -156,7 +161,7 @@ export function Navigation() {
               INSIGHT
             </span>
             {SUB_GNB.map((item) => {
-              const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+              const active = pathname === item.match || pathname.startsWith(`${item.match}/`);
               return (
                 <Link
                   key={item.to}

@@ -437,7 +437,7 @@ function Sidebar() {
               const item = points.find((p) => p.agent_type === cat) ?? points.find((p) => p.category === cat);
               const label = cat === "shipping" ? "시황 · By Shipping" : cat === "corp" ? "기업 · By Corp" : "글로벌 · By Brief";
               return (
-                <Link key={cat} to="/briefing" className={`group block border-t border-[#d4dce7] py-[13px] ${i === 0 ? "border-t-0 pt-0" : ""}`}>
+                <Link key={cat} to="/reports/weekly/$week" params={{ week: briefing.week_of }} className={`group block border-t border-[#d4dce7] py-[13px] ${i === 0 ? "border-t-0 pt-0" : ""}`}>
                   <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#828d9d]">{label}</span>
                   <div className="mt-[5px] text-[14px] font-semibold leading-[1.45] tracking-[-0.015em] text-[#1a2433] transition-colors group-hover:text-[#0d9488]">{item?.headline ?? "수집 예정"}</div>
                 </Link>
@@ -445,7 +445,7 @@ function Sidebar() {
             })}
             <div className="mt-4 flex items-center justify-between border-t border-[#d4dce7] pt-3.5 text-[11.5px] text-[#828d9d]">
               <span className="lsg-mono">{formatBriefingDate(briefing.published_at)} 발행 · 매주 월요일</span>
-              <Link to="/briefing" className="font-semibold text-[#0d9488]">전체 분석 →</Link>
+              <Link to="/reports/weekly/$week" params={{ week: briefing.week_of }} className="font-semibold text-[#0d9488]">전체 분석 →</Link>
             </div>
           </>
         )}

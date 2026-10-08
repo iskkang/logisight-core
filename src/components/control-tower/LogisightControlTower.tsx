@@ -416,7 +416,7 @@ function RouteMonitor({ title, icon, rows, source }: { title: string; icon: stri
 }
 
 /* ============================ SIDEBAR ============================ */
-function SideHead({ title, to }: { title: string; to: "/rates" | "/eurasia" }) {
+function SideHead({ title, to }: { title: string; to: "/rates" | "/rail/eurasia" }) {
   return <div className="mb-3.5 flex items-center justify-between"><h3 className="text-[16px] font-bold text-[#1a2433]">{title}</h3><Link to={to} className="rounded-[7px] border border-[#d8dfe9] bg-white px-[11px] py-[5px] text-[12px] text-[#828d9d] transition-colors hover:border-[#0d9488] hover:text-[#0d9488]">전체 보기</Link></div>;
 }
 
@@ -468,7 +468,7 @@ function Sidebar({ alerts, stats, asOf, disruptions, railBrief }: {
       </div>
 
       <div className={`p-[22px] ${CARD}`}>
-        <SideHead title="유라시아 리스크" to="/eurasia" />
+        <SideHead title="유라시아 리스크" to="/rail/eurasia" />
         {risks.length === 0 ? <p className="text-[12px] text-[#828d9d]">특정 장애 없음 · 정상</p> : risks.slice(0, 4).map((d, i) => (
           <div key={d.id} className={`flex items-center justify-between gap-2.5 py-[11px] text-[13px] ${i === 0 ? "pt-0.5" : "border-t border-[#d8dfe9]"}`}>
             <span className="text-[#1a2433]">{d.title}{d.delay_contribution_days != null ? <small className="lsg-mono text-[#828d9d]"> ({d.delay_contribution_days}일)</small> : ""}</span>
