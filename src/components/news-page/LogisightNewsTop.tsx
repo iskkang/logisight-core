@@ -6,7 +6,7 @@
 // · 자체 포함 스타일(.lsgn-root), 외부 CSS·Tailwind 불필요. prop 제어(없으면 내부 state).
 // · 공통 레이아웃에 통일 헤더(HomeNav)가 이미 있으면 showNav={false} 로 둔다.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { ReactNode } from "react";
 
 export type Pick = {
@@ -35,6 +35,8 @@ type Props = {
   pickLoading?: boolean;
   noteText?: string;
   renderPickLink?: (pick: Pick, children: ReactNode, className: string) => ReactNode;
+  // 카테고리 탭을 실제 링크(<a href>)로 그린다. 없으면 기존 button 으로 떨어진다.
+  renderCategoryLink?: (c: string, children: ReactNode, className: string) => ReactNode;
 };
 
 const CATEGORIES = ["전체", "해상", "항공", "철도", "물류", "무역"];
@@ -87,8 +89,8 @@ const STYLE = `
 .lsgn-root .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(16,24,40,.07)}
 
 .lsgn-root .tabs{display:flex;gap:6px;padding:0 0 12px;border-bottom:1px solid var(--line);overflow-x:auto}
-.lsgn-root .tabs button{font-size:13px;font-weight:600;color:var(--body);padding:6px 13px;border-radius:8px;white-space:nowrap}
-.lsgn-root .tabs button.on{background:#0f1b33;color:#fff}
+.lsgn-root .tabs button,.lsgn-root .tabs a{display:inline-block;font-size:13px;font-weight:600;color:var(--body);padding:6px 13px;border-radius:8px;white-space:nowrap;text-decoration:none}
+.lsgn-root .tabs button.on,.lsgn-root .tabs a.on{background:#0f1b33;color:#fff}
 
 .lsgn-root .pick{margin:16px 0 8px}
 .lsgn-root .pick .ph-h{display:flex;align-items:center;gap:9px;margin-bottom:9px;flex-wrap:wrap}
@@ -157,6 +159,7 @@ export default function LogisightNewsTop({
   pickLoading = false,
   noteText = "조회수·언급량·물류 영향도를 종합해 매주 자동 선정합니다.",
   renderPickLink,
+  renderCategoryLink,
 }: Props) {
   const [catState, setCatState] = useState(CATEGORIES[0]);
   const [perState, setPerState] = useState(PERIODS[0]);
@@ -197,9 +200,19 @@ export default function LogisightNewsTop({
           </div>
         </div>
 
-        {/* 카테고리 탭 */}
+        {/* 카테고리 탭 — 링크로 그려야 크롤러가 카테고리 페이지를 찾는다 ★
+            button+onClick 은 JS 전용 이동이라 HTML 에 <a href> 가 남지 않는다. 카테고리
+            페이지로 가는 크롤 경로가 사이트 전체에 하나도 없었고, 사용자도 가운데 클릭·
+            새 탭으로 열 수 없었다. Pagination(news.tsx)과 같은 이유다. */}
         <div className="tabs">
-          {CATEGORIES.map((x) => <button key={x} className={x === cat ? "on" : undefined} onClick={() => setCat(x)}>{x}</button>)}
+          {CATEGORIES.map((x) => {
+            const cls = x === cat ? "on" : "";
+            return renderCategoryLink ? (
+              <Fragment key={x}>{renderCategoryLink(x, x, cls)}</Fragment>
+            ) : (
+              <button key={x} className={cls || undefined} onClick={() => setCat(x)}>{x}</button>
+            );
+          })}
         </div>
 
         {/* 이번 주 주목 (자동 선정) */}

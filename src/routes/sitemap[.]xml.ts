@@ -3,7 +3,7 @@ import type {} from "@tanstack/react-start";
 
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import { SITE_URL as BASE_URL } from "@/lib/seo";
-import { PER_PAGE } from "@/lib/api/news";
+import { NEWS_CATEGORIES, PER_PAGE } from "@/lib/api/news";
 
 interface SitemapEntry {
   path: string;
@@ -63,10 +63,11 @@ export const Route = createFileRoute("/sitemap.xml")({
         // 본문 없는 외부 기사를 사이트맵에만 실으면, 어디서도 링크되지 않는 고아 URL과
         // 원문으로 리다이렉트되는 URL(article.$slug.tsx 의 redirect)을 크롤러에 신고하게 된다.
         let koArticleCount = 0;
+        const koByCategory = new Map<string, number>();
         try {
           const { data } = await supabasePublicServer
             .from("maritime_news")
-            .select("id,slug,published_at")
+            .select("id,slug,published_at,category")
             .eq("lang", "ko")
             .or("agent_type.is.null,agent_type.neq.daily_card")
             .or("agent_type.neq.external,and(content.not.is.null,content.neq.)")
@@ -76,6 +77,8 @@ export const Route = createFileRoute("/sitemap.xml")({
             .limit(2000);
           koArticleCount = (data ?? []).length;
           for (const row of data ?? []) {
+            if (row.category)
+              koByCategory.set(row.category, (koByCategory.get(row.category) ?? 0) + 1);
             const param =
               row.slug && row.slug.length > 0 ? row.slug : String(row.id);
             entries.push({
@@ -100,6 +103,22 @@ export const Route = createFileRoute("/sitemap.xml")({
             changefreq: "daily",
             priority: "0.5",
           });
+        }
+
+        // 카테고리 목록 페이지. 탭이 <Link> 가 되어(LogisightNewsTop) 사이트 안에서도
+        // 도달 가능해졌으니 사이트맵에도 싣는다. 건수는 위에서 이미 가져온 행에서 세기
+        // 때문에 추가 질의가 없다. 0건인 카테고리는 빈 페이지라 싣지 않는다.
+        for (const cat of NEWS_CATEGORIES) {
+          const n = koByCategory.get(cat) ?? 0;
+          if (n === 0) continue;
+          const q = `cat=${encodeURIComponent(cat)}`;
+          for (let p = 1; p <= Math.ceil(n / PER_PAGE); p++) {
+            entries.push({
+              path: `/news?${q}${p > 1 ? `&page=${p}` : ""}`,
+              changefreq: "daily",
+              priority: p === 1 ? "0.7" : "0.5",
+            });
+          }
         }
 
         // 월간 리포트 영구링크. 카탈로그 페이지(/reports)만 실려 있어서 개별 호가 색인되지 않았다.
@@ -151,10 +170,21 @@ export const Route = createFileRoute("/sitemap.xml")({
           // ignore — still emit core routes
         }
 
+        // <loc> 는 XML 이라 & 를 escape 해야 한다 ★
+        // ?cat=…&page=2 처럼 파라미터가 둘인 URL 이 들어가면서 필요해졌다. raw & 를
+        // 내보내면 사이트맵 전체가 XML 파싱 실패로 거부된다.
+        const xmlEscape = (v: string) =>
+          v
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&apos;");
+
         const urls = entries.map((e) =>
           [
             `  <url>`,
-            `    <loc>${BASE_URL}${e.path}</loc>`,
+            `    <loc>${xmlEscape(`${BASE_URL}${e.path}`)}</loc>`,
             e.lastmod ? `    <lastmod>${e.lastmod}</lastmod>` : null,
             e.changefreq ? `    <changefreq>${e.changefreq}</changefreq>` : null,
             e.priority ? `    <priority>${e.priority}</priority>` : null,

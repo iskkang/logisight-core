@@ -1,10 +1,12 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { z } from "zod";
 import type { ReactNode } from "react";
 
 import {
+  NEWS_CATEGORIES,
+  NEWS_CATEGORY_DESCRIPTION,
   PER_PAGE,
   latestNewsQueryOptions,
   newsCountQueryOptions,
@@ -61,11 +63,28 @@ export const Route = createFileRoute("/news")({
     const page = loaderData?.page ?? 1;
     // 2쪽부터는 canonical 을 그 쪽 자신으로 둔다. 1쪽으로 몰면 2쪽 이후 기사 링크가
     // 색인에서 사라져, 페이지네이션을 만든 목적(기사 도달 경로 확보)이 없어진다.
-    // 카테고리 필터는 같은 기사의 부분집합이라 canonical 을 /news 로 모은다.
-    const path = loaderData?.cat ? "/news" : `/news${page > 1 ? `?page=${page}` : ""}`;
+    //
+    // 카테고리도 자기 자신을 canonical 로 둔다 ★
+    // /news 로 몰아 두면 5개 카테고리 페이지가 "대체 표준"으로 색인에서 빠진다. 같은
+    // 기사의 부분집합이긴 하지만 1쪽에 보이는 40건이 서로 겹치지 않고(해상 233·물류
+    // 214·무역 124·철도 101·항공 94건), 검색 의도도 다르다. 단 실제로 존재하는
+    // 카테고리만 인정한다 —— 그 밖의 cat 값은 0건짜리 빈 페이지다.
+    const cat =
+      loaderData?.cat && (NEWS_CATEGORIES as readonly string[]).includes(loaderData.cat)
+        ? loaderData.cat
+        : undefined;
+    const qs = [
+      cat ? `cat=${encodeURIComponent(cat)}` : null,
+      page > 1 ? `page=${page}` : null,
+    ]
+      .filter(Boolean)
+      .join("&");
+    // 미확인 cat 은 색인 대상이 아니므로 canonical 을 /news 로 모은다
+    const path = loaderData?.cat && !cat ? "/news" : `/news${qs ? `?${qs}` : ""}`;
     return seoHead({
-      title: `물류 뉴스${page > 1 ? ` (${page}쪽)` : ""} — Logisight`,
+      title: `${cat ? `${cat} 물류 뉴스` : "물류 뉴스"}${page > 1 ? ` (${page}쪽)` : ""} — Logisight`,
       description:
+        (cat ? NEWS_CATEGORY_DESCRIPTION[cat] : undefined) ??
         "해상·항공·철도·물류·무역. 글로벌 운임과 공급망을 흔드는 핵심 뉴스를 한국어 요약과 함께 매주 정리합니다.",
       path,
       jaPath: "/news",
@@ -75,7 +94,6 @@ export const Route = createFileRoute("/news")({
 });
 
 function NewsPage() {
-  const navigate = useNavigate();
   const { cat, date, page: pageParam } = Route.useSearch();
   const page = pageParam ?? 1;
   const { data } = useSuspenseQuery(
@@ -120,9 +138,15 @@ function NewsPage() {
         intro="글로벌 물류·해운·항공·철도·무역 뉴스를 선별해 한국어로 전달합니다."
         date={kstDateLabel()}
         category={cat ?? "전체"}
-        onCategoryChange={(label) =>
-          navigate({ to: "/news", search: label === "전체" ? {} : { cat: label } })
-        }
+        renderCategoryLink={(label, children, className) => (
+          <Link
+            to="/news"
+            search={label === "전체" ? {} : { cat: label }}
+            className={className || undefined}
+          >
+            {children}
+          </Link>
+        )}
         period={period}
         onPeriodChange={setPeriod}
         pick={pick}
