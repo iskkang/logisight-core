@@ -24,6 +24,11 @@ export async function classifyHsProductCore(data: HsClassificationInput): Promis
   const originAssessment=await assessKrEuOrigin(ranked[0].code,data);
   const canApplyPreference=data.preferentialOriginEligible===true&&originAssessment.status==="qualified";
   const rate=canApplyPreference&&pref?.ratePercent!=null?pref.ratePercent:third?.ratePercent??null, vat=data.vatRate??getEuStandardVat(data.destinationCountry);
+  // 세율은 있는데 % 가 아니라 자동 계산에서 빠지는 경우를 말해 준다. 이 안내가 없으면
+  // 관세포함원가가 "필요정보: 적용 관세율" 로만 뜨고, 왜인지 알 수 없다.
+  const dutyNotes=(third?.ratePercent==null&&third?.rateText)||(pref?.ratePercent==null&&pref?.rateText)
+    ? ["종량세·복합세율은 수량·중량 기준이라 관세포함원가 자동 계산에서 제외했습니다. 실제 세액은 선적 수량·중량으로 산출해야 합니다."]
+    : [];
   const cv=data.productValue!=null?data.productValue+(data.freight??0)+(data.insurance??0):null;
   const duty=cv!=null&&rate!=null?cv*rate/100:null;
   // Simplified EU import-VAT estimate: customs value + duty + user-supplied incidental/import costs.
@@ -34,6 +39,6 @@ export async function classifyHsProductCore(data: HsClassificationInput): Promis
   return {status:"candidate",normalizedProduct:{name:analysis.normalizedName,material:analysis.material,composition:analysis.composition,intendedUse:analysis.intendedUse,form:analysis.form},
     candidates:ranked.map(c=>({hs6:c.code.slice(0,6),heading:`${c.code} — ${c.descriptionKo ?? "공식 CN 품목"}`,rationale:[...ranking.rationaleKo,`공식 ${c.sourceVersion} 데이터에서 조회`],confidence:0,sourceStatus:"officially_verified",evidence:[{type:"CN",title:`EU Combined Nomenclature ${c.sourceVersion}`,url:c.sourceUrl,status:"matched",note:`${c.code} 공식 CN 존재 확인`},...(evidence.get(c.code)??[]).map(x=>({type:x.sourceType==="EBTI"?"EBTI" as const:"CLASS" as const,title:x.title,url:x.sourceUrl,status:"matched" as const,note:[x.productDescription,x.decisionSummary,x.legalBasis].filter(Boolean).join(" ")}))]})),
     missingInformation:analysis.missingInformation,followUpQuestions:analysis.followUpQuestions,
-    customs:{duty:{status:third||pref?"available":"pending",thirdCountryRate:third?.ratePercent??null,preferentialRate:pref?.ratePercent??null,notes:[],sources:measures.filter(x=>x.measureType==="THIRD_COUNTRY_DUTY"||x.measureType==="PREFERENCE").map(x=>x.sourceUrl)},regulation:{status:regs.length?"guidance":"pending",items:regs},originAssessment,landedCost:{status:total!=null?"ready":"needs_values",formula:"상품가 + 운임 + 보험료 + 관세 + 수입부대비용 + 수입 VAT",missingInputs:[...(data.productValue==null?["상품가격"]:[]),...(data.destinationCountry==null?["EU 도착국"]:[]),...(vat==null?["도착국 VAT율"]:[]),...(rate==null?["적용 관세율/FTA 세율"]:[])],customsValue:cv,dutyAmount:duty,vatAmount:va,importCosts,estimatedTotal:total}},
+    customs:{duty:{status:third||pref?"available":"pending",thirdCountryRate:third?.ratePercent??null,thirdCountryRateText:third?.rateText??null,preferentialRate:pref?.ratePercent??null,preferentialRateText:pref?.rateText??null,notes:dutyNotes,sources:measures.filter(x=>x.measureType==="THIRD_COUNTRY_DUTY"||x.measureType==="PREFERENCE").map(x=>x.sourceUrl)},regulation:{status:regs.length?"guidance":"pending",items:regs},originAssessment,landedCost:{status:total!=null?"ready":"needs_values",formula:"상품가 + 운임 + 보험료 + 관세 + 수입부대비용 + 수입 VAT",missingInputs:[...(data.productValue==null?["상품가격"]:[]),...(data.destinationCountry==null?["EU 도착국"]:[]),...(vat==null?["도착국 VAT율"]:[]),...(rate==null?["적용 관세율/FTA 세율"]:[])],customsValue:cv,dutyAmount:duty,vatAmount:va,importCosts,estimatedTotal:total}},
     warnings:["officially_verified는 CN 코드 존재 확인이며 최종 세관 분류 확정이 아닙니다."],methodology:"AI HS4; official CN8; constrained ranking; customs/evidence lookup"};
 }

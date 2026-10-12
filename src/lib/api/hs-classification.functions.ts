@@ -1,8 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import { logHsQuery } from "@/server/hs-query-log";
+
 import {
   buildInsufficientInformationResult,
   hsClassificationInputSchema,
+  type HsClassificationInput,
   type HsClassificationResult,
 } from "@/server/hs-classification";
 import { analyzeProductForEuCn, rankOfficialEuCnCandidates } from "@/server/openai-hs";
@@ -13,9 +16,11 @@ import { getEuStandardVat } from "@/server/eu-vat";
 import { assessKrEuOrigin } from "@/server/eu-origin-assessment";
 import { findEuProductRegulations } from "@/server/eu-product-regulations";
 
-export const classifyHsProduct = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => hsClassificationInputSchema.parse(input))
-  .handler(async ({ data }): Promise<HsClassificationResult> => {
+/**
+ * 분류 본체. 조회 로그를 남기려고 핸들러에서 분리했다 —— 반환 지점이 세 군데라
+ * (공식 CN 후보 없음 / 순위산정 보류 / 정상) 각 return 에 손대면 변경이 번진다.
+ */
+async function runClassification(data: HsClassificationInput): Promise<HsClassificationResult> {
     const analysis = await analyzeProductForEuCn(data);
 
     const officialCandidates = await searchOfficialEuNomenclatureByHeadings(
@@ -167,7 +172,13 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
         duty: {
           status: thirdCountryDuty || preference ? "available" : "pending",
           thirdCountryRate: thirdCountryDuty?.ratePercent ?? null,
+          // 종량세·복합세율이면 ratePercent 가 null 이다(13% + 5.3 EUR/100kg 를 13% 로
+          // 적으면 관세를 적게 계산해 주게 되므로 수집기가 일부러 비워 둔다). 원문은
+          // 아래 notes 에도 들어가지만, 머리줄이 "—" 로만 보여 모르는 것처럼 읽혔다.
+          // 기본관세 9,670건 중 1,362건(14%)이 여기에 해당한다.
+          thirdCountryRateText: thirdCountryDuty?.rateText ?? null,
           preferentialRate: preference?.ratePercent ?? null,
+          preferentialRateText: preference?.rateText ?? null,
           notes: thirdCountryDuty || preference
             ? [
                 ...customsMeasures.filter((item) => item.measureType === "THIRD_COUNTRY_DUTY" || item.measureType === "PREFERENCE").map((item) => item.rateText ? `${item.title}: ${item.rateText}` : item.title),
@@ -204,4 +215,21 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
       ],
       methodology: "AI HS4 scope; official CN8 retrieval; constrained candidate ranking; CLASS/BTI verification pending",
     };
+}
+
+export const classifyHsProduct = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => hsClassificationInputSchema.parse(input))
+  .handler(async ({ data }): Promise<HsClassificationResult> => {
+    // 조회를 한 줄 남긴다. 이 도구는 지금 사용 기록이 없어 "쓰이고 있나"에 답할
+    // 수가 없었다. logHsQuery 는 어떤 오류도 삼키므로 기록 실패가 조회 실패가
+    // 되지 않는다. LLM 호출이 수 초 걸리므로 insert 한 번의 지연은 무시할 만하다.
+    const startedAt = Date.now();
+    try {
+      const result = await runClassification(data);
+      await logHsQuery(data, result, Date.now() - startedAt, null);
+      return result;
+    } catch (error) {
+      await logHsQuery(data, null, Date.now() - startedAt, error);
+      throw error;
+    }
   });

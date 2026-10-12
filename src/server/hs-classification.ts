@@ -60,7 +60,12 @@ export const hsClassificationResultSchema = z.object({
   followUpQuestions: z.array(z.string()),
   warnings: z.array(z.string()),
   customs: z.object({
-    duty: z.object({ status: z.enum(["available","pending"]), thirdCountryRate: z.number().nullable(), preferentialRate: z.number().nullable(), notes: z.array(z.string()), sources: z.array(z.string().url()) }),
+    // rateText 는 종량세·복합세율의 원문이다 ★
+    // 순수 종가세가 아니면 수집기가 rate_percent 를 null 로 둔다(13% + 5.3 EUR/100kg 를
+    // 13% 로 적으면 관세를 적게 계산해 주게 되므로 옳은 처리다). 그런데 화면까지 null 만
+    // 전달돼, 알고 있는 "13.000 % + 5.300 EUR DTN" 을 두고 "—" 를 보여주고 있었다.
+    // 기본관세 9,670건 중 1,362건(14%)이 여기에 해당한다.
+    duty: z.object({ status: z.enum(["available","pending"]), thirdCountryRate: z.number().nullable(), thirdCountryRateText: z.string().nullable(), preferentialRate: z.number().nullable(), preferentialRateText: z.string().nullable(), notes: z.array(z.string()), sources: z.array(z.string().url()) }),
     regulation: z.object({ status: z.enum(["available","guidance","pending"]), items: z.array(z.object({ title:z.string(), detail:z.string(), url:z.string().url() })) }),
     originAssessment: z.object({
       status: z.enum(["qualified","not_qualified","needs_information","rule_unavailable"]),

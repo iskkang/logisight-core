@@ -317,8 +317,9 @@ function AnalysisResult({ result, preferentialOriginEligible }: { result: HsClas
         <ResultCard number="02" title="Duty & FTA" status={result.customs?.duty.status === "available" ? "데이터 확인" : "데이터 적재 필요"}>
           {result.customs?.duty.status === "available" ? (
             <div className="space-y-2 text-sm">
-              <p>EU 기본관세: <strong>{result.customs.duty.thirdCountryRate == null ? "—" : `${result.customs.duty.thirdCountryRate}%`}</strong></p>
-              <p>한국산 협정/특혜세율: <strong>{result.customs.duty.preferentialRate == null ? (result.customs.duty.thirdCountryRate === 0 ? "별도 혜택 불필요" : "확인 필요") : `${result.customs.duty.preferentialRate}%`}</strong></p>
+              {/* % 가 없으면 원문을 보여준다 —— 종량세·복합세율이라 null 인 것이지 모르는 게 아니다 */}
+              <p>EU 기본관세: <strong>{result.customs.duty.thirdCountryRate == null ? (result.customs.duty.thirdCountryRateText ?? "—") : `${result.customs.duty.thirdCountryRate}%`}</strong></p>
+              <p>한국산 협정/특혜세율: <strong>{result.customs.duty.preferentialRate == null ? (result.customs.duty.preferentialRateText ?? (result.customs.duty.thirdCountryRate === 0 ? "별도 혜택 불필요" : "확인 필요")) : `${result.customs.duty.preferentialRate}%`}</strong></p>
               {result.customs.duty.preferentialRate != null && <p>실제 계산 적용: <strong>{preferentialOriginEligible && result.customs.originAssessment?.status === "qualified" ? "FTA 특혜세율" : "EU 기본관세"}</strong></p>}
               {result.customs.duty.thirdCountryRate === 0 && result.customs.duty.preferentialRate == null ? (
                 <div className="mt-3 rounded-md border border-border p-3 text-xs text-muted-foreground">
