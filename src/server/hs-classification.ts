@@ -56,6 +56,13 @@ export const hsClassificationResultSchema = z.object({
     form: z.string().nullable(),
   }),
   candidates: z.array(hsCandidateSchema).max(5),
+  // 보류했을 때 "범위 안에 있었지만 고르지 못한" 공식 CN 후보 ★
+  // candidates 에 넣지 않는 것이 중요하다 —— 그쪽은 우리가 책임지는 shortlist 이고
+  // 화면·측정기 모두 candidates.length 로 "답이 있는가"를 판단한다. 안 고른 것을
+  // 거기 섞으면 이 도구의 안전장치가 무너진다. 보여주되 자리를 구분한다.
+  undecidedCandidates: z
+    .array(z.object({ code: z.string(), description: z.string() }))
+    .optional(),
   missingInformation: z.array(z.string()),
   followUpQuestions: z.array(z.string()),
   warnings: z.array(z.string()),

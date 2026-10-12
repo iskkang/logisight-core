@@ -59,6 +59,12 @@ export async function classifyHsProductCore(data: HsClassificationInput): Promis
           form: analysis.form,
         },
         candidates: [],
+        // 지금까지는 여기서 조회해 둔 공식 후보를 통째로 버렸다. 화면에는 질문만
+        // 남아 10초를 기다려 빈 카드를 받는 꼴이었다. 고르지는 않되 범위는 보여준다
+        // —— 이용자가 "수중형이냐 아니냐"가 왜 중요한지 코드를 보고 바로 안다.
+        undecidedCandidates: officialCandidates
+          .slice(0, 12)
+          .map((candidate) => ({ code: candidate.code, description: candidate.descriptionKo ?? candidate.description })),
         missingInformation: analysis.missingInformation,
         followUpQuestions: analysis.followUpQuestions,
         warnings: [...ranking.rationaleKo, "공식 CN 후보 범위 안에서도 현재 정보만으로 방어 가능한 shortlist를 만들지 않았습니다."],

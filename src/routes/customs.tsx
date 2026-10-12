@@ -310,7 +310,62 @@ function AnalysisResult({ result, preferentialOriginEligible }: { result: HsClas
               </div>
             )}
           </div>
-        ))}</div> : <div className="mt-5"><p className="text-sm text-muted-foreground">현재 정보만으로 공식 CN 후보를 확정하지 않았습니다.</p>{result.followUpQuestions.map((q) => <p key={q} className="mt-2 text-sm font-medium">{q}</p>)}</div>}
+        ))}</div> : (
+          /* 보류 화면을 막다른 길에서 분기점으로 ★
+             전에는 문장 한 줄과 질문 목록이 전부였다. 10초를 기다려 빈 카드를 받는
+             꼴이었는데, 정작 서버는 (1) 제품을 어떻게 이해했는지와 (2) 범위 안의
+             공식 CN 후보를 손에 쥐고 있으면서 둘 다 버리고 있었다. 고르지는 않되
+             —— 그게 이 도구의 안전장치다 —— 판단에 필요한 재료는 내놓는다. */
+          <div className="mt-5 space-y-5">
+            <p className="text-sm text-muted-foreground">현재 정보만으로 공식 CN 후보를 확정하지 않았습니다.</p>
+
+            {(result.normalizedProduct.name || result.normalizedProduct.intendedUse) && (
+              <div className="rounded-md border border-border p-3">
+                <p className="text-xs font-semibold text-muted-foreground">이렇게 이해했습니다 — 틀렸다면 설명을 고쳐 주세요</p>
+                <dl className="mt-2 space-y-1 text-sm">
+                  {([
+                    ["품명", result.normalizedProduct.name],
+                    ["재질", result.normalizedProduct.material],
+                    ["조성", result.normalizedProduct.composition],
+                    ["용도", result.normalizedProduct.intendedUse],
+                    ["형태", result.normalizedProduct.form],
+                  ] as const).filter(([, v]) => v).map(([k, v]) => (
+                    <div key={k} className="flex gap-2">
+                      <dt className="w-10 flex-none text-muted-foreground">{k}</dt>
+                      <dd>{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+
+            {result.followUpQuestions.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground">이 질문에 답하면 코드가 좁혀집니다</p>
+                {result.followUpQuestions.map((q) => <p key={q} className="mt-2 text-sm font-medium">{q}</p>)}
+              </div>
+            )}
+
+            {result.undecidedCandidates && result.undecidedCandidates.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground">
+                  구분이 필요한 공식 CN 후보 — 아직 고르지 않았습니다
+                </p>
+                <ul className="mt-2 divide-y divide-border rounded-md border border-border">
+                  {result.undecidedCandidates.map((x) => (
+                    <li key={x.code} className="flex gap-3 px-3 py-2 text-sm">
+                      <span className="flex-none font-mono text-xs leading-5 text-muted-foreground">{x.code}</span>
+                      <span className="leading-5">{x.description}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  위 질문들은 이 후보들을 가르는 기준입니다. 추천이 아니라 범위입니다.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
         {result.warnings.map((warning) => <p key={warning} className="mt-3 text-xs leading-5 text-muted-foreground">{warning}</p>)}
       </article>
       <div className="space-y-4">
