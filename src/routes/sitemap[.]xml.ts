@@ -37,6 +37,9 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/reports", changefreq: "weekly", priority: "0.9" },
           { path: "/dashboard", changefreq: "daily", priority: "0.9" },
           { path: "/trade", changefreq: "weekly", priority: "0.8" },
+          // HS 분류·EU 관세·한-EU FTA 원산지 판정 도구. 내용은 정적이라 갱신 빈도는
+          // 낮게 잡지만, 검색 의도("HS 코드 조회", "EU 관세율")가 뚜렷해 우선순위는 높다.
+          { path: "/customs", changefreq: "monthly", priority: "0.8" },
           { path: "/forecasts", changefreq: "weekly", priority: "0.8" },
           { path: "/industries", changefreq: "weekly", priority: "0.8" },
           { path: "/climate", changefreq: "daily", priority: "0.8" },

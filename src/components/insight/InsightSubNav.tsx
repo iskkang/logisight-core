@@ -18,6 +18,7 @@ const TABS = [
   { to: "/rail/americas", match: "/rail", label: "철도" },
   { to: "/port-risk", match: "/port-risk", label: "포트" },
   { to: "/trade", match: "/trade", label: "무역" },
+  { to: "/customs", match: "/customs", label: "관세" },
   { to: "/industries", match: "/industries", label: "산업" },
   { to: "/climate", match: "/climate", label: "기상" },
 ] as const;

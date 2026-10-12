@@ -14,6 +14,7 @@ const SUB_GNB = [
   { to: "/rail/americas", label: "철도" },
   { to: "/port-risk", label: "포트" },
   { to: "/trade", label: "무역" },
+  { to: "/customs", label: "관세" },
   { to: "/industries", label: "산업" },
   { to: "/climate", label: "기상" },
 ] as const;

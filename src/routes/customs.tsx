@@ -23,7 +23,8 @@ export const Route = createFileRoute("/customs")({
       description:
         "상품 정보를 기반으로 HS Code, 관세·FTA, 수입 규제와 Landed Cost를 한 흐름에서 검토합니다.",
       path: "/customs",
-      jaPath: "/customs",
+      // jaPath 를 두지 않는다 —— 일본판에 /customs 가 없어 404 다(일본판 /hs 는
+      // HS 코드 조회라 같은 도구가 아니므로 대응 페이지로 걸 수 없다).
     }),
   component: AiCustomsPage,
 });
@@ -140,6 +141,13 @@ function AiCustomsPage() {
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               상품의 용도, 재질·성분, 형태를 구체적으로 입력할수록 분류 정확도가 높아집니다.
+            </p>
+            {/* 결과 안쪽 경고는 분류에 대한 것이고, 세액은 돈이 걸린 조언이다.
+                공개 도구가 되는 이상 실행 전에도 보이는 자리에 둔다. */}
+            <p className="mt-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
+              참고용입니다. HS 분류와 세액은 수입통관 시 세관이 확정하며, 결과는 공식
+              CN·관세 데이터에 근거한 검토 자료일 뿐 유권해석이 아닙니다. 종량세·복합세율과
+              회원국별 VAT 과세표준 차이는 자동 계산에 반영되지 않습니다.
             </p>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
