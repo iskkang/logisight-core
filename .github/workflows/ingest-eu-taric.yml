@@ -1,12 +1,23 @@
 name: Ingest EU TARIC
+# 정기 실행하지 않는다 —— 수동 전용이다 ★
+# 2026-09-28 에 cron "25 4 * * *" 로 넣었는데, 이 스크립트는 CSV URL 을 사람이
+# 넣어줘야 돌아간다. 크론에는 inputs.source_url 이 없어 secrets.TARIC_SOURCE_URL 로
+# 떨어지는데 그 시크릿은 등록된 적이 없다 —— 11번 돌아서 한 줄도 못 넣고 매일 실패했다
+# (eu_customs_measures 에서 metadata->>source='EU TARIC' 인 행 0건).
+#
+# 시크릿을 채우는 것도 답이 아니다. 출처인 CIRCABC 파일은 월마다 이름이 바뀌어
+# 고정 URL 을 박아두면 한 달이면 다시 깨진다. 그래서 다음 날(2026-09-29) 만든
+# ingest-eu-cn-duty-2026 이 CIRCABC 를 스스로 탐색하도록 바뀌었고, 지금 제3국
+# 관세(9,670건)와 특혜세율(ingest-kr-eu-fta-2026, 8,859건)은 그쪽이 채우고 있다.
+#
+# 이 워크플로는 그 둘이 다루지 않는 건을 손으로 넣을 때만 쓴다. 크론을 다시 달려면
+# 먼저 스크립트가 URL 을 스스로 찾게 고쳐야 한다.
 on:
   workflow_dispatch:
     inputs:
       source_url:
         description: "Official EU TARIC raw CSV export URL"
         required: true
-  schedule:
-    - cron: "25 4 * * *"
 jobs:
   ingest:
     runs-on: ubuntu-latest
@@ -18,6 +29,6 @@ jobs:
       - name: Import official TARIC measures
         run: node scripts/ingest-eu-taric.mjs
         env:
-          TARIC_SOURCE_URL: ${{ inputs.source_url || secrets.TARIC_SOURCE_URL }}
+          TARIC_SOURCE_URL: ${{ inputs.source_url }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
