@@ -31,7 +31,12 @@ export const Route=createFileRoute("/api/customs/e2e")({server:{handlers:{POST:a
       regulationResolved:c.regulationKeyword?!!out.customs?.regulation.items.some(x=>x.title.includes(c.regulationKeyword)):true,
       quarantinedEvidenceAbsent:!out.candidates.some(x=>x.evidence.some(e=>e.note.includes("1179/2009")&&c.id==="cosmetic")),
     };
-    results.push({id:c.id,expectedHs4:c.expectedHs4,topCn8:top,status:out.status,checks,pass:Object.values(checks).every(Boolean),duty:out.customs?.duty,regulationCount:out.customs?.regulation.items.length??0,landedCost:out.customs?.landedCost});
+    // 실패했을 때 어느 지점에서 멈췄는지 알 수 있게 진단 필드를 함께 싣는다.
+   // methodology 가 두 분기를 구분한다 —— 공식 CN 후보를 못 찾은 것인지("official CN8
+   // retrieval" 에서 끝남), 후보는 있는데 순위산정이 보류한 것인지("abstained").
+   // warnings 에는 보류 분기에서 모델이 댄 이유(rationaleKo)가 들어 있다.
+   results.push({id:c.id,expectedHs4:c.expectedHs4,topCn8:top,status:out.status,checks,pass:Object.values(checks).every(Boolean),duty:out.customs?.duty,regulationCount:out.customs?.regulation.items.length??0,landedCost:out.customs?.landedCost,
+     diagnostics:{methodology:out.methodology,normalizedProduct:out.normalizedProduct,missingInformation:out.missingInformation,followUpQuestions:out.followUpQuestions,warnings:out.warnings,candidateCount:out.candidates.length}});
    }catch(e){results.push({id:c.id,expectedHs4:c.expectedHs4,pass:false,error:e instanceof Error?e.message:String(e)});}
  }
  return Response.json({generatedAt:new Date().toISOString(),summary:{passed:results.filter(x=>x.pass).length,total:results.length},results});
