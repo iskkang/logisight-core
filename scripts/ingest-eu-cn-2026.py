@@ -34,14 +34,33 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; Logisight-CN-Ingest/1.0; +https://logisight.net)"
 }
 
-# Malta's NSO currently returns 403 to GitHub-hosted runners. Keep it as a
-# fallback, but discover an XLSX first from Spain's official Tax Agency page.
+# The description language matters as much as the codes.
+#
+# Spain's Tax Agency page was made the primary source because Malta's NSO
+# returns 403 to GitHub-hosted runners. That fixed availability but silently
+# changed the language: all 9,791 ingested rows came back in Spanish, and the
+# recorded source_url stayed the EUR-Lex legal reference, so nothing in the
+# data showed it. Downstream, the ranking model compared English product text
+# against "Las demas", and the UI had no stable item name.
+#
+# Hungary's KSH publishes the official CN8 2026 structure in English, and its
+# descriptions are self-contained rather than the OJ's hierarchical "Other"
+# style: avg 138 chars vs 37 in the Spanish file. Spain stays as a fallback,
+# but a fallback can no longer slip through silently - see the language guard
+# in parse_workbook.
+DIRECT_PRIMARY = [
+    "https://www.ksh.hu/docs/osztalyozasok/kn/kn2026_structure.xlsx",
+]
 LANDING_PAGES = [
     "https://sede.agenciatributaria.gob.es/Sede/en_gb/estadisticas/estadisticas-comercio-exterior/nomenclatura-combinada-ano.html",
 ]
 DIRECT_FALLBACKS = [
     "https://nso.gov.mt/wp-content/uploads/CN_Validity_2026-483e17c9fb3ffdee.xlsx",
 ]
+
+# A row whose description carries one of these reads as English.
+# Measured: KSH English file 87.1% of rows, the Spanish file 0.0%.
+ENGLISH_MARKER = re.compile(r"\b(other|of|for|with|not|and|excl|whether|used|than|from)\b", re.IGNORECASE)
 
 
 class LinkParser(HTMLParser):
@@ -92,7 +111,7 @@ def discover_xlsx_urls() -> list[str]:
         except requests.RequestException as exc:
             print(f"Source discovery failed for {page}: {exc}", file=sys.stderr)
 
-    return list(dict.fromkeys(discovered + DIRECT_FALLBACKS))
+    return list(dict.fromkeys(DIRECT_PRIMARY + discovered + DIRECT_FALLBACKS))
 
 
 def download_workbook(path: str) -> str:
@@ -133,7 +152,7 @@ def normalize_code(value: object) -> str:
 
 def find_columns(rows: list[tuple[object, ...]]) -> tuple[int, int, int]:
     code_names = {"cn code", "cn_code", "code", "commodity code", "cn8", "código nc", "codigo nc"}
-    desc_names = {"description", "goods description", "cn description", "text", "descripción", "descripcion"}
+    desc_names = {"description", "goods description", "cn description", "denomination", "text", "descripción", "descripcion"}
 
     for row_idx, row in enumerate(rows[:30]):
         normalized = [str(v or "").strip().lower() for v in row]
@@ -198,6 +217,15 @@ def parse_workbook(path: str) -> list[dict[str, object]]:
     textual = sum(1 for row in rows if re.search(r"[A-Za-zÀ-ÿ]", str(row["description"])) and not re.fullmatch(r"[\\d\\s./_-]+", str(row["description"])))
     if textual < int(len(rows) * 0.98):
         raise RuntimeError(f"Only {textual}/{len(rows)} rows have textual descriptions; refusing to ingest")
+    # Fail closed when a mirror serves another language. The previous ingest
+    # passed every other guard - row count, code shape, textual content - and
+    # still took a whole Spanish nomenclature without a word.
+    english = sum(1 for row in rows if ENGLISH_MARKER.search(str(row["description"])))
+    if english < int(len(rows) * 0.60):
+        raise RuntimeError(
+            f"Only {english}/{len(rows)} rows look English ({english / len(rows):.1%}); "
+            "the mirror probably served another language version. Refusing to ingest."
+        )
     return rows
 
 
