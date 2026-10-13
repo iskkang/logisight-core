@@ -1,0 +1,26 @@
+name: Ingest KR-US PSR
+# 한-미 FTA 품목별 원산지기준. 한-EU 와 같은 관세청 FTA 포털에서 받는다.
+#
+# 정기 실행은 두지 않는다. PSR 은 협정 부속서라 개정이 드물고, 포털이 연속 요청을
+# 끊어 97개 류를 간격을 두고 도는 데 몇 분이 걸린다. 필요할 때 수동으로 돌린다.
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/ingest-kr-us-psr.py
+      - .github/workflows/ingest-kr-us-psr.yml
+  workflow_dispatch:
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Ingest KORUS product-specific rules of origin
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/ingest-kr-us-psr.py
