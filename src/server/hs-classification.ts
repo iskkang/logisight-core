@@ -3,7 +3,7 @@ import { z } from "zod";
 export const hsClassificationInputSchema = z.object({
   description: z.string().trim().min(2).max(5000),
   originCountry: z.string().length(2).default("KR"),
-  destinationMarket: z.enum(["EU"]).default("EU"),
+  destinationMarket: z.enum(["EU", "US"]).default("EU"),
   material: z.string().trim().max(1000).optional(),
   composition: z.string().trim().max(2000).optional(),
   intendedUse: z.string().trim().max(1000).optional(),
@@ -47,8 +47,10 @@ export const hsCodeLookupInputSchema = hsClassificationInputSchema
       .min(1)
       .max(20)
       .transform((value) => value.replace(/[^0-9]/g, ""))
-      .refine((digits) => digits.length === 4 || digits.length === 6 || digits.length === 8, {
-        message: "HS 코드는 4·6·8자리로 입력해 주세요.",
+      // 미국 HTS 는 10자리다(인보이스에 적히는 것도 10자리). EU CN8 은 8자리.
+      // 둘 다 받아야 하므로 4·6·8·10 을 허용한다.
+      .refine((digits) => [4, 6, 8, 10].includes(digits.length), {
+        message: "HS/HTS 코드는 4·6·8·10자리로 입력해 주세요.",
       }),
   });
 

@@ -8,6 +8,7 @@ import { logHsQuery } from "@/server/hs-query-log";
 // 한 벌로 합쳤다 —— 동작은 그대로고 위치만 바뀌었다.
 import { classifyHsProductCore } from "@/server/classify-hs-core";
 import { lookupEuHsCode } from "@/server/lookup-hs-code";
+import { lookupUsHtsCode } from "@/server/lookup-us-hts-code";
 
 import {
   buildInsufficientInformationResult,
@@ -48,7 +49,12 @@ export const lookupHsCode = createServerFn({ method: "POST" })
     // 로그에는 이용자가 넣은 것을 그대로 남긴다 —— 이 경로에서는 코드다.
     const logged = { ...rest, description: cnCode };
     try {
-      const result = await lookupEuHsCode(cnCode, { ...rest, description: cnCode });
+      // 목적지 시장에 따라 조회처가 다르다. 미국은 VAT·원산지기준·수입규제
+      // 데이터가 아직 없어 돌려주는 내용도 그만큼 적다.
+      const input = { ...rest, description: cnCode };
+      const result = rest.destinationMarket === "US"
+        ? await lookupUsHtsCode(cnCode, input)
+        : await lookupEuHsCode(cnCode, input);
       await logHsQuery("code", logged, result, Date.now() - startedAt, null);
       return result;
     } catch (error) {

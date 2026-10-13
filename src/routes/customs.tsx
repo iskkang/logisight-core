@@ -65,6 +65,9 @@ function AiCustomsPage() {
   const [product, setProduct] = useState("");
   const [started, setStarted] = useState(false);
   // 입력 방식. 코드를 아는 사람에게 설명을 다시 쓰게 하지 않는다.
+  // 목적지 시장. 미국은 HTS 기본세율과 한-미 FTA 특혜세율까지만 있고
+  // VAT·원산지기준·수입규제 데이터가 없다(lookup-us-hts-code.ts 참조).
+  const [market, setMarket] = useState<"EU" | "US">("EU");
   const [mode, setMode] = useState<"describe" | "code">("describe");
   const [hsCode, setHsCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -114,7 +117,7 @@ function AiCustomsPage() {
     try {
       // 두 경로가 같은 부가 입력(원가·원산지 판정)을 쓴다. 공통부를 한 번만 만든다.
       const payload = {
-        originCountry: "KR" as const, destinationMarket: "EU" as const,
+        originCountry: "KR" as const, destinationMarket: market,
         destinationCountry,
         ...(productValue ? { productValue: Number(productValue) } : {}),
         ...(freight ? { freight: Number(freight) } : {}),
@@ -220,11 +223,21 @@ function AiCustomsPage() {
               </Field>
               <Field label="To">
                 <select
-                  disabled
-                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm disabled:opacity-100"
-                  defaultValue="EU"
+                  value={market}
+                  onChange={(event) => {
+                    const next = event.target.value as "EU" | "US";
+                    setMarket(next);
+                    // 미국은 아직 코드 조회만 된다 —— AI 분류는 EU CN 기준으로
+                    // 만들어져 있어 HTS 후보를 내놓지 못한다.
+                    if (next === "US") setMode("code");
+                    setStarted(false);
+                    setResult(null);
+                    setError(null);
+                  }}
+                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
                 >
                   <option value="EU">European Union</option>
+                  <option value="US">United States</option>
                 </select>
               </Field>
             </div>
@@ -234,10 +247,13 @@ function AiCustomsPage() {
                 코드를 아는 사람에게 설명을 다시 쓰게 하고 LLM 두 번(9.6~11.6초)을
                 기다리게 할 이유가 없다. 코드 경로는 DB 조회만 해서 1초대다. */}
             <div className="mt-5 flex gap-0 rounded-md border border-input p-1">
-              {([
-                ["describe", "제품 설명으로 분류"],
-                ["code", "HS 코드로 바로 조회"],
-              ] as const).map(([value, label]) => (
+              {(market === "US"
+                ? ([["code", "HTS 코드로 조회"]] as const)
+                : ([
+                    ["describe", "제품 설명으로 분류"],
+                    ["code", "HS 코드로 바로 조회"],
+                  ] as const)
+              ).map(([value, label]) => (
                 <button
                   key={value}
                   type="button"
@@ -256,8 +272,17 @@ function AiCustomsPage() {
               ))}
             </div>
 
+            {market === "US" && (
+              <p className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-foreground">
+                미국은 <strong>기본세율(MFN)과 한-미 FTA 특혜세율</strong>만 조회합니다.
+                232조·301조 등 <strong>추가관세는 포함되지 않습니다</strong> —— 품목·원산지에 따라
+                기본세율 위에 더 붙을 수 있으니 반드시 별도로 확인하세요. 수입 규제와
+                원산지 자동판정은 아직 지원하지 않습니다.
+              </p>
+            )}
+
             {mode === "code" ? (
-              <Field label="HS / CN 코드" className="mt-5">
+              <Field label={market === "US" ? "HTS 코드" : "HS / CN 코드"} className="mt-5">
                 <input
                   value={hsCode}
                   onChange={(event) => {
@@ -267,13 +292,16 @@ function AiCustomsPage() {
                     setError(null);
                   }}
                   inputMode="numeric"
-                  placeholder="예: 8507.60.00 또는 85076000"
+                  placeholder={market === "US" ? "예: 8507.60.00.10 또는 8507600010" : "예: 8507.60.00 또는 85076000"}
                   className="h-11 w-full rounded-md border border-input bg-background px-3 font-mono text-sm outline-none transition focus:border-foreground/40"
                 />
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  점·공백은 넣어도 됩니다. 4·6자리를 넣으면 하위 8자리 코드를 골라 보여 줍니다.
-                  관세율은 8자리 단위로 정해집니다. 이 경로는 AI 분류를 거치지 않고,
-                  입력한 코드가 공식 CN 2026 에 있는지만 확인한 뒤 세율을 조회합니다.
+                  점·공백은 넣어도 됩니다. 짧게 넣으면 하위 코드를 골라 보여 줍니다.
+                  {market === "US"
+                    ? " 미국 HTS 는 10자리이며, 세율은 세번 단위로 정해집니다."
+                    : " EU CN 은 8자리이며, 관세율도 8자리 단위로 정해집니다."}
+                  {" "}이 경로는 AI 분류를 거치지 않고, 입력한 코드가 공식 데이터에 있는지만
+                  확인한 뒤 세율을 조회합니다.
                 </p>
               </Field>
             ) : (
@@ -294,17 +322,17 @@ function AiCustomsPage() {
             )}
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <Field label="EU destination">
+              {market === "EU" && <Field label="EU destination">
                 <select value={destinationCountry} onChange={(e) => { setDestinationCountry(e.target.value); setVatRate(VAT[e.target.value] ?? ""); }} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
                   <option value="DE">Germany</option><option value="FR">France</option><option value="NL">Netherlands</option><option value="IT">Italy</option><option value="ES">Spain</option><option value="PL">Poland</option><option value="AT">Austria</option><option value="BE">Belgium</option><option value="BG">Bulgaria</option><option value="HR">Croatia</option><option value="CY">Cyprus</option><option value="CZ">Czechia</option><option value="DK">Denmark</option><option value="EE">Estonia</option><option value="FI">Finland</option><option value="GR">Greece</option><option value="HU">Hungary</option><option value="IE">Ireland</option><option value="LV">Latvia</option><option value="LT">Lithuania</option><option value="LU">Luxembourg</option><option value="MT">Malta</option><option value="PT">Portugal</option><option value="RO">Romania</option><option value="SK">Slovakia</option><option value="SI">Slovenia</option><option value="SE">Sweden</option>
                 </select>
-              </Field>
-              <Field label="VAT rate (%)"><input value={vatRate} onChange={(e)=>setVatRate(e.target.value)} type="number" min="0" step="0.1" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
+              </Field>}
+              {market === "EU" && <Field label="VAT rate (%)"><input value={vatRate} onChange={(e)=>setVatRate(e.target.value)} type="number" min="0" step="0.1" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>}
               <Field label="Product value (EUR)"><input value={productValue} onChange={(e)=>setProductValue(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
               <Field label="Freight (EUR)"><input value={freight} onChange={(e)=>setFreight(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
               <Field label="Insurance (EUR)"><input value={insurance} onChange={(e)=>setInsurance(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
               <Field label="Import / incidental costs (EUR)"><input value={importCosts} onChange={(e)=>setImportCosts(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
-              <details className="rounded-md border border-border p-4 sm:col-span-2">
+              {market === "EU" && <details className="rounded-md border border-border p-4 sm:col-span-2">
                 <summary className="cursor-pointer text-sm font-semibold">한-EU FTA 원산지 판정 상세 입력 (선택)</summary>
                 <p className="mt-2 text-xs text-muted-foreground">먼저 상품명만으로 분석할 수 있습니다. FTA 특혜세율 자동판정이 필요할 때만 아래 정보를 입력하세요.</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -324,7 +352,7 @@ function AiCustomsPage() {
                   <input type="checkbox" checked={preferentialOriginEligible} onChange={(e)=>setPreferentialOriginEligible(e.target.checked)} className="mt-1" />
                   <span><strong>유효한 한-EU FTA 원산지 신고/증빙 보유</strong><br/><span className="text-xs text-muted-foreground">자동 PSR 판정이 충족이고 이 항목도 확인된 경우에만 특혜세율을 Landed Cost에 적용합니다.</span></span>
                 </label>
-              </details>
+              </details>}
             </div>
 
             <button
