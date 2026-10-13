@@ -101,6 +101,11 @@ export const hsClassificationResultSchema = z.object({
         ratePercent: z.number().nullable(),
         categoryKo: z.string().nullable(),
         description: z.string(),
+        // 조항 원문의 "column 1 세율이 N% 미만/이상" 조건을 실제 기본세율과
+        // 대조한 결과. 조건 자체는 숫자 비교라 판정할 수 있다 —— 다만 예외
+        // 사슬은 여전히 남아 있으므로 "해당 가능성"까지만 말한다.
+        conditionKo: z.string().nullable(),
+        conditionMet: z.boolean().nullable(),
         url: z.string().url(),
       }),
     )

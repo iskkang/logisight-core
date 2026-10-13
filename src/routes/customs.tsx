@@ -431,7 +431,7 @@ function AiCustomsPage() {
               <p className="mt-2 text-sm text-muted-foreground">{error}</p>
             </div>
           ) : result ? (
-            <AnalysisResult result={result} preferentialOriginEligible={preferentialOriginEligible} />
+            <AnalysisResult result={result} preferentialOriginEligible={preferentialOriginEligible} market={market} />
           ) : (
             <AnalysisSkeleton />
           )}
@@ -444,13 +444,19 @@ function AiCustomsPage() {
   );
 }
 
-function AnalysisResult({ result, preferentialOriginEligible }: { result: HsClassificationResult; preferentialOriginEligible: boolean }) {
+// 라벨이 EU 로 못 박혀 있어 미국 세율이 "EU 기본관세"로 나왔다. 시장을 받아
+// 문구를 맞춘다 —— 시장을 바꾸면 결과가 초기화되므로 어긋날 일은 없다.
+function AnalysisResult({ result, preferentialOriginEligible, market }: { result: HsClassificationResult; preferentialOriginEligible: boolean; market: "EU" | "US" }) {
+  const isUs = market === "US";
+  const nomenclatureLabel = isUs ? "공식 HTS 후보" : "공식 CN 후보";
+  const baseDutyLabel = isUs ? "미국 기본관세 (MFN)" : "EU 기본관세";
+  const ftaLabel = isUs ? "한-미 FTA 특혜세율" : "한-EU FTA 특혜세율";
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <article className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-start justify-between gap-4">
           <div><span className="text-xs font-semibold text-muted-foreground">01</span><h3 className="mt-1 text-lg font-semibold">HS Classification</h3></div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{result.status === "candidate" ? "공식 CN 후보" : "추가정보 필요"}</span>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{result.status === "candidate" ? nomenclatureLabel : "추가정보 필요"}</span>
         </div>
         {result.candidates.length > 0 ? <div className="mt-5 space-y-4">{result.candidates.map((candidate) => (
           <div key={candidate.heading} className="rounded-lg border border-border p-4">
@@ -480,7 +486,7 @@ function AnalysisResult({ result, preferentialOriginEligible }: { result: HsClas
              공식 CN 후보를 손에 쥐고 있으면서 둘 다 버리고 있었다. 고르지는 않되
              —— 그게 이 도구의 안전장치다 —— 판단에 필요한 재료는 내놓는다. */
           <div className="mt-5 space-y-5">
-            <p className="text-sm text-muted-foreground">현재 정보만으로 공식 CN 후보를 확정하지 않았습니다.</p>
+            <p className="text-sm text-muted-foreground">현재 정보만으로 {nomenclatureLabel}를 확정하지 않았습니다.</p>
 
             {(result.normalizedProduct.name || result.normalizedProduct.intendedUse) && (
               <div className="rounded-md border border-border p-3">
@@ -512,7 +518,7 @@ function AnalysisResult({ result, preferentialOriginEligible }: { result: HsClas
             {result.undecidedCandidates && result.undecidedCandidates.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-muted-foreground">
-                  구분이 필요한 공식 CN 후보 — 아직 고르지 않았습니다
+                  구분이 필요한 {nomenclatureLabel} — 아직 고르지 않았습니다
                 </p>
                 <ul className="mt-2 divide-y divide-border rounded-md border border-border">
                   {result.undecidedCandidates.map((x) => (
@@ -557,6 +563,11 @@ function AnalysisResult({ result, preferentialOriginEligible }: { result: HsClas
                       {notice.categoryKo ?? "품목 제한 없음 (한국산 전반)"}
                     </span>
                   </div>
+                  {notice.conditionKo && (
+                    <p className={`mt-1.5 text-xs font-medium ${notice.conditionMet === false ? "text-muted-foreground" : "text-foreground"}`}>
+                      {notice.conditionKo}
+                    </p>
+                  )}
                   <p className="mt-1.5 line-clamp-3 text-xs leading-5 text-muted-foreground">{notice.description}</p>
                   <a href={notice.url} target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-block text-xs underline">
                     공식 HTS 에서 확인 →
@@ -571,12 +582,12 @@ function AnalysisResult({ result, preferentialOriginEligible }: { result: HsClas
           {result.customs?.duty.status === "available" ? (
             <div className="space-y-2 text-sm">
               {/* % 가 없으면 원문을 보여준다 —— 종량세·복합세율이라 null 인 것이지 모르는 게 아니다 */}
-              <p>EU 기본관세: <strong>{result.customs.duty.thirdCountryRate == null ? (result.customs.duty.thirdCountryRateText ?? "—") : `${result.customs.duty.thirdCountryRate}%`}</strong></p>
-              <p>한국산 협정/특혜세율: <strong>{result.customs.duty.preferentialRate == null ? (result.customs.duty.preferentialRateText ?? (result.customs.duty.thirdCountryRate === 0 ? "별도 혜택 불필요" : "확인 필요")) : `${result.customs.duty.preferentialRate}%`}</strong></p>
-              {result.customs.duty.preferentialRate != null && <p>실제 계산 적용: <strong>{preferentialOriginEligible && result.customs.originAssessment?.status === "qualified" ? "FTA 특혜세율" : "EU 기본관세"}</strong></p>}
+              <p>{baseDutyLabel}: <strong>{result.customs.duty.thirdCountryRate == null ? (result.customs.duty.thirdCountryRateText ?? "—") : `${result.customs.duty.thirdCountryRate}%`}</strong></p>
+              <p>{ftaLabel}: <strong>{result.customs.duty.preferentialRate == null ? (result.customs.duty.preferentialRateText ?? (result.customs.duty.thirdCountryRate === 0 ? "별도 혜택 불필요" : "확인 필요")) : `${result.customs.duty.preferentialRate}%`}</strong></p>
+              {result.customs.duty.preferentialRate != null && <p>실제 계산 적용: <strong>{preferentialOriginEligible && result.customs.originAssessment?.status === "qualified" ? "FTA 특혜세율" : baseDutyLabel}</strong></p>}
               {result.customs.duty.thirdCountryRate === 0 && result.customs.duty.preferentialRate == null ? (
                 <div className="mt-3 rounded-md border border-border p-3 text-xs text-muted-foreground">
-                  EU 기본관세가 이미 0%이므로 관세 절감을 위한 FTA 원산지 판정은 필요하지 않습니다.
+                  {baseDutyLabel}가 이미 0%이므로 관세 절감을 위한 FTA 원산지 판정은 필요하지 않습니다.
                 </div>
               ) : result.customs.originAssessment && <div className="mt-3 rounded-md border border-border p-3">
                 <p className="font-medium">원산지 자동판정: {result.customs.originAssessment.status === "qualified" ? "충족" : result.customs.originAssessment.status === "not_qualified" ? "불충족" : result.customs.originAssessment.status === "needs_information" ? "추가정보 필요" : "PSR 데이터 준비 필요"}</p>

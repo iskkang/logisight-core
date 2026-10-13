@@ -99,6 +99,9 @@ export async function lookupUsHtsCode(
   // 긴 코드가 짧은 코드를 이긴다 —— 상위 세번이 하위 세번의 세율을 가리면 안 된다.
   const duties = ((dutyRows ?? []) as DutyRow[]).sort((a, b) => b.code.length - a.code.length);
 
+  const mfn = duties.find((row) => row.measure_type === "THIRD_COUNTRY_DUTY");
+  const korus = duties.find((row) => row.measure_type === "PREFERENCE");
+
   // 적용될 수 있는 추가관세 조항을 함께 찾는다. 세율을 더하지 않고 알려만 준다 ★
   // 세율이 명시된 조항만 노출한다 —— "The duty provided in the applicable
   // subheading" 인 조항은 추가 부담이 없다는 뜻(제외·면제 성격)이라 "대상"으로
@@ -116,19 +119,39 @@ export async function lookupUsHtsCode(
     hs_prefixes: string[] | null;
     source_url: string;
   }[];
+  // 조항 원문의 "rate of duty under column 1 ... less than 15 percent" 같은
+  // 조건은 숫자 비교라 우리가 판정할 수 있다 —— 기본세율을 이미 알기 때문이다.
+  // 예외 사슬은 그대로 남으므로 "조건 충족" 까지만 말하고 적용을 단정하지 않는다.
+  const baseRate = mfn?.rate_percent ?? null;
+  const evaluateCondition = (text: string): { ko: string | null; met: boolean | null } => {
+    const less = text.match(/less than (\d+(?:\.\d+)?) percent/i);
+    const atLeast = text.match(/equal to or greater than (\d+(?:\.\d+)?) percent/i);
+    const threshold = Number(less?.[1] ?? atLeast?.[1]);
+    if (!less && !atLeast) return { ko: null, met: null };
+    if (baseRate == null) return { ko: `조건: 기본세율 ${threshold}% ${less ? "미만" : "이상"} (현재 기본세율 미상)`, met: null };
+    const met = less ? baseRate < threshold : baseRate >= threshold;
+    return {
+      ko: `조건: 기본세율 ${threshold}% ${less ? "미만" : "이상"} · 현재 ${baseRate}% → ${met ? "충족" : "미충족"}`,
+      met,
+    };
+  };
+
   const additionalDutyNotices = provisions
     // hs_prefixes 가 없으면 품목 제한 없이 한국산 전반에 걸리는 조항이다.
     .filter((row) => !row.hs_prefixes?.length || row.hs_prefixes.some((prefix) => exact.code.startsWith(prefix)))
-    .map((row) => ({
-      provision: [row.provision_code.slice(0, 4), row.provision_code.slice(4, 6), row.provision_code.slice(6)].join("."),
-      ratePercent: row.rate_percent,
-      categoryKo: row.category_ko,
-      description: row.description,
-      url: row.source_url || SOURCE_URL,
-    }))
+    .map((row) => {
+      const condition = evaluateCondition(row.description);
+      return {
+        provision: [row.provision_code.slice(0, 4), row.provision_code.slice(4, 6), row.provision_code.slice(6)].join("."),
+        ratePercent: row.rate_percent,
+        categoryKo: row.category_ko,
+        description: row.description,
+        conditionKo: condition.ko,
+        conditionMet: condition.met,
+        url: row.source_url || SOURCE_URL,
+      };
+    })
     .sort((a, b) => a.provision.localeCompare(b.provision));
-  const mfn = duties.find((row) => row.measure_type === "THIRD_COUNTRY_DUTY");
-  const korus = duties.find((row) => row.measure_type === "PREFERENCE");
 
   // 한국산 특혜세율을 쓸 수 있다고 이용자가 밝힌 경우에만 그걸로 계산한다.
   const appliedRate =
