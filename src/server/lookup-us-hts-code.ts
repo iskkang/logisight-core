@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { HsClassificationInput, HsClassificationResult } from "@/server/hs-classification";
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
+import { assessKrUsOrigin } from "@/server/eu-origin-assessment";
 
 // customs_nomenclature · customs_duty_measures 는 생성된 Database 타입에 없다.
 // types.ts 를 다시 생성하면 들어온다. 그 사이 타입 에러를 남기지 않도록 좁혀 쓴다.
@@ -153,6 +154,9 @@ export async function lookupUsHtsCode(
     })
     .sort((a, b) => a.provision.localeCompare(b.provision));
 
+  // 한-미 FTA 원산지 판정. PSR 5,204건을 적재해 EU 와 같은 수준이 됐다.
+  const originAssessment = await assessKrUsOrigin(exact.code, data);
+
   // 한국산 특혜세율을 쓸 수 있다고 이용자가 밝힌 경우에만 그걸로 계산한다.
   const appliedRate =
     data.preferentialOriginEligible === true && korus?.rate_percent != null
@@ -212,14 +216,7 @@ export async function lookupUsHtsCode(
       // 미국은 수입 규제·원산지 기준 데이터를 아직 적재하지 않았다. 빈 상태를
       // 그대로 보여주고 있는 척하지 않는다.
       regulation: { status: "pending", items: [] },
-      originAssessment: {
-        status: "rule_unavailable",
-        ruleCode: null,
-        ruleTextKo: null,
-        sourceUrl: null,
-        checks: [],
-        missingInputs: ["한-미 FTA 품목별 원산지기준(PSR) 데이터"],
-      },
+      originAssessment,
       landedCost: {
         status: estimatedTotal != null ? "ready" : "needs_values",
         formula: "상품가 + 운임 + 보험료 + 관세 + 수입부대비용 (미국은 수입 VAT 없음)",

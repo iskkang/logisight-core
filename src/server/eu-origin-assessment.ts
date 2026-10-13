@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import type { HsClassificationInput } from "@/server/hs-classification";
 
@@ -124,6 +125,18 @@ function evalNode(node:any, input:HsClassificationInput, finalHs6:string): {pass
     const pct=input.originNonOriginatingMaterialValue/input.originExWorksPrice*100;
     return {pass:pct<=Number(node.maxPercent),checks:["비원산지재료 비율 " + pct.toFixed(2) + "% ≤ " + node.maxPercent + "%"],missing:[]};
   }
+  if (node.type==="RVC") {
+    // 역내부가가치. 한-미 FTA 에만 있다(한-EU 는 MC = 비원산지 재료 최대 비율로
+    // 계산 방향이 반대다). 공제법은 우리가 받는 입력으로 계산되지만, 집적법은
+    // 원산지재료 가격이 필요해 지금 입력 항목에 없다 —— 없는 걸 있는 척하지 않는다.
+    const down=node.buildDownPercent==null?null:Number(node.buildDownPercent);
+    if (down==null) return {pass:null,checks:[],missing:["집적법 기준 원산지재료 가격(현재 입력 항목 없음)"]};
+    if (input.originExWorksPrice == null || input.originNonOriginatingMaterialValue == null)
+      return {pass:null,checks:[],missing:["조정가격(공장도가격)","비원산지재료 가격"]};
+    if (input.originExWorksPrice<=0) return {pass:null,checks:[],missing:["유효한 조정가격"]};
+    const rvc=(input.originExWorksPrice-input.originNonOriginatingMaterialValue)/input.originExWorksPrice*100;
+    return {pass:rvc>=down,checks:["역내부가가치(공제법) " + rvc.toFixed(2) + "% ≥ " + down + "%"],missing:[]};
+  }
   if (node.type==="AND" && Array.isArray(node.rules)) {
     const results=node.rules.map((r:any)=>evalNode(r,input,finalHs6));
     if (results.some(x=>x.pass===false)) return {pass:false,checks:results.flatMap(x=>x.checks),missing:[]};
@@ -137,6 +150,45 @@ function evalNode(node:any, input:HsClassificationInput, finalHs6:string): {pass
     return {pass:null,checks:results.flatMap(x=>x.checks),missing:[...new Set(results.flatMap(x=>x.missing))]};
   }
   return {pass:null,checks:[],missing:["지원되지 않는 원산지 규칙 유형"]};
+}
+
+/**
+ * 한-미 FTA 원산지 판정.
+ *
+ * 한-EU 와 달리 HS 버전 크로스워크가 없다 —— 관세청 포털에서 받은 KORUS PSR 의
+ * HS6 가 현행 미국 HTS 에 그대로 있다(표본 50개 전수 확인). 그래서 입력 코드의
+ * 접두사로 바로 찾는다.
+ *
+ * 규칙 평가는 한-EU 와 같은 evalNode 를 쓴다. 유형이 겹치고(CC·CTH·CTSH·WO·
+ * OR·AND) 한-미에만 있는 RVC 는 evalNode 에 분기를 더해 뒀다.
+ */
+export async function assessKrUsOrigin(htsCode:string,input:HsClassificationInput): Promise<OriginAssessment> {
+  const hs6=htsCode.replace(/[^0-9]/g,"").slice(0,6);
+  if (hs6.length<6) return {status:"rule_unavailable",ruleCode:null,ruleTextKo:null,sourceUrl:null,checks:[],missingInputs:["6자리 이상의 HS 코드"]};
+  const prefixes=[hs6,hs6.slice(0,4),hs6.slice(0,2)];
+  // eu_origin_rules 는 생성된 Database 타입에 없다(이 파일의 한-EU 쪽도 같은
+  // 상황이라 에러가 남아 있다). 새로 더하는 코드까지 늘리지 않도록 좁혀 쓴다.
+  const sb = supabasePublicServer as unknown as SupabaseClient;
+  const { data, error } = await sb
+    .from("eu_origin_rules")
+    .select("hs_prefix,rule_code,rule_text_ko,rule_json,source_url,metadata")
+    .eq("agreement","KR-US FTA")
+    .eq("is_active",true)
+    .in("hs_prefix",prefixes);
+  if (error) throw new Error("KORUS origin-rule lookup failed: " + error.message);
+  const rows=(data ?? []) as RuleRow[];
+  if (!rows.length) return {status:"rule_unavailable",ruleCode:null,ruleTextKo:null,sourceUrl:null,checks:[],missingInputs:["해당 품목의 한-미 FTA PSR"]};
+  // 가장 구체적인(긴) 접두사를 쓴다 —— HS6 규칙이 류 규칙을 이긴다.
+  const rule=rows.sort((a,b)=>b.hs_prefix.length-a.hs_prefix.length)[0];
+  const result=evalNode(rule.rule_json,input,hs6);
+  return {
+    status: result.pass===true ? "qualified" : result.pass===false ? "not_qualified" : "needs_information",
+    ruleCode: rule.rule_code ?? null,
+    ruleTextKo: rule.rule_text_ko ?? null,
+    sourceUrl: rule.source_url ?? null,
+    checks: result.checks,
+    missingInputs: result.missing,
+  };
 }
 
 export async function assessKrEuOrigin(cnCode:string,input:HsClassificationInput): Promise<OriginAssessment> {

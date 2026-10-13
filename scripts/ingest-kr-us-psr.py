@@ -80,8 +80,11 @@ def parse_rule(text: str) -> tuple[str | None, dict | None]:
         node = nodes[0]
         return node["type"], node
     # "다음 각 호의 어느 하나" = 선택 충족. 그 말이 없으면 모두 충족이다.
-    combinator = "ANY" if ("어느 하나" in t or "또는" in t) else "ALL"
-    return combinator, {"type": combinator, "nodes": nodes}
+    # 유형 이름은 기존 평가기(eu-origin-assessment.ts 의 evalNode)에 맞춘다 ——
+    # OR/AND 와 rules 배열이다. 새 이름을 쓰면 평가기를 고쳐야 하고 그러면
+    # 한-EU 판정에도 손이 간다.
+    combinator = "OR" if ("어느 하나" in t or "또는" in t) else "AND"
+    return combinator, {"type": combinator, "rules": nodes}
 
 
 def fetch_chapter(session: requests.Session, chapter: int) -> list[dict]:
