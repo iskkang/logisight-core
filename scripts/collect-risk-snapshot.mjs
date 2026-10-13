@@ -359,7 +359,7 @@ function parseGlobalLiftings(data) {
     [...new Set(rows.flatMap((row) => Object.keys(row).filter((key) => /^\d{4}$/.test(key))))]
       .sort()
       .at(-1) ?? new Date().getFullYear().toString();
-  return trendFromRows("Global TEU liftings", rows, latestYear, "EconDB global seasonal");
+  return trendFromRows("Global TEU liftings", rows, latestYear, "Global seasonal");
 }
 
 async function getMacroTrends() {
@@ -373,11 +373,11 @@ async function getMacroTrends() {
   const liftingsRows = liftingsResult.ok ? parsePlotData(liftingsResult.data) : [];
   return {
     rows: [
-      trendFromRows("Global exports TEU", exportsRows, "Total", "EconDB global trade"),
-      trendFromRows("Shanghai freight index", scfiRows, "price", "EconDB SCFI"),
+      trendFromRows("Global exports TEU", exportsRows, "Total", "Global trade"),
+      trendFromRows("Shanghai freight index", scfiRows, "price", "SCFI"),
       liftingsResult.ok
         ? parseGlobalLiftings(liftingsResult.data)
-        : trendFromRows("Global TEU liftings", [], "2026", "EconDB global seasonal"),
+        : trendFromRows("Global TEU liftings", [], "2026", "Global seasonal"),
     ],
     health: [
       health("Global exports TEU", exportsResult, dateOnly(exportsRows.at(-1)?.Date)),
@@ -397,7 +397,7 @@ async function collectRiskSnapshot() {
   return {
     fetchedAt: new Date().toISOString(),
     sourceHealth: [
-      health("EconDB top ports", portsResult, null),
+      health("Top ports", portsResult, null),
       ...chokepointResults.flatMap((result) => result.health),
       ...hormuzResult.health,
       ...macroResult.health,
