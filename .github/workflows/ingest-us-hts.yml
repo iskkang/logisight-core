@@ -1,0 +1,29 @@
+name: Ingest US HTS
+# 주 1회 통째로 다시 받는다.
+#
+# EU CN 은 연 1회 개정이지만 미국 HTS 는 2026년 8월까지 Revision 15 였다 ——
+# 2~3주에 한 번꼴이다. 개정 발생을 알려주는 엔드포인트는 찾지 못했으므로
+# 주기적으로 전량을 다시 받아 덮어쓴다. 12.7MB · 6초라 부담이 없다.
+#
+# 연 1회 적재 방식을 그대로 쓰면 낡은 세율을 자신 있게 보여주게 된다.
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/ingest-us-hts.mjs
+      - .github/workflows/ingest-us-hts.yml
+  workflow_dispatch:
+  schedule:
+    - cron: "15 3 * * 1"
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Ingest US HTS tariff schedule
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/ingest-us-hts.mjs
