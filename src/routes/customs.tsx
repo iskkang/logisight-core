@@ -9,7 +9,6 @@ import {
   Loader2,
   PackageSearch,
   ShieldCheck,
-  Upload,
 } from "lucide-react";
 
 import { seoHead } from "@/lib/seo";
@@ -374,10 +373,6 @@ function AiCustomsPage() {
               )}
             </button>
 
-            <div className="mt-4 flex items-center justify-center gap-2 rounded-md border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
-              <Upload className="h-4 w-4" />
-              Invoice / Packing List / 제품 이미지 업로드는 다음 단계에서 연결
-            </div>
           </section>
 
           <aside className="rounded-xl border border-border bg-card p-5 sm:p-7">
