@@ -352,6 +352,29 @@ function AiCustomsPage() {
                   <span><strong>유효한 한-EU FTA 원산지 신고/증빙 보유</strong><br/><span className="text-xs text-muted-foreground">자동 PSR 판정이 충족이고 이 항목도 확인된 경우에만 특혜세율을 Landed Cost에 적용합니다.</span></span>
                 </label>
               </details>}
+
+              {/* 미국은 PSR 자동판정 데이터가 없어 EU 쪽 상세 입력을 숨겼는데,
+                  특혜세율 적용 체크박스까지 그 안에 있어서 한-미 FTA 0% 를 영영
+                  적용할 수 없었다. 미국에서는 이용자 선언만 받는다. */}
+              {market === "US" && (
+                <label className="flex items-start gap-3 text-sm sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={preferentialOriginEligible}
+                    onChange={(e) => setPreferentialOriginEligible(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span>
+                    <strong>한-미 FTA 특혜세율 적용</strong>
+                    <br />
+                    <span className="text-xs text-muted-foreground">
+                      원산지 기준을 충족하고 유효한 원산지증명이 있는 경우에만 체크하세요.
+                      체크하면 특혜세율로 관세포함원가를 계산합니다. 원산지 기준 자동판정은
+                      아직 지원하지 않습니다.
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
 
             <button
@@ -584,7 +607,7 @@ function AnalysisResult({ result, preferentialOriginEligible, market }: { result
               {/* % 가 없으면 원문을 보여준다 —— 종량세·복합세율이라 null 인 것이지 모르는 게 아니다 */}
               <p>{baseDutyLabel}: <strong>{result.customs.duty.thirdCountryRate == null ? (result.customs.duty.thirdCountryRateText ?? "—") : `${result.customs.duty.thirdCountryRate}%`}</strong></p>
               <p>{ftaLabel}: <strong>{result.customs.duty.preferentialRate == null ? (result.customs.duty.preferentialRateText ?? (result.customs.duty.thirdCountryRate === 0 ? "별도 혜택 불필요" : "확인 필요")) : `${result.customs.duty.preferentialRate}%`}</strong></p>
-              {result.customs.duty.preferentialRate != null && <p>실제 계산 적용: <strong>{preferentialOriginEligible && result.customs.originAssessment?.status === "qualified" ? "FTA 특혜세율" : baseDutyLabel}</strong></p>}
+              {result.customs.duty.preferentialRate != null && <p>실제 계산 적용: <strong>{preferentialOriginEligible && (isUs || result.customs.originAssessment?.status === "qualified") ? "FTA 특혜세율" : baseDutyLabel}</strong></p>}
               {result.customs.duty.thirdCountryRate === 0 && result.customs.duty.preferentialRate == null ? (
                 <div className="mt-3 rounded-md border border-border p-3 text-xs text-muted-foreground">
                   {baseDutyLabel}가 이미 0%이므로 관세 절감을 위한 FTA 원산지 판정은 필요하지 않습니다.
