@@ -264,6 +264,7 @@ function SiteShell({ children }: { children: React.ReactNode }) {
       "/climate",
       "/trade",
       "/industries",
+      "/customs",
       "/briefing",
       "/faq",
       "/methodology",

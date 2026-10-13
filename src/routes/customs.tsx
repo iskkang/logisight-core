@@ -8,11 +8,13 @@ import {
   Landmark,
   PackageSearch,
   ShieldCheck,
-  Sparkles,
   Upload,
 } from "lucide-react";
 
 import { seoHead } from "@/lib/seo";
+import { HomeNav } from "@/components/home/HomeNav";
+import { HomeFooter } from "@/components/home/HomeFooter";
+import { InsightSubNav } from "@/components/insight/InsightSubNav";
 import { classifyHsProduct } from "@/lib/api/hs-classification.functions";
 import type { HsClassificationResult } from "@/server/hs-classification";
 
@@ -28,6 +30,9 @@ export const Route = createFileRoute("/customs")({
     }),
   component: AiCustomsPage,
 });
+
+// 형제 인사이트 페이지와 같은 본문 폭(LogisightRates · LogisightTrade 와 동일)
+const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
 
 const STEPS = [
   { label: "HS Classification", icon: PackageSearch },
@@ -100,39 +105,50 @@ function AiCustomsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <section className="border-b border-border bg-muted/20">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium">
-            <Sparkles className="h-3.5 w-3.5" />
-            Logisight Intelligence
-          </div>
-          <h1 className="max-w-3xl text-3xl font-bold tracking-tight sm:text-5xl">
-            HS &amp; Customs
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-            제품 하나로 HS 분류부터 관세·FTA, 수입 규제, 예상 Landed Cost까지 검토합니다.
-            첫 버전은 한국에서 EU로 수출하는 시나리오를 기준으로 설계합니다.
-          </p>
+    /* 헤더·푸터를 이 페이지가 직접 그린다 ★
+       형제 인사이트 페이지(/rates · /trade · /dashboard …)는 모두 다크 HomeNav +
+       InsightSubNav + HomeFooter 를 자기가 그리고, __root 의 전역 Navigation 을
+       받지 않는다. /customs 만 그 목록에서 빠져 있어 밝은 버전 Navigation 이
+       붙었고, 그래서 헤더만 혼자 달라 보였다. 같은 구성으로 맞춘다. */
+    <div className="min-h-screen bg-[#070b16]">
+      <HomeNav active="insight" />
+      <InsightSubNav />
 
-          <div className="mt-8 grid gap-2 sm:grid-cols-4">
-            {STEPS.map(({ label, icon: Icon }, index) => (
-              <div
-                key={label}
-                className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3"
-              >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                  {index + 1}
+      <section className="relative overflow-hidden bg-[#070b16]">
+        <div className={WRAP}>
+          <div className="max-w-[760px] pb-[64px] pt-[54px]">
+            <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2dd4bf]">
+              HS &amp; Customs
+            </span>
+            <h1 className="mt-3.5 text-[clamp(32px,4.4vw,50px)] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#e9eef7]">
+              관세 · <span className="text-[#2dd4bf]">HS 분류</span>
+            </h1>
+            <p className="mt-4 max-w-[600px] text-[15px] leading-[1.6] text-[#93a1b7]">
+              제품 하나로 HS 분류부터 관세·FTA, 수입 규제, 예상 Landed Cost까지 검토합니다.
+              한국에서 EU로 수출하는 시나리오를 기준으로 합니다.
+            </p>
+            <div className="mt-[22px] flex flex-wrap gap-2.5">
+              {STEPS.map(({ label, icon: Icon }, index) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#78a0cd1c] bg-[#0e1626] px-[13px] py-[7px] text-[12.5px] text-[#93a1b7]"
+                >
+                  <span className="lsg-mono text-[#2dd4bf]">{index + 1}</span>
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
                 </span>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{label}</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+      {/* 본문은 밝은 바닥 위에 올린다 —— 형제 페이지와 같은 겹침 처리 */}
+      <div
+        className="relative z-[2] -mt-7 rounded-t-[28px] bg-[#e6eaf1] pb-2.5"
+        style={{ boxShadow: "0 -24px 60px -34px rgba(0,0,0,.7)" }}
+      >
+      <main className={`${WRAP} py-10`}>
         <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
           <section className="rounded-xl border border-border bg-card p-5 sm:p-7">
             <div className="flex items-center gap-2">
@@ -285,6 +301,9 @@ function AiCustomsPage() {
           )}
         </section>
       </main>
+      </div>
+
+      <HomeFooter />
     </div>
   );
 }
