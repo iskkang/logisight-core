@@ -22,6 +22,8 @@
  */
 
 const SOURCE_URL = "https://hts.usitc.gov/reststop/exportList?from=0101&to=9999&format=JSON&styles=true";
+// 99류(추가관세 조항). 한국산을 지목한 조항만 골라 "확인 필요" 표시용으로 쓴다.
+const CHAPTER99_URL = "https://hts.usitc.gov/reststop/exportList?from=9903&to=9904&format=JSON&styles=true";
 const CITE_URL = "https://hts.usitc.gov/";
 const MARKET = "US";
 const NOMENCLATURE = "HTS";
@@ -59,6 +61,61 @@ function koreaSpecialRateText(special) {
     if (countries.includes("KR")) return group[1].trim();
   }
   return null;
+}
+
+/**
+ * 조항 문구에서 적용 품목군을 유추한다.
+ *
+ * 추정이다 —— 실제 적용 범위는 U.S. Notes 에 있고 그건 PDF 안에만 있다.
+ * 그래서 이 값은 "대상일 수 있으니 확인하라"는 표시에만 쓰고, 세율을 더하거나
+ * 적용 여부를 단정하는 데는 쓰지 않는다. 품목군을 못 알아보면 null 로 두는데,
+ * 그건 "한국산 전반"이라는 뜻이라 오히려 더 넓게 걸린다.
+ */
+function categorize(description) {
+  const d = description.toLowerCase();
+  if (/passenger vehicle|light truck/.test(d)) {
+    return /parts of/.test(d)
+      ? { prefixes: ["8708"], ko: "승용차·소형트럭 부품" }
+      : { prefixes: ["8703", "8704"], ko: "승용차·소형트럭" };
+  }
+  if (/derivative steel|steel article/.test(d)) return { prefixes: ["72", "73"], ko: "철강·파생 철강제품" };
+  if (/aluminum/.test(d)) return { prefixes: ["76"], ko: "알루미늄·파생 알루미늄제품" };
+  if (/pharmaceutical/.test(d)) return { prefixes: ["30"], ko: "의약품" };
+  // civil aircraft 를 먼저 본다 —— 민간항공기 조항이 제외 문구에서 unmanned 를
+  // 언급해 무인기로 잘못 분류됐다(9903.02.81).
+  if (/civil aircraft/.test(d)) return { prefixes: ["88"], ko: "민간항공기" };
+  if (/unmanned aircraft/.test(d)) return { prefixes: ["8806", "8807"], ko: "무인항공기·부품" };
+  if (/wood product|timber|lumber/.test(d)) return { prefixes: ["44"], ko: "목재제품" };
+  return { prefixes: null, ko: null };
+}
+
+async function fetchChapter99() {
+  const response = await fetch(CHAPTER99_URL, { headers: HEADERS });
+  if (!response.ok) throw new Error(`Chapter 99 download failed: ${response.status}`);
+  const rows = await response.json();
+  if (!Array.isArray(rows)) throw new Error("Chapter 99 response is not an array");
+
+  const out = [];
+  for (const row of rows) {
+    const code = digitsOf(row.htsno);
+    if (code.length !== 8) continue;
+    const description = String(row.description ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    // 한국산을 지목한 조항만. 이 도구는 한국발 수출 전용이다(From 이 South Korea 고정).
+    if (!/\b(South Korea|Republic of Korea)\b/i.test(description)) continue;
+    const general = String(row.general ?? "").trim();
+    const { prefixes, ko } = categorize(description);
+    out.push({
+      provision_code: code,
+      rate_percent: parseRate(general),
+      rate_text: general || null,
+      description: description.slice(0, 1200),
+      hs_prefixes: prefixes,
+      category_ko: ko,
+      source_url: CITE_URL,
+      is_active: true,
+    });
+  }
+  return out;
 }
 
 async function fetchHts() {
@@ -187,7 +244,12 @@ async function main() {
   console.log(`Parsed ${nomenclature.length} nomenclature lines, ${measures.length} duty rows (MFN ${counts.mfn}, KORUS ${counts.kr})`);
   await upsert("customs_nomenclature", nomenclature, "market,nomenclature,code,valid_from");
   await upsert("customs_duty_measures", measures, "market,code,origin_country,measure_type");
-  console.log("Ingested US HTS");
+
+  const provisions = await fetchChapter99();
+  // 조항이 사라지면 적재가 조용히 비는 것을 막는다. 2026-10 기준 17건이었다.
+  if (provisions.length < 5) throw new Error(`Only ${provisions.length} Korea-related chapter 99 provisions; refusing`);
+  await upsert("us_additional_duty_provisions", provisions, "provision_code");
+  console.log(`Ingested US HTS (+ ${provisions.length} Korea-related chapter 99 provisions)`);
 }
 
 main().catch((error) => {

@@ -98,6 +98,35 @@ export async function lookupUsHtsCode(
 
   // 긴 코드가 짧은 코드를 이긴다 —— 상위 세번이 하위 세번의 세율을 가리면 안 된다.
   const duties = ((dutyRows ?? []) as DutyRow[]).sort((a, b) => b.code.length - a.code.length);
+
+  // 적용될 수 있는 추가관세 조항을 함께 찾는다. 세율을 더하지 않고 알려만 준다 ★
+  // 세율이 명시된 조항만 노출한다 —— "The duty provided in the applicable
+  // subheading" 인 조항은 추가 부담이 없다는 뜻(제외·면제 성격)이라 "대상"으로
+  // 보여주면 거꾸로 읽힌다.
+  const { data: provisionRows } = await sb
+    .from("us_additional_duty_provisions")
+    .select("provision_code,rate_percent,category_ko,description,hs_prefixes,source_url")
+    .eq("is_active", true)
+    .not("rate_percent", "is", null);
+  const provisions = (provisionRows ?? []) as {
+    provision_code: string;
+    rate_percent: number | null;
+    category_ko: string | null;
+    description: string;
+    hs_prefixes: string[] | null;
+    source_url: string;
+  }[];
+  const additionalDutyNotices = provisions
+    // hs_prefixes 가 없으면 품목 제한 없이 한국산 전반에 걸리는 조항이다.
+    .filter((row) => !row.hs_prefixes?.length || row.hs_prefixes.some((prefix) => exact.code.startsWith(prefix)))
+    .map((row) => ({
+      provision: [row.provision_code.slice(0, 4), row.provision_code.slice(4, 6), row.provision_code.slice(6)].join("."),
+      ratePercent: row.rate_percent,
+      categoryKo: row.category_ko,
+      description: row.description,
+      url: row.source_url || SOURCE_URL,
+    }))
+    .sort((a, b) => a.provision.localeCompare(b.provision));
   const mfn = duties.find((row) => row.measure_type === "THIRD_COUNTRY_DUTY");
   const korus = duties.find((row) => row.measure_type === "PREFERENCE");
 
@@ -140,6 +169,7 @@ export async function lookupUsHtsCode(
     ],
     missingInformation: [],
     followUpQuestions: [],
+    additionalDutyNotices,
     customs: {
       duty: {
         status: mfn || korus ? "available" : "pending",

@@ -88,6 +88,23 @@ export const hsClassificationResultSchema = z.object({
   undecidedCandidates: z
     .array(z.object({ code: z.string(), description: z.string() }))
     .optional(),
+
+  /**
+   * 적용될 수 있는 추가관세 조항(미국 전용). 세율을 더하지 않는다 ★
+   * 적용 범위가 U.S. Notes(PDF 법령 본문)에 있어 코드로 판정할 수 없다.
+   * "대상일 수 있으니 확인하라"는 표시이지 계산 결과가 아니다.
+   */
+  additionalDutyNotices: z
+    .array(
+      z.object({
+        provision: z.string(),
+        ratePercent: z.number().nullable(),
+        categoryKo: z.string().nullable(),
+        description: z.string(),
+        url: z.string().url(),
+      }),
+    )
+    .optional(),
   missingInformation: z.array(z.string()),
   followUpQuestions: z.array(z.string()),
   warnings: z.array(z.string()),

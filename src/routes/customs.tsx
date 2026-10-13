@@ -532,6 +532,41 @@ function AnalysisResult({ result, preferentialOriginEligible }: { result: HsClas
         {result.warnings.map((warning) => <p key={warning} className="mt-3 text-xs leading-5 text-muted-foreground">{warning}</p>)}
       </article>
       <div className="space-y-4">
+        {/* 추가관세 "확인 필요" ★
+            세율을 더해서 보여주지 않는다. 적용 범위가 U.S. Notes(PDF 법령 본문)에
+            있어 코드로 판정할 수 없기 때문이다. 틀린 15%를 자신 있게 더하느니
+            "이 조항들이 걸릴 수 있다"고 알리고 원문으로 보낸다 —— 지금까지는
+            기본세율 3.4%만 보고 다 알았다고 생각하고 돌아갔다. */}
+        {result.additionalDutyNotices && result.additionalDutyNotices.length > 0 && (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-5 sm:p-7">
+            <h3 className="text-base font-semibold">추가관세 확인 필요 — 아래 세율은 위 관세에 포함되어 있지 않습니다</h3>
+            <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
+              한국산에 적용될 수 있는 미국 232조·301조 등 조항입니다. 적용 여부는 조항별
+              U.S. Notes 와 예외 규정에 따라 달라지므로 <strong>자동 판정하지 않았습니다.</strong>
+              해당 여부를 반드시 원문으로 확인하세요.
+            </p>
+            <ul className="mt-4 space-y-3">
+              {result.additionalDutyNotices.map((notice) => (
+                <li key={notice.provision} className="rounded-md border border-border bg-background p-3">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className="font-mono text-xs text-muted-foreground">{notice.provision}</span>
+                    {notice.ratePercent != null && (
+                      <strong className="text-sm">+{notice.ratePercent}%</strong>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {notice.categoryKo ?? "품목 제한 없음 (한국산 전반)"}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 line-clamp-3 text-xs leading-5 text-muted-foreground">{notice.description}</p>
+                  <a href={notice.url} target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-block text-xs underline">
+                    공식 HTS 에서 확인 →
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <ResultCard number="02" title="Duty & FTA" status={result.customs?.duty.status === "available" ? "데이터 확인" : "데이터 적재 필요"}>
           {result.customs?.duty.status === "available" ? (
             <div className="space-y-2 text-sm">
