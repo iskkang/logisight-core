@@ -47,10 +47,12 @@ const LOADING_STEPS = [
 ];
 
 // 코드 직접 조회 경로. LLM 을 부르지 않아 단계가 짧다.
-const CODE_LOADING_STEPS = [
-  "입력한 코드가 공식 CN 2026 에 있는지 확인합니다",
-  "기본관세와 한-EU FTA 특혜세율을 조회합니다",
-  "원산지 기준과 수입 규제를 확인합니다",
+// 시장마다 명칭표와 협정이 다르므로 문구도 갈라 둔다 —— EU 문구가 미국 조회에
+// 그대로 나오던 자리다.
+const codeLoadingSteps = (market: "EU" | "US") => [
+  market === "US" ? "입력한 코드가 공식 HTS 2026 에 있는지 확인합니다" : "입력한 코드가 공식 CN 2026 에 있는지 확인합니다",
+  market === "US" ? "기본관세(MFN)와 한-미 FTA 특혜세율을 조회합니다" : "기본관세와 한-EU FTA 특혜세율을 조회합니다",
+  market === "US" ? "원산지 기준과 수입 규제, 추가관세 해당 여부를 확인합니다" : "원산지 기준과 수입 규제를 확인합니다",
 ];
 
 const STEPS = [
@@ -68,6 +70,8 @@ function AiCustomsPage() {
   // VAT·원산지기준·수입규제 데이터가 없다(lookup-us-hts-code.ts 참조).
   const [market, setMarket] = useState<"EU" | "US">("EU");
   const isUsMarket = market === "US";
+  // 입력·결과의 통화 표기. 미국은 수입 VAT 가 없고 통화도 다르다.
+  const currency = isUsMarket ? "USD" : "EUR";
   const [mode, setMode] = useState<"describe" | "code">("describe");
   const [hsCode, setHsCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -328,10 +332,10 @@ function AiCustomsPage() {
                 </select>
               </Field>}
               {market === "EU" && <Field label="VAT rate (%)"><input value={vatRate} onChange={(e)=>setVatRate(e.target.value)} type="number" min="0" step="0.1" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>}
-              <Field label="Product value (EUR)"><input value={productValue} onChange={(e)=>setProductValue(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
-              <Field label="Freight (EUR)"><input value={freight} onChange={(e)=>setFreight(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
-              <Field label="Insurance (EUR)"><input value={insurance} onChange={(e)=>setInsurance(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
-              <Field label="Import / incidental costs (EUR)"><input value={importCosts} onChange={(e)=>setImportCosts(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
+              <Field label={`Product value (${currency})`}><input value={productValue} onChange={(e)=>setProductValue(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
+              <Field label={`Freight (${currency})`}><input value={freight} onChange={(e)=>setFreight(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
+              <Field label={`Insurance (${currency})`}><input value={insurance} onChange={(e)=>setInsurance(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
+              <Field label={`Import / incidental costs (${currency})`}><input value={importCosts} onChange={(e)=>setImportCosts(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
               {/* 원산지 판정 입력 ★
                   미국도 PSR 5,204건을 적재해 자동판정이 돌아간다. 그런데 이 블록이
                   EU 전용이라, 판정이 "비원산지 원재료 HS6 목록이 필요하다"고 해놓고
@@ -419,13 +423,13 @@ function AiCustomsPage() {
             <div className="rounded-xl border border-border bg-card px-6 py-12 text-center">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
               <h2 className="mt-4 text-lg font-semibold">
-                {mode === "code" ? "공식 CN 데이터에서 조회하고 있습니다" : "공식 EU CN 후보를 분석하고 있습니다"}
+                {mode === "code" ? `공식 ${isUsMarket ? "HTS" : "CN"} 데이터에서 조회하고 있습니다` : "공식 EU CN 후보를 분석하고 있습니다"}
               </h2>
               <p className="mt-1.5 text-sm tabular-nums text-muted-foreground">
                 {elapsed}초 경과 · 보통 {mode === "code" ? "1~2초" : "10~15초"} 걸립니다
               </p>
               <ul className="mx-auto mt-6 max-w-md space-y-2 text-left text-sm text-muted-foreground">
-                {(mode === "code" ? CODE_LOADING_STEPS : LOADING_STEPS).map((step) => (
+                {(mode === "code" ? codeLoadingSteps(market) : LOADING_STEPS).map((step) => (
                   <li key={step} className="flex gap-2">
                     <span className="text-muted-foreground/60">·</span>
                     {step}
@@ -459,6 +463,8 @@ function AnalysisResult({ result, preferentialOriginEligible, market }: { result
   const nomenclatureLabel = isUs ? "공식 HTS 후보" : "공식 CN 후보";
   const baseDutyLabel = isUs ? "미국 기본관세 (MFN)" : "EU 기본관세";
   const ftaLabel = isUs ? "한-미 FTA 특혜세율" : "한-EU FTA 특혜세율";
+  const money = (value: number | null | undefined) =>
+    value == null ? "—" : `${isUs ? "$" : "€"}${value.toFixed(2)}`;
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <article className="rounded-xl border border-border bg-card p-6">
@@ -613,7 +619,7 @@ function AnalysisResult({ result, preferentialOriginEligible, market }: { result
         </ResultCard>
         <ResultCard number="04" title="Estimated Landed Cost" status={result.customs?.landedCost.status === "ready" ? "계산 완료" : "입력 필요"}>
           <p className="text-sm text-muted-foreground">{result.customs?.landedCost.formula}</p>
-          {result.customs?.landedCost.status === "ready" ? <div className="mt-3 space-y-1 text-sm"><p>관세평가액: <strong>€{result.customs.landedCost.customsValue?.toFixed(2)}</strong></p><p>관세: <strong>€{result.customs.landedCost.dutyAmount?.toFixed(2)}</strong></p><p>수입부대비용: <strong>€{(result.customs.landedCost.importCosts ?? 0).toFixed(2)}</strong></p><p>VAT: <strong>€{result.customs.landedCost.vatAmount?.toFixed(2)}</strong></p><p className="pt-1">예상 수입원가: <strong>€{result.customs.landedCost.estimatedTotal?.toFixed(2)}</strong></p></div> : <p className="mt-2 text-xs text-muted-foreground">필요 입력/데이터: {result.customs?.landedCost.missingInputs.join(", ")}</p>}
+          {result.customs?.landedCost.status === "ready" ? <div className="mt-3 space-y-1 text-sm"><p>관세평가액: <strong>{money(result.customs.landedCost.customsValue)}</strong></p><p>관세: <strong>{money(result.customs.landedCost.dutyAmount)}</strong></p><p>수입부대비용: <strong>{money(result.customs.landedCost.importCosts ?? 0)}</strong></p>{/* 미국은 수입 VAT 가 없어 vatAmount 가 null 이다. 줄 자체를 빼지 않으면 통화기호만 덩그러니 남는다. */}{result.customs.landedCost.vatAmount != null && <p>VAT: <strong>{money(result.customs.landedCost.vatAmount)}</strong></p>}<p className="pt-1">예상 수입원가: <strong>{money(result.customs.landedCost.estimatedTotal)}</strong></p></div> : <p className="mt-2 text-xs text-muted-foreground">필요 입력/데이터: {result.customs?.landedCost.missingInputs.join(", ")}</p>}
         </ResultCard>
       </div>
     </div>
@@ -627,7 +633,7 @@ function AnalysisSkeleton() {
   const sections = [
     ["01", "HS Classification", "공식 HS 데이터 및 분류 엔진 연결 필요"],
     ["02", "Duty & FTA", "공식 관세율·협정세율 데이터 연결 필요"],
-    ["03", "Certification & Regulation", "EU 품목별 규제 데이터 연결 필요"],
+    ["03", "Certification & Regulation", "품목별 수입 규제 데이터 연결 필요"],
     ["04", "Estimated Landed Cost", "관세·세금·운임 데이터 연결 후 계산 가능"],
   ];
 
