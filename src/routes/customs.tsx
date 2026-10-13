@@ -67,6 +67,7 @@ function AiCustomsPage() {
   // 목적지 시장. 미국은 HTS 기본세율과 한-미 FTA 특혜세율까지만 있고
   // VAT·원산지기준·수입규제 데이터가 없다(lookup-us-hts-code.ts 참조).
   const [market, setMarket] = useState<"EU" | "US">("EU");
+  const isUsMarket = market === "US";
   const [mode, setMode] = useState<"describe" | "code">("describe");
   const [hsCode, setHsCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -331,50 +332,34 @@ function AiCustomsPage() {
               <Field label="Freight (EUR)"><input value={freight} onChange={(e)=>setFreight(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
               <Field label="Insurance (EUR)"><input value={insurance} onChange={(e)=>setInsurance(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
               <Field label="Import / incidental costs (EUR)"><input value={importCosts} onChange={(e)=>setImportCosts(e.target.value)} type="number" min="0" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" /></Field>
-              {market === "EU" && <details className="rounded-md border border-border p-4 sm:col-span-2">
-                <summary className="cursor-pointer text-sm font-semibold">한-EU FTA 원산지 판정 상세 입력 (선택)</summary>
+              {/* 원산지 판정 입력 ★
+                  미국도 PSR 5,204건을 적재해 자동판정이 돌아간다. 그런데 이 블록이
+                  EU 전용이라, 판정이 "비원산지 원재료 HS6 목록이 필요하다"고 해놓고
+                  정작 입력란이 없었다. 양쪽에 열되, 섬유 전용 항목(한-EU 의
+                  FABRIC_FORWARD·TEXTILE_CH61 규칙용)은 EU 에서만 보여준다. */}
+              <details className="rounded-md border border-border p-4 sm:col-span-2">
+                <summary className="cursor-pointer text-sm font-semibold">{isUsMarket ? "한-미" : "한-EU"} FTA 원산지 판정 상세 입력 (선택)</summary>
                 <p className="mt-2 text-xs text-muted-foreground">먼저 상품명만으로 분석할 수 있습니다. FTA 특혜세율 자동판정이 필요할 때만 아래 정보를 입력하세요.</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Field label="한국에서 최종 생산"><select value={originManufacturedInKr} onChange={e=>setOriginManufacturedInKr(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
+                  {market === "EU" && <><Field label="한국에서 최종 생산"><select value={originManufacturedInKr} onChange={e=>setOriginManufacturedInKr(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
                   <Field label="투입 원단이 한-EU FTA 원산지"><select value={originFabricOriginating} onChange={e=>setOriginFabricOriginating(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
                   <Field label="한국 내 충분가공"><select value={originSufficientProcessing} onChange={e=>setOriginSufficientProcessing(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
                   <Field label="한국 내 편직"><select value={originKnittingInKr} onChange={e=>setOriginKnittingInKr(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
                   <Field label="한국 내 방적 또는 필라멘트사 압출"><select value={originSpinningOrExtrusionInKr} onChange={e=>setOriginSpinningOrExtrusionInKr(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
                   <Field label="한국 내 재단·봉제·조립"><select value={originMakingUpInKr} onChange={e=>setOriginMakingUpInKr(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
-                  <Field label="공장도가격 (EUR)"><input value={originExWorksPrice} onChange={e=>setOriginExWorksPrice(e.target.value)} type="number" min="0" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
-                  <Field label="비원산지재료 가격 (EUR)"><input value={originNonOriginValue} onChange={e=>setOriginNonOriginValue(e.target.value)} type="number" min="0" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
+                  </>}
+                  <Field label={isUsMarket ? "조정가격 (USD)" : "공장도가격 (EUR)"}><input value={originExWorksPrice} onChange={e=>setOriginExWorksPrice(e.target.value)} type="number" min="0" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
+                  <Field label={isUsMarket ? "비원산지재료 가격 (USD)" : "비원산지재료 가격 (EUR)"}><input value={originNonOriginValue} onChange={e=>setOriginNonOriginValue(e.target.value)} type="number" min="0" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
                   <Field label="비원산지 원재료 HS4 (쉼표 구분)"><input value={originNonOriginHs4} onChange={e=>setOriginNonOriginHs4(e.target.value)} placeholder="예: 3901, 3902" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
                   <Field label="비원산지 원재료 HS6 (쉼표 구분)"><input value={originNonOriginHs6} onChange={e=>setOriginNonOriginHs6(e.target.value)} placeholder="예: 390110, 390120" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"/></Field>
                   <Field label="완전생산 여부"><select value={originWhollyObtained} onChange={e=>setOriginWhollyObtained(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">미확인</option><option value="yes">예</option><option value="no">아니오</option></select></Field>
                 </div>
                 <label className="mt-3 flex items-start gap-3 text-sm">
                   <input type="checkbox" checked={preferentialOriginEligible} onChange={(e)=>setPreferentialOriginEligible(e.target.checked)} className="mt-1" />
-                  <span><strong>유효한 한-EU FTA 원산지 신고/증빙 보유</strong><br/><span className="text-xs text-muted-foreground">자동 PSR 판정이 충족이고 이 항목도 확인된 경우에만 특혜세율을 Landed Cost에 적용합니다.</span></span>
+                  <span><strong>유효한 {isUsMarket ? "한-미" : "한-EU"} FTA 원산지 신고/증빙 보유</strong><br/><span className="text-xs text-muted-foreground">{isUsMarket ? "체크하면 특혜세율로 관세포함원가를 계산합니다. 원산지 자동판정 결과는 참고용이며 적용 책임은 수출자에게 있습니다." : "자동 PSR 판정이 충족이고 이 항목도 확인된 경우에만 특혜세율을 Landed Cost에 적용합니다."}</span></span>
                 </label>
-              </details>}
+              </details>
 
-              {/* 미국은 PSR 자동판정 데이터가 없어 EU 쪽 상세 입력을 숨겼는데,
-                  특혜세율 적용 체크박스까지 그 안에 있어서 한-미 FTA 0% 를 영영
-                  적용할 수 없었다. 미국에서는 이용자 선언만 받는다. */}
-              {market === "US" && (
-                <label className="flex items-start gap-3 text-sm sm:col-span-2">
-                  <input
-                    type="checkbox"
-                    checked={preferentialOriginEligible}
-                    onChange={(e) => setPreferentialOriginEligible(e.target.checked)}
-                    className="mt-1"
-                  />
-                  <span>
-                    <strong>한-미 FTA 특혜세율 적용</strong>
-                    <br />
-                    <span className="text-xs text-muted-foreground">
-                      원산지 기준을 충족하고 유효한 원산지증명이 있는 경우에만 체크하세요.
-                      체크하면 특혜세율로 관세포함원가를 계산합니다. 원산지 기준 자동판정은
-                      아직 지원하지 않습니다.
-                    </span>
-                  </span>
-                </label>
-              )}
             </div>
 
             <button
