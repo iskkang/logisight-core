@@ -18,7 +18,14 @@ const sb = supabaseAdmin as unknown as SupabaseClient;
  * 입력한 제품 설명이라 영업상 민감할 수 있어 밖으로 내보내지 않는다.
  */
 export async function logHsQuery(
-  input: HsClassificationInput,
+  // "제품 설명으로 AI 분류" 인지 "HS 코드 직접 조회" 인지. 어느 경로를 실제로
+  // 쓰는지 알아야 다음 작업 우선순위를 정할 수 있다.
+  mode: "describe" | "code",
+  // description 에는 이용자가 입력한 것을 그대로 담는다 —— 설명 경로면 설명,
+  // 코드 경로면 코드.
+  input: Pick<HsClassificationInput, "originCountry" | "destinationMarket" | "destinationCountry"> & {
+    description: string;
+  },
   result: HsClassificationResult | null,
   durationMs: number,
   error: unknown,
@@ -26,6 +33,7 @@ export async function logHsQuery(
   try {
     const top = result?.candidates[0]?.heading.match(/^(\d{8})/)?.[1] ?? null;
     await sb.from("hs_classification_queries").insert({
+      mode,
       description: input.description,
       origin_country: input.originCountry ?? null,
       destination_market: input.destinationMarket ?? null,

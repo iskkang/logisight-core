@@ -31,6 +31,29 @@ export const hsClassificationInputSchema = z.object({
 
 export type HsClassificationInput = z.infer<typeof hsClassificationInputSchema>;
 
+/**
+ * HS 코드를 직접 넣는 조회용 입력. description 대신 cnCode 를 받고 나머지(원산지
+ * 판정·원가 입력)는 분류 경로와 동일하다.
+ *
+ * 코드는 점·공백을 넣어 적는 경우가 많아(8507.60.00) 숫자만 남겨 받는다.
+ * 4·6자리도 허용한다 —— 그 경우 하위 8자리 후보를 돌려주고 고르게 한다.
+ */
+export const hsCodeLookupInputSchema = hsClassificationInputSchema
+  .omit({ description: true })
+  .extend({
+    cnCode: z
+      .string()
+      .trim()
+      .min(1)
+      .max(20)
+      .transform((value) => value.replace(/[^0-9]/g, ""))
+      .refine((digits) => digits.length === 4 || digits.length === 6 || digits.length === 8, {
+        message: "HS 코드는 4·6·8자리로 입력해 주세요.",
+      }),
+  });
+
+export type HsCodeLookupInput = z.infer<typeof hsCodeLookupInputSchema>;
+
 export const hsCandidateSchema = z.object({
   hs6: z.string().regex(/^\d{6}$/),
   heading: z.string(),

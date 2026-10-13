@@ -7,10 +7,12 @@ import { logHsQuery } from "@/server/hs-query-log";
 // 이용자가 실제로 받는 코드의 것이 아니었다. 이 파일 구현을 정본으로 삼아
 // 한 벌로 합쳤다 —— 동작은 그대로고 위치만 바뀌었다.
 import { classifyHsProductCore } from "@/server/classify-hs-core";
+import { lookupEuHsCode } from "@/server/lookup-hs-code";
 
 import {
   buildInsufficientInformationResult,
   hsClassificationInputSchema,
+  hsCodeLookupInputSchema,
   type HsClassificationResult,
 } from "@/server/hs-classification";
 
@@ -23,10 +25,34 @@ export const classifyHsProduct = createServerFn({ method: "POST" })
     const startedAt = Date.now();
     try {
       const result = await classifyHsProductCore(data);
-      await logHsQuery(data, result, Date.now() - startedAt, null);
+      await logHsQuery("describe", data, result, Date.now() - startedAt, null);
       return result;
     } catch (error) {
-      await logHsQuery(data, null, Date.now() - startedAt, error);
+      await logHsQuery("describe", data, null, Date.now() - startedAt, error);
+      throw error;
+    }
+  });
+
+/**
+ * HS 코드를 아는 사람을 위한 조회. LLM 을 부르지 않아 1초대에 끝난다 ★
+ *
+ * 분류 경로는 LLM 두 번에 9.6~11.6초가 걸린다(실측). 코드가 손에 있는 경우
+ * —— 인보이스·수출신고필증에 적혀 있으니 포워더에게는 오히려 흔하다 ——
+ * 설명을 다시 쓰게 하고 기다리게 할 이유가 없다.
+ */
+export const lookupHsCode = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => hsCodeLookupInputSchema.parse(input))
+  .handler(async ({ data }): Promise<HsClassificationResult> => {
+    const { cnCode, ...rest } = data;
+    const startedAt = Date.now();
+    // 로그에는 이용자가 넣은 것을 그대로 남긴다 —— 이 경로에서는 코드다.
+    const logged = { ...rest, description: cnCode };
+    try {
+      const result = await lookupEuHsCode(cnCode, { ...rest, description: cnCode });
+      await logHsQuery("code", logged, result, Date.now() - startedAt, null);
+      return result;
+    } catch (error) {
+      await logHsQuery("code", logged, null, Date.now() - startedAt, error);
       throw error;
     }
   });

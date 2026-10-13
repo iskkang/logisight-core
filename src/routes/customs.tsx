@@ -16,7 +16,7 @@ import { seoHead } from "@/lib/seo";
 import { HomeNav } from "@/components/home/HomeNav";
 import { HomeFooter } from "@/components/home/HomeFooter";
 import { InsightSubNav } from "@/components/insight/InsightSubNav";
-import { classifyHsProduct } from "@/lib/api/hs-classification.functions";
+import { classifyHsProduct, lookupHsCode } from "@/lib/api/hs-classification.functions";
 import type { HsClassificationResult } from "@/server/hs-classification";
 
 export const Route = createFileRoute("/customs")({
@@ -47,6 +47,13 @@ const LOADING_STEPS = [
   "관세·FTA 원산지·수입 규제를 확인합니다",
 ];
 
+// 코드 직접 조회 경로. LLM 을 부르지 않아 단계가 짧다.
+const CODE_LOADING_STEPS = [
+  "입력한 코드가 공식 CN 2026 에 있는지 확인합니다",
+  "기본관세와 한-EU FTA 특혜세율을 조회합니다",
+  "원산지 기준과 수입 규제를 확인합니다",
+];
+
 const STEPS = [
   { label: "HS Classification", icon: PackageSearch },
   { label: "Duty & FTA", icon: Landmark },
@@ -57,6 +64,9 @@ const STEPS = [
 function AiCustomsPage() {
   const [product, setProduct] = useState("");
   const [started, setStarted] = useState(false);
+  // 입력 방식. 코드를 아는 사람에게 설명을 다시 쓰게 하지 않는다.
+  const [mode, setMode] = useState<"describe" | "code">("describe");
+  const [hsCode, setHsCode] = useState("");
   const [loading, setLoading] = useState(false);
   // 10초 넘게 걸리는 작업이라 경과 시간을 보여 준다. 멈춘 것인지 도는 것인지
   // 구분이 안 되면 사용자가 새로고침한다.
@@ -92,7 +102,8 @@ function AiCustomsPage() {
   }, [loading]);
 
   const analyze = async () => {
-    if (!product.trim() || loading) return;
+    const ready = mode === "code" ? hsCode.replace(/[^0-9]/g, "").length >= 4 : product.trim().length > 0;
+    if (!ready || loading) return;
     setStarted(true);
     setLoading(true);
     // 결과 영역이 입력 폼 아래 있어서, 버튼을 누른 자리에서는 화면 밖이었다.
@@ -101,8 +112,9 @@ function AiCustomsPage() {
     setResult(null);
     setError(null);
     try {
-      const response = await classifyHsProduct({ data: {
-        description: product.trim(), originCountry: "KR", destinationMarket: "EU",
+      // 두 경로가 같은 부가 입력(원가·원산지 판정)을 쓴다. 공통부를 한 번만 만든다.
+      const payload = {
+        originCountry: "KR" as const, destinationMarket: "EU" as const,
         destinationCountry,
         ...(productValue ? { productValue: Number(productValue) } : {}),
         ...(freight ? { freight: Number(freight) } : {}),
@@ -121,7 +133,10 @@ function AiCustomsPage() {
         ...(originNonOriginHs4.trim() ? { originNonOriginatingMaterialHs4: originNonOriginHs4.split(",").map(x=>x.trim()).filter(x=>/^\d{4}$/.test(x)) } : {}),
         ...(originNonOriginHs6.trim() ? { originNonOriginatingMaterialHs6: originNonOriginHs6.split(",").map(x=>x.trim()).filter(x=>/^\d{6}$/.test(x)) } : {}),
         ...(originWhollyObtained ? { originWhollyObtained: originWhollyObtained === "yes" } : {}),
-      } });
+      };
+      const response = mode === "code"
+        ? await lookupHsCode({ data: { cnCode: hsCode, ...payload } })
+        : await classifyHsProduct({ data: { description: product.trim(), ...payload } });
       setResult(response);
     } catch (cause) {
       console.error(cause);
@@ -214,20 +229,69 @@ function AiCustomsPage() {
               </Field>
             </div>
 
-            <Field label="Product description" className="mt-5">
-              <textarea
-                value={product}
-                onChange={(event) => {
-                  setProduct(event.target.value);
-                  setStarted(false);
-                  setResult(null);
-                  setError(null);
-                }}
-                rows={6}
-                placeholder="예: Facial skin care serum, 50 ml. Main ingredients: niacinamide 10%, hyaluronic acid. Retail cosmetic product for moisturizing and skin care."
-                className="w-full resize-none rounded-md border border-input bg-background px-3 py-3 text-sm leading-6 outline-none transition focus:border-foreground/40"
-              />
-            </Field>
+            {/* 입력 방식 ★
+                HS 코드는 인보이스·수출신고필증에 이미 적혀 있는 경우가 많다.
+                코드를 아는 사람에게 설명을 다시 쓰게 하고 LLM 두 번(9.6~11.6초)을
+                기다리게 할 이유가 없다. 코드 경로는 DB 조회만 해서 1초대다. */}
+            <div className="mt-5 flex gap-0 rounded-md border border-input p-1">
+              {([
+                ["describe", "제품 설명으로 분류"],
+                ["code", "HS 코드로 바로 조회"],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setMode(value);
+                    setStarted(false);
+                    setResult(null);
+                    setError(null);
+                  }}
+                  className={`flex-1 rounded px-3 py-2 text-sm transition ${
+                    mode === value ? "bg-foreground font-semibold text-background" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {mode === "code" ? (
+              <Field label="HS / CN 코드" className="mt-5">
+                <input
+                  value={hsCode}
+                  onChange={(event) => {
+                    setHsCode(event.target.value);
+                    setStarted(false);
+                    setResult(null);
+                    setError(null);
+                  }}
+                  inputMode="numeric"
+                  placeholder="예: 8507.60.00 또는 85076000"
+                  className="h-11 w-full rounded-md border border-input bg-background px-3 font-mono text-sm outline-none transition focus:border-foreground/40"
+                />
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  점·공백은 넣어도 됩니다. 4·6자리를 넣으면 하위 8자리 코드를 골라 보여 줍니다.
+                  관세율은 8자리 단위로 정해집니다. 이 경로는 AI 분류를 거치지 않고,
+                  입력한 코드가 공식 CN 2026 에 있는지만 확인한 뒤 세율을 조회합니다.
+                </p>
+              </Field>
+            ) : (
+              <Field label="Product description" className="mt-5">
+                <textarea
+                  value={product}
+                  onChange={(event) => {
+                    setProduct(event.target.value);
+                    setStarted(false);
+                    setResult(null);
+                    setError(null);
+                  }}
+                  rows={6}
+                  placeholder="예: Facial skin care serum, 50 ml. Main ingredients: niacinamide 10%, hyaluronic acid. Retail cosmetic product for moisturizing and skin care."
+                  className="w-full resize-none rounded-md border border-input bg-background px-3 py-3 text-sm leading-6 outline-none transition focus:border-foreground/40"
+                />
+              </Field>
+            )}
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <Field label="EU destination">
@@ -266,7 +330,7 @@ function AiCustomsPage() {
             <button
               type="button"
               className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!product.trim() || loading}
+              disabled={(mode === "code" ? hsCode.replace(/[^0-9]/g, "").length < 4 : !product.trim()) || loading}
               onClick={analyze}
             >
               {loading ? (
@@ -276,7 +340,7 @@ function AiCustomsPage() {
                 </>
               ) : (
                 <>
-                  Analyze Product
+                  {mode === "code" ? "관세 조회" : "Analyze Product"}
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -323,12 +387,14 @@ function AiCustomsPage() {
           ) : loading ? (
             <div className="rounded-xl border border-border bg-card px-6 py-12 text-center">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
-              <h2 className="mt-4 text-lg font-semibold">공식 EU CN 후보를 분석하고 있습니다</h2>
+              <h2 className="mt-4 text-lg font-semibold">
+                {mode === "code" ? "공식 CN 데이터에서 조회하고 있습니다" : "공식 EU CN 후보를 분석하고 있습니다"}
+              </h2>
               <p className="mt-1.5 text-sm tabular-nums text-muted-foreground">
-                {elapsed}초 경과 · 보통 10~15초 걸립니다
+                {elapsed}초 경과 · 보통 {mode === "code" ? "1~2초" : "10~15초"} 걸립니다
               </p>
               <ul className="mx-auto mt-6 max-w-md space-y-2 text-left text-sm text-muted-foreground">
-                {LOADING_STEPS.map((step) => (
+                {(mode === "code" ? CODE_LOADING_STEPS : LOADING_STEPS).map((step) => (
                   <li key={step} className="flex gap-2">
                     <span className="text-muted-foreground/60">·</span>
                     {step}
