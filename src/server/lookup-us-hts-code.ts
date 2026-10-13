@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { HsClassificationInput, HsClassificationResult } from "@/server/hs-classification";
 import { supabasePublicServer } from "@/integrations/supabase/public.server";
 import { assessKrUsOrigin } from "@/server/eu-origin-assessment";
+import { findUsProductRegulations } from "@/server/us-product-regulations";
 
 // customs_nomenclature · customs_duty_measures 는 생성된 Database 타입에 없다.
 // types.ts 를 다시 생성하면 들어온다. 그 사이 타입 에러를 남기지 않도록 좁혀 쓴다.
@@ -154,8 +155,17 @@ export async function lookupUsHtsCode(
     })
     .sort((a, b) => a.provision.localeCompare(b.provision));
 
-  // 한-미 FTA 원산지 판정. PSR 5,204건을 적재해 EU 와 같은 수준이 됐다.
-  const originAssessment = await assessKrUsOrigin(exact.code, data);
+  // 규제 조회는 제품 설명의 낱말을 본다(예: "wireless" → FCC). 코드만 넣은
+  // 경우에는 공식 품명이 전부라 일부 규제가 걸러진다 —— warnings 에 적어 둔다.
+  const regulationText = [exact.description, data.material, data.composition, data.intendedUse, data.form]
+    .filter(Boolean)
+    .join(" ");
+
+  // 한-미 FTA 원산지 판정(PSR 5,204건)과 수입 규제(PGA 시드 30건).
+  const [originAssessment, regulations] = await Promise.all([
+    assessKrUsOrigin(exact.code, data),
+    findUsProductRegulations(exact.code, regulationText),
+  ]);
 
   // 한국산 특혜세율을 쓸 수 있다고 이용자가 밝힌 경우에만 그걸로 계산한다.
   const appliedRate =
@@ -215,7 +225,10 @@ export async function lookupUsHtsCode(
       },
       // 미국은 수입 규제·원산지 기준 데이터를 아직 적재하지 않았다. 빈 상태를
       // 그대로 보여주고 있는 척하지 않는다.
-      regulation: { status: "pending", items: [] },
+      regulation: {
+        status: regulations.length > 0 ? "guidance" : "pending",
+        items: regulations.map((item) => ({ title: item.title, detail: item.detail, url: item.url })),
+      },
       originAssessment,
       landedCost: {
         status: estimatedTotal != null ? "ready" : "needs_values",
@@ -234,7 +247,7 @@ export async function lookupUsHtsCode(
     warnings: [
       ADDITIONAL_DUTY_WARNING,
       "입력하신 코드가 그 물품에 맞는 분류인지는 확인하지 않았습니다. 코드가 공식 HTS 에 존재한다는 것과, 그 코드의 세율이 무엇인지만 조회했습니다.",
-      "미국 수입 규제와 한-미 FTA 원산지 판정은 아직 데이터가 없습니다. 별도로 확인하세요.",
+      "수입 규제는 류 단위로 \"해당 가능성\"만 알립니다. 세부 적용 여부는 각 기관 공식 안내로 확인하세요.",
       "최종 세관 분류와 세액은 수입통관 시 확정됩니다.",
     ],
     methodology: "US HTS direct lookup; MFN + KORUS special rate (additional Section 232/301 duties not included)",
