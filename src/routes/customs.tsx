@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -6,6 +6,7 @@ import {
   Calculator,
   FileSearch,
   Landmark,
+  Loader2,
   PackageSearch,
   ShieldCheck,
   Upload,
@@ -34,6 +35,18 @@ export const Route = createFileRoute("/customs")({
 // 형제 인사이트 페이지와 같은 본문 폭(LogisightRates · LogisightTrade 와 동일)
 const WRAP = "mx-auto w-full max-w-[1240px] px-4 min-[640px]:px-7";
 
+// 분석이 도는 동안 무엇을 하고 있는지 그대로 적는다. 실제 파이프라인 순서다
+// (analyzeProductForEuCn → searchOfficialEuNomenclatureByHeadings →
+//  rankOfficialEuCnCandidates → 관세·원산지·규제 조회).
+// 단계별 완료 표시는 하지 않는다 —— 서버가 진행 상황을 알려주지 않으므로
+// 체크가 켜지는 연출은 지어낸 진행률이 된다.
+const LOADING_STEPS = [
+  "제품 설명에서 HS4 범위를 좁힙니다",
+  "공식 CN 데이터에서 8자리 후보를 조회합니다",
+  "조회된 후보 안에서만 순위를 매깁니다",
+  "관세·FTA 원산지·수입 규제를 확인합니다",
+];
+
 const STEPS = [
   { label: "HS Classification", icon: PackageSearch },
   { label: "Duty & FTA", icon: Landmark },
@@ -45,6 +58,10 @@ function AiCustomsPage() {
   const [product, setProduct] = useState("");
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(false);
+  // 10초 넘게 걸리는 작업이라 경과 시간을 보여 준다. 멈춘 것인지 도는 것인지
+  // 구분이 안 되면 사용자가 새로고침한다.
+  const [elapsed, setElapsed] = useState(0);
+  const resultRef = useRef<HTMLElement | null>(null);
   const [result, setResult] = useState<HsClassificationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [destinationCountry, setDestinationCountry] = useState("DE");
@@ -67,10 +84,20 @@ function AiCustomsPage() {
   const [originNonOriginHs6, setOriginNonOriginHs6] = useState("");
   const [originWhollyObtained, setOriginWhollyObtained] = useState("");
 
+  useEffect(() => {
+    if (!loading) return;
+    setElapsed(0);
+    const id = window.setInterval(() => setElapsed((n) => n + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [loading]);
+
   const analyze = async () => {
     if (!product.trim() || loading) return;
     setStarted(true);
     setLoading(true);
+    // 결과 영역이 입력 폼 아래 있어서, 버튼을 누른 자리에서는 화면 밖이었다.
+    // 아무 일도 안 일어난 것처럼 보이던 가장 큰 이유다.
+    requestAnimationFrame(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
     setResult(null);
     setError(null);
     try {
@@ -242,8 +269,17 @@ function AiCustomsPage() {
               disabled={!product.trim() || loading}
               onClick={analyze}
             >
-              {loading ? "Analyzing..." : "Analyze Product"}
-              <ArrowRight className="h-4 w-4" />
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  분석 중…
+                </>
+              ) : (
+                <>
+                  Analyze Product
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </button>
 
             <div className="mt-4 flex items-center justify-center gap-2 rounded-md border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
@@ -274,7 +310,7 @@ function AiCustomsPage() {
           </aside>
         </div>
 
-        <section className="mt-8">
+        <section ref={resultRef} className="mt-8 scroll-mt-24">
           {!started ? (
             <div className="rounded-xl border border-border bg-muted/20 px-6 py-12 text-center">
               <PackageSearch className="mx-auto h-8 w-8 text-muted-foreground" />
@@ -286,8 +322,19 @@ function AiCustomsPage() {
             </div>
           ) : loading ? (
             <div className="rounded-xl border border-border bg-card px-6 py-12 text-center">
-              <PackageSearch className="mx-auto h-8 w-8 animate-pulse text-muted-foreground" />
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
               <h2 className="mt-4 text-lg font-semibold">공식 EU CN 후보를 분석하고 있습니다</h2>
+              <p className="mt-1.5 text-sm tabular-nums text-muted-foreground">
+                {elapsed}초 경과 · 보통 10~15초 걸립니다
+              </p>
+              <ul className="mx-auto mt-6 max-w-md space-y-2 text-left text-sm text-muted-foreground">
+                {LOADING_STEPS.map((step) => (
+                  <li key={step} className="flex gap-2">
+                    <span className="text-muted-foreground/60">·</span>
+                    {step}
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : error ? (
             <div className="rounded-xl border border-destructive/30 bg-card px-6 py-8">
