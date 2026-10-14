@@ -6,9 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 // 뉴스레터 원클릭 수신거부. 이메일 푸터 링크(/unsubscribe?id=<uuid>)로 진입.
 // anon 키로 SECURITY DEFINER 함수 newsletter_unsubscribe(p_id)만 호출 — 테이블 직접 접근 없음.
 export const Route = createFileRoute("/unsubscribe")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    id: typeof s.id === "string" ? s.id : "",
-  }),
+  // URL 에 없는 키는 돌려주지 않는다 ★
+  // id 가 없을 때 "" 를 돌려주면 라우터가 주소를 ?id= 로 정규화하며 307 을 건다.
+  // 수신거부는 마찰이 적을수록 좋고, 일부 메일 클라이언트·링크 검사기는
+  // 리다이렉트를 제대로 따라가지 않는다. 이 저장소의 /forecasts 가 같은 이유로
+  // 지금도 307 을 낸다.
+  validateSearch: (s: Record<string, unknown>) => (typeof s.id === "string" ? { id: s.id } : {}),
   head: () => ({
     meta: [
       { title: "뉴스레터 구독 해지 — Logisight" },
@@ -29,7 +32,7 @@ const MESSAGES: Record<State, { title: string; body: string }> = {
 };
 
 function UnsubscribePage() {
-  const { id } = Route.useSearch();
+  const { id } = Route.useSearch() as { id?: string };
   const [state, setState] = useState<State>(id ? "loading" : "invalid");
 
   useEffect(() => {
