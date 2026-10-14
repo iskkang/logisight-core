@@ -273,6 +273,7 @@ function SiteShell({ children }: { children: React.ReactNode }) {
       "/about",
       "/privacy",
       "/glossary",
+      "/index1520/routes",
       "/asia",
     ].includes(pathname) ||
     pathname.startsWith("/article/") ||

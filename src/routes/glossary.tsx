@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { HomeNav } from "@/components/home/HomeNav";
+import { HomeFooter } from "@/components/home/HomeFooter";
 import {
   CATEGORY_LABEL,
   GLOSSARY,
@@ -122,6 +123,10 @@ function GlossaryPage() {
           에 정리돼 있습니다.
         </p>
       </main>
+
+      {/* 푸터가 없었다. 전역 Navigation 제외 목록에 있어 전역 Footer 도 붙지 않는데
+          자체 HomeFooter 도 그리지 않아, 이 페이지만 푸터 없이 끝났다. */}
+      <HomeFooter />
     </div>
   );
 }

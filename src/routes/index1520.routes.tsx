@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { index1520RoutesQueryOptions } from "@/lib/api/index1520-routes";
 import { EurasiaStatisticsPanel } from "@/components/index1520/EurasiaStatisticsPanel";
+import { HomeNav } from "@/components/home/HomeNav";
+import { HomeFooter } from "@/components/home/HomeFooter";
 import { seoHead } from "@/lib/seo";
 
 // Index1520 라우트 통계(독립 페이지) — /rail/eurasia 의 Statistics 탭과 동일 패널 재사용.
@@ -24,7 +26,11 @@ export const Route = createFileRoute("/index1520/routes")({
 
 function Index1520RoutesPage() {
   return (
-    <main className="min-h-screen bg-[#f3f6fa] text-[#1a2433]">
+    /* 형제 페이지(/rail/eurasia 등)는 모두 다크 HomeNav + HomeFooter 를 그리는데
+       이 페이지만 밝은 전역 Navigation 을 받고 있었다. 같은 구성으로 맞춘다. */
+    <div className="min-h-screen bg-[#070b16]">
+      <HomeNav active="insight" />
+      <main className="bg-[#f3f6fa] text-[#1a2433]">
       <div className="mx-auto max-w-[1280px] px-4 py-6 min-[900px]:px-6">
         <header className="mb-4">
           <div className="text-[12px] font-semibold uppercase tracking-wide text-[#667085]">Index1520 · Eurasia Rail</div>
@@ -38,6 +44,8 @@ function Index1520RoutesPage() {
         </header>
         <EurasiaStatisticsPanel />
       </div>
-    </main>
+      </main>
+      <HomeFooter />
+    </div>
   );
 }
