@@ -247,43 +247,22 @@ const THEME_TOGGLE_PREFIXES = [
 function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  // 자체 Nav/Footer를 가진 리디자인 페이지(홈·뉴스·기사·포트·종합·전망)는 전체 레이아웃을 스스로
-  // 책임진다 → 글로벌 Navigation/Footer/theme-light 래퍼를 건너뛴다. 다른 라우트는 영향 없음.
-  // /article/<slug>는 동적 경로라 정확 일치가 안 되므로 prefix로 판별한다.
-  if (
-    [
-      "/",
-      "/news",
-      "/reports",
-      "/port-risk",
-      "/policy",
-      "/dashboard",
-      "/forecasts",
-      "/rates",
-      "/eurasia",
-      "/climate",
-      "/trade",
-      "/industries",
-      "/customs",
-      "/briefing",
-      "/faq",
-      "/methodology",
-      // 아래 넷도 자체 HomeNav/HomeFooter 를 갖는다. 빠져 있어서 밝은 버전 Navigation·
-      // Footer 가 위에 한 겹 더 붙어 나왔다(헤더 두 개·푸터 두 개).
-      "/about",
-      "/privacy",
-      "/glossary",
-      "/index1520/routes",
-      "/asia",
-    ].includes(pathname) ||
-    pathname.startsWith("/article/") ||
-    // 리포트 상세(주간·월간)도 자체 HomeNav/Footer 를 갖는다 ★
-    // 목록 "/reports" 만 위에 적혀 있고 하위 경로가 빠져 있어서, 밝은 버전
-    // Navigation·Footer 가 한 겹 더 붙어 헤더 두 개·푸터 두 개로 나왔다.
-    // 월간은 라우트가 직접 HomeNav 를 그리고, 주간은 LogisightArticle 을 통해 그린다.
-    pathname.startsWith("/reports/") ||
-    pathname.startsWith("/rail") // /rail 허브는 자체 HomeNav/Footer를 가짐 → 글로벌 Navigation 중복 방지
-  ) {
+  // 전역 Navigation/Footer 는 이제 관리 화면 전용이다 ★
+  //
+  // 원래는 "제외 목록에 없으면 전역 헤더를 붙인다"였다. 그런데 공개 페이지가
+  // 하나씩 자체 HomeNav/HomeFooter 로 옮겨가면서, 새 페이지를 만들 때마다 이
+  // 목록에 넣는 걸 잊어 밝은 헤더가 한 겹 더 붙었다 —— /about·/privacy·
+  // /glossary·/asia 에서 한 번, /customs 에서 또, /reports/* 에서 또 그랬다.
+  //
+  // 기본값을 뒤집는다. 전역 껍데기를 받는 경로를 명시하고, 그 밖에는 페이지가
+  // 레이아웃을 스스로 책임진다. 이제 HomeNav 를 빠뜨리면 헤더가 "틀리게" 나오는
+  // 대신 "없이" 나온다 —— 눈에 바로 띄므로 조용히 중복되는 것보다 낫다.
+  //
+  // 전역 껍데기를 지우지 않고 남긴 이유: 관리 화면이 아직 쓴다. 관리 화면에
+  // 공개용 내비가 맞는지는 별도 판단이라 지금 건드리지 않는다.
+  const usesGlobalShell =
+    pathname === "/unsubscribe" || pathname === "/admin" || pathname.startsWith("/admin/");
+  if (!usesGlobalShell) {
     return <>{children}</>;
   }
 
