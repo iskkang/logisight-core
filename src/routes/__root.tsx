@@ -276,6 +276,11 @@ function SiteShell({ children }: { children: React.ReactNode }) {
       "/asia",
     ].includes(pathname) ||
     pathname.startsWith("/article/") ||
+    // 리포트 상세(주간·월간)도 자체 HomeNav/Footer 를 갖는다 ★
+    // 목록 "/reports" 만 위에 적혀 있고 하위 경로가 빠져 있어서, 밝은 버전
+    // Navigation·Footer 가 한 겹 더 붙어 헤더 두 개·푸터 두 개로 나왔다.
+    // 월간은 라우트가 직접 HomeNav 를 그리고, 주간은 LogisightArticle 을 통해 그린다.
+    pathname.startsWith("/reports/") ||
     pathname.startsWith("/rail") // /rail 허브는 자체 HomeNav/Footer를 가짐 → 글로벌 Navigation 중복 방지
   ) {
     return <>{children}</>;
